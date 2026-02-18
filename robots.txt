@@ -32,3 +32,4 @@ User-agent: *
 Allow: /
 
 Sitemap: https://ccpun.com/sitemap.xml
+Sitemap: https://blog.ccpun.com/wp-sitemap.xml
