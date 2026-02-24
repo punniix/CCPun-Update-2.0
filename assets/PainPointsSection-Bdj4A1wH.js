@@ -1,0 +1,21 @@
+import{c as s,r as d,u as c,a as m,j as e,m as x}from"./index-DbuRhx-M.js";import{S as i}from"./ScrollReveal-BMSag9vs.js";import{S as p}from"./shield-CpJ1EWSz.js";/**
+ * @license lucide-react v0.462.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */const h=s("FileText",[["path",{d:"M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z",key:"1rqfz7"}],["path",{d:"M14 2v4a2 2 0 0 0 2 2h4",key:"tnqrlb"}],["path",{d:"M10 9H8",key:"b1mrlr"}],["path",{d:"M16 13H8",key:"t4e002"}],["path",{d:"M16 17H8",key:"z1uh3a"}]]);/**
+ * @license lucide-react v0.462.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */const g=s("PiggyBank",[["path",{d:"M19 5c-1.5 0-2.8 1.4-3 2-3.5-1.5-11-.3-11 5 0 1.8 0 3 2 4.5V20h4v-2h3v2h4v-4c1-.5 1.7-1 2-2h2v-4h-2c0-1-.5-1.5-1-2V5z",key:"1ivx2i"}],["path",{d:"M2 9v1c0 1.1.9 2 2 2h1",key:"nm575m"}],["path",{d:"M16 11h.01",key:"xkw8gn"}]]);/**
+ * @license lucide-react v0.462.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */const u=s("TrendingDown",[["polyline",{points:"22 17 13.5 8.5 8.5 13.5 2 7",key:"1r2t7k"}],["polyline",{points:"16 17 22 17 22 11",key:"11uiuu"}]]);/**
+ * @license lucide-react v0.462.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */const v=s("Wallet",[["path",{d:"M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1",key:"18etb6"}],["path",{d:"M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4",key:"xoc0q4"}]]),r=[{icon:v,title:"เงินเดือนหมดก่อนสิ้นเดือน",description:"เงินเดือนออกเพียงไม่กี่วัน ก็ใช้ไปจนหมด ไม่เหลือออม"},{icon:p,title:"ไม่มีประกัน หรือมีแต่ไม่พอ",description:"ไม่มีประกันติดตัว หรือมีแต่ไม่แน่ใจว่าเพียงพอต่อการรับมือกับเหตุไม่คาดฝันหรือไม่"},{icon:h,title:"เสียภาษีมากเกินไป",description:"มีรายได้มากมาย แต่ต้องจ่ายภาษีมากเกินความจำเป็น"},{icon:g,title:"กังวลเรื่องเกษียณ",description:"กลัวเงินเก็บที่มีไม่พอใช้ในวันที่ต้องเกษียณ"},{icon:u,title:"ขาดทุนจากการลงทุน",description:"ลงทุนตามกระแส ไม่มีแผนการลงทุนที่ชัดเจน"}],k=()=>{const l=d.useRef(null),{scrollYProgress:o}=c({target:l,offset:["start end","end start"]}),n=m(o,[0,.3,.7,1],[0,1,1,0]);return e.jsxs("section",{ref:l,id:"pain-points",className:"py-12 md:py-24 relative overflow-hidden",children:[e.jsx(x.div,{style:{opacity:n},className:"absolute inset-0 bg-gradient-to-b from-background via-secondary/30 to-background"}),e.jsxs("div",{className:"relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8",children:[e.jsxs(i,{className:"text-center mb-16",children:[e.jsx("h2",{className:"text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-4",children:"คุณกำลังเจอปัญหาเหล่านี้อยู่ไหม?"}),e.jsx("div",{className:"section-divider"})]}),e.jsx("div",{className:"grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-6 md:mb-8",children:r.slice(0,3).map((t,a)=>e.jsx(i,{delay:a*.15,direction:"up",children:e.jsxs("div",{className:"pain-card group h-full",children:[e.jsx("div",{className:"icon-glow group-hover:animate-pulse-glow transition-all duration-300",children:e.jsx(t.icon,{className:"w-7 h-7 text-primary relative z-10"})}),e.jsx("h3",{className:"text-lg md:text-xl font-semibold text-foreground mb-3 group-hover:text-gold-gradient transition-all duration-300",children:t.title}),e.jsx("p",{className:"text-muted-foreground text-sm leading-relaxed",children:t.description})]})},a))}),e.jsx("div",{className:"grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 md:max-w-3xl md:mx-auto",children:r.slice(3).map((t,a)=>e.jsx(i,{delay:(a+3)*.15,direction:"up",children:e.jsxs("div",{className:"pain-card group h-full",children:[e.jsx("div",{className:"icon-glow group-hover:animate-pulse-glow transition-all duration-300",children:e.jsx(t.icon,{className:"w-7 h-7 text-primary relative z-10"})}),e.jsx("h3",{className:"text-lg md:text-xl font-semibold text-foreground mb-3 group-hover:text-gold-gradient transition-all duration-300",children:t.title}),e.jsx("p",{className:"text-muted-foreground text-sm leading-relaxed",children:t.description})]})},a+3))})]})]})};export{k as default};
