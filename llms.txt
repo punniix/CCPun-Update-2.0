@@ -14,7 +14,7 @@
 
 - [**Financial Health Check**](https://ccpun.com/tools/financial-health-check/): ตรวจสุขภาพการเงิน เห็นฐานะปัจจุบัน ภาระหนี้ เงินสำรอง และช่องว่างความคุ้มครอง
 - [**CI Planning**](https://ccpun.com/ci-planning/): ประเมินทุนประกันโรคร้ายแรงที่ควรมีจากรายได้ รายจ่าย ภาระ และเงินสำรอง
-- [**Investment Advisor**](https://ccpun.com/financial-advisor/): วางแผนการลงทุนกองทุนรวม RMF SSF ThaiESG เฉพาะบุคคล
+- [**Investment Consultant**](https://ccpun.com/financial-advisor/): วางแผนการลงทุนกองทุนรวม RMF SSF ThaiESG เฉพาะบุคคล
 - [**Risk Management**](https://ccpun.com/living-benefits/): วางแผนประกันชีวิต ประกันสุขภาพ และโรคร้ายแรงเพื่อรับมือเหตุฉุกเฉิน
 - **Tax Planning**: ลดภาษีถูกกฎหมายด้วย RMF, ThaiESG, ประกันชีวิต และประกันสุขภาพ
 

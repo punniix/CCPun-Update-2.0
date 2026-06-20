@@ -7,4 +7,4 @@
 :HL["/_next/static/media/c750adf2ddf22b70-s.p.1j3epi4sx1jkp.woff2","font",{"crossOrigin":"","type":"font/woff2"}]
 :HL["/assets/hero-bg-mobile.webp","image",{"type":"image/webp","fetchPriority":"high","media":"(max-width: 768px)"}]
 :HL["/assets/hero-bg.webp","image",{"type":"image/webp","fetchPriority":"high","media":"(min-width: 769px)"}]
-0:{"tree":{"name":"","param":null,"prefetchHints":16,"slots":{"children":{"name":"__PAGE__","param":null,"prefetchHints":0,"slots":null}}},"staleTime":300,"buildId":"WNLOuFTmQuEDqOVEHTsPo"}
+0:{"tree":{"name":"","param":null,"prefetchHints":16,"slots":{"children":{"name":"__PAGE__","param":null,"prefetchHints":0,"slots":null}}},"staleTime":300,"buildId":"JaIjiDmRp3GvhD8Omh3qB"}
