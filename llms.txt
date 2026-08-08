@@ -14,7 +14,7 @@
 
 - [**Financial Health Check**](https://ccpun.com/tools/financial-health-check/): ตรวจสุขภาพการเงิน เห็นฐานะปัจจุบัน ภาระหนี้ เงินสำรอง และช่องว่างความคุ้มครอง
 - [**CI Planning**](https://ccpun.com/ci-planning/): ประเมินทุนประกันโรคร้ายแรงที่ควรมีจากรายได้ รายจ่าย ภาระ และเงินสำรอง
-- [**Risk Management**](https://ccpun.com/living-benefits/): วางแผนประกันชีวิต ประกันสุขภาพ และโรคร้ายแรงเพื่อรับมือเหตุฉุกเฉิน
+- **Risk Management**: วางแผนประกันชีวิต ประกันสุขภาพ และโรคร้ายแรงเพื่อรับมือเหตุฉุกเฉิน
 - **Tax Planning**: ลดภาษีถูกกฎหมายด้วย RMF, ThaiESG, ประกันชีวิต และประกันสุขภาพ
 
 พาร์ทเนอร์: AIA, Maybank, PhillipCapital, Finnomena
@@ -24,7 +24,6 @@
 - [หน้าแรก CCPun](https://ccpun.com/)
 - [Financial Health Check](https://ccpun.com/tools/financial-health-check/)
 - [CI Planning](https://ccpun.com/ci-planning/)
-- [Living Benefits](https://ccpun.com/living-benefits/)
 - [บทความ CCPun](https://blog.ccpun.com/)
 - [บทความประกันโรคร้ายแรง](https://blog.ccpun.com/critical-illness-insurance-guide/)
 - [บทความ AIA Health Happy](https://blog.ccpun.com/aia-health-happy-describe/)
