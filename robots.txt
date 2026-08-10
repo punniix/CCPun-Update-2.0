@@ -45,4 +45,4 @@ Allow: /
 Disallow: /_next/
 
 Sitemap: https://ccpun.com/sitemap.xml
-Sitemap: https://blog.ccpun.com/wp-sitemap.xml
+Sitemap: https://blog.ccpun.com/sitemap_index.xml

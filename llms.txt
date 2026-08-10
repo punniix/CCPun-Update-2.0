@@ -25,7 +25,7 @@
 - [Financial Health Check](https://ccpun.com/tools/financial-health-check/)
 - [CI Planning](https://ccpun.com/ci-planning/)
 - [บทความ CCPun](https://blog.ccpun.com/)
-- [บทความประกันโรคร้ายแรง](https://blog.ccpun.com/critical-illness-insurance-guide/)
+- [บทความประกันโรคร้ายแรง](https://blog.ccpun.com/critical-illness-insurance/)
 - [บทความ AIA Health Happy](https://blog.ccpun.com/aia-health-happy-describe/)
 
 ## เนื้อหา / บทความ
