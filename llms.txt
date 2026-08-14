@@ -1,46 +1,14 @@
-# [CCPun Financial Advisor](https://ccpun.com/)
+# CCPun
 
-> CCPun เป็นที่ปรึกษาการเงินอิสระในประเทศไทย มีใบอนุญาต ก.ล.ต. และ คปภ.
-> ประสบการณ์กว่า 5 ปี
-
-## เกี่ยวกับ CCPun
-
-ชื่อ: ปั้น (CCPun)
-บทบาท: ที่ปรึกษาการเงินอิสระ (Independent Financial Advisor)
-ใบอนุญาต: ก.ล.ต. (IC License), คปภ. (Insurance License)
-พาร์ทเนอร์: AIA, PhillipCapital, Finnomena
-
-## บริการ
-
-- [**Financial Health Check**](https://ccpun.com/tools/financial-health-check/): ตรวจสุขภาพการเงิน เห็นฐานะปัจจุบัน ภาระหนี้ เงินสำรอง และช่องว่างความคุ้มครอง
-- [**CI Planning**](https://ccpun.com/ci-planning/): ประมาณการเบื้องต้นเพื่อเปรียบเทียบภาระรายจ่าย หนี้อื่นคงเหลือ เงินก้อนจากประกันโรคร้ายแรง และสินทรัพย์สภาพคล่อง
-- **Risk Management**: วางแผนประกันชีวิต ประกันสุขภาพ และโรคร้ายแรงเพื่อรับมือเหตุฉุกเฉิน
-- **Tax Planning**: ลดภาษีถูกกฎหมายด้วย RMF, ThaiESG, ประกันชีวิต และประกันสุขภาพ
-
-พาร์ทเนอร์: AIA, Maybank, PhillipCapital, Finnomena
+> เว็บไซต์ CCPun สำหรับข้อมูลการวางแผนการเงิน และเครื่องมือประเมินเบื้องต้น
 
 ## หน้าสำคัญ
 
-- [หน้าแรก CCPun](https://ccpun.com/)
-- [Financial Health Check](https://ccpun.com/tools/financial-health-check/)
-- [CI Planning](https://ccpun.com/ci-planning/)
-- [บทความ CCPun](https://blog.ccpun.com/)
-- [บทความประกันโรคร้ายแรง](https://blog.ccpun.com/critical-illness-insurance/)
-- [บทความ AIA Health Happy](https://blog.ccpun.com/aia-health-happy-describe/)
-
-## เนื้อหา / บทความ
-
-บทความการเงินภาษาไทย ครอบคลุมหัวข้อ:
-- การลงทุนกองทุนรวม
-- ประกันชีวิตและประกันสุขภาพ
-- วางแผนภาษีและลดหย่อน
-- การวางแผนเกษียณ
-- การเงินส่วนบุคคล
-
-Blog: [https://blog.ccpun.com](https://blog.ccpun.com/)
+- [หน้าแรก CCPun](https://ccpun.com/): ข้อมูลบริการ เครื่องมือ และช่องทางติดต่อของ CCPun
+- [**Financial Health Check**](https://ccpun.com/tools/financial-health-check/): เครื่องมือ Research Preview เพื่อประเมินส่วนต่างทุนประกันชีวิตจากภาระครอบครัวและทรัพยากรที่ตั้งใจใช้
+- [**CI Planning**](https://ccpun.com/ci-planning/): เครื่องมือ Research Preview สำหรับประมาณการเบื้องต้น เปรียบเทียบรายได้หรือรายจ่ายกับเงินก้อนจากประกันโรคร้ายแรง สินทรัพย์สภาพคล่อง และหนี้อื่นคงเหลือ
+- [บทความ CCPun](https://blog.ccpun.com/): บทความบน blog.ccpun.com
 
 ## ติดต่อ
 
-- เว็บไซต์: [https://ccpun.com](https://ccpun.com/)
 - [**LINE Official Account**](https://lin.ee/tqLCs4f): เพิ่มเพื่อน LINE @ccpun
-- Facebook Page: [Financial Basewealth by CCPun](https://www.facebook.com/profile.php?id=61585953063887)
