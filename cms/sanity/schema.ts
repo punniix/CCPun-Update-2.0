@@ -51,6 +51,25 @@ const reviewMetadata = defineType({
   ],
 });
 
+const migrationSource = defineType({
+  name: "migrationSource",
+  title: "Migration source",
+  type: "object",
+  fields: [
+    defineField({ name: "platform", title: "Platform", type: "string", readOnly: true }),
+    defineField({ name: "sourceId", title: "Source ID", type: "number", readOnly: true }),
+    defineField({ name: "sourceStatus", title: "Source status", type: "string", readOnly: true }),
+    defineField({ name: "disposition", title: "Migration disposition", type: "string", readOnly: true }),
+    defineField({ name: "sourceModifiedAt", title: "Source modified at", type: "datetime", readOnly: true }),
+    defineField({ name: "importedAt", title: "Imported at", type: "datetime", readOnly: true }),
+    defineField({ name: "sourceHtml", title: "Original WordPress body", type: "text", rows: 12, readOnly: true }),
+    defineField({ name: "sourceExcerptHtml", title: "Original WordPress excerpt", type: "text", rows: 4, readOnly: true }),
+    defineField({ name: "featuredImageUrl", title: "Original featured image URL", type: "url", readOnly: true }),
+    defineField({ name: "featuredImageAlt", title: "Original featured image alt", type: "string", readOnly: true }),
+    defineField({ name: "featuredImageCaption", title: "Original featured image caption", type: "text", rows: 3, readOnly: true }),
+  ],
+});
+
 const seoMetadata = defineType({
   name: "seoMetadata",
   title: "SEO metadata",
@@ -193,6 +212,7 @@ const article = defineType({
     { name: "seoGeo", title: "SEO / GEO" },
     { name: "review", title: "Sources / review" },
     { name: "publication", title: "Publication" },
+    { name: "migration", title: "Migration" },
   ],
   fields: [
     defineField({ name: "title", title: "Title", type: "string", group: "content", validation: (Rule) => Rule.required() }),
@@ -222,6 +242,7 @@ const article = defineType({
     defineField({ name: "review", title: "Review workflow", type: "reviewMetadata", group: "review", validation: (Rule) => Rule.required() }),
     defineField({ name: "seo", title: "SEO", type: "seoMetadata", group: "seoGeo", validation: (Rule) => Rule.required() }),
     defineField({ name: "geo", title: "GEO", type: "geoMetadata", group: "seoGeo" }),
+    defineField({ name: "migration", title: "Migration source", type: "migrationSource", group: "migration", readOnly: true }),
     defineField({
       name: "publishedAt",
       title: "Published at",
@@ -248,6 +269,7 @@ export const schemaTypes = [
   faqItem,
   sourceReference,
   reviewMetadata,
+  migrationSource,
   seoMetadata,
   geoMetadata,
   imageWithAlt,

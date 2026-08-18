@@ -196,10 +196,18 @@ try {
     const categoryState = await evaluate(client, `({
       url: location.href,
       active: document.querySelector('[data-blog-category="การเงินส่วนบุคคล"]')?.getAttribute('aria-pressed'),
-      empty: document.body.innerText.includes('ไม่พบบทความที่ตรงกับตัวกรอง'),
+      resultCount: document.querySelectorAll('.blog-archive-grid article').length,
     })`);
-    await evaluate(client, `[...document.querySelectorAll('button')].find((button) => button.textContent?.trim() === 'ล้างตัวกรอง')?.click()`);
+    await evaluate(client, `document.querySelector('[data-blog-category="all"]')?.click()`);
     await sleep(100);
+    await evaluate(client, `(() => {
+      const input = document.querySelector('#blog-search');
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+      setter?.call(input, 'zzzz-no-article-uat');
+      input?.dispatchEvent(new Event('input', { bubbles: true }));
+    })()`);
+    await sleep(100);
+    const emptyState = await evaluate(client, `document.body.innerText.includes('ไม่พบบทความที่ตรงกับตัวกรอง')`);
     await evaluate(client, `(() => {
       const input = document.querySelector('#blog-search');
       const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
@@ -215,7 +223,8 @@ try {
     const interactionChecks = [
       { name: 'five category filters and search controls are interactive', pass: controls.categoryButtons === 5 && controls.searchInput && controls.searchButton },
       { name: 'category click updates active state and shareable URL', pass: categoryState.active === 'true' && categoryState.url.includes('category=') },
-      { name: 'empty filtered state gives useful feedback', pass: categoryState.empty },
+      { name: 'category filter returns imported CMS drafts', pass: categoryState.resultCount > 0, details: `${categoryState.resultCount} articles` },
+      { name: 'empty search state gives useful feedback', pass: emptyState },
       { name: 'search filters CMS articles and updates shareable URL', pass: searchState.value === 'Sanity Draft CMS' && searchState.result && searchState.url.includes('q=Sanity+Draft+CMS') },
     ];
     for (const check of interactionChecks) {
