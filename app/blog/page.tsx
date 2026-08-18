@@ -1,0 +1,62 @@
+import type { Metadata } from "next";
+import Image from "next/image";
+import { BookOpen } from "lucide-react";
+import { draftMode } from "next/headers";
+import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
+import BlogArchive from "@/components/Blog/BlogArchive";
+import { getContentProvider } from "@/lib/content/provider";
+
+export const metadata: Metadata = {
+  title: "บทความการเงิน การลงทุน และการวางแผนอนาคต | CCPun",
+  description: "เคล็ดลับการเงิน การลงทุน ประกัน และการวางแผนอนาคตจาก CCPun Financial Advisor",
+  alternates: { canonical: "https://ccpun.com/blog/" },
+};
+
+export default async function BlogPage() {
+  const { isEnabled } = await draftMode();
+  const articles = await getContentProvider().listArticles({ includeDrafts: isEnabled });
+
+  return (
+    <>
+      <Navbar isToolPage />
+      <main id="main-content" className="min-h-screen bg-background pt-20">
+        <section className="blog-hub-hero relative flex items-center justify-center overflow-hidden" aria-labelledby="blog-archive-title">
+          <div className="absolute inset-0" aria-hidden="true" data-uat-role="blog-hub-background">
+            <Image
+              src="/assets/blog-hub-hero-ccpun-v1.webp"
+              alt=""
+              fill
+              priority
+              quality={90}
+              sizes="100vw"
+              className="object-cover object-[72%_center]"
+            />
+          </div>
+          <div className="blog-hub-hero__veil absolute inset-0 pointer-events-none" aria-hidden="true" />
+          <div className="blog-hero__texture absolute inset-0 pointer-events-none" aria-hidden="true" />
+          <div className="blog-hub-hero__content relative z-10 mx-auto max-w-4xl px-4 text-center">
+            <p className="blog-hub-eyebrow inline-flex items-center gap-2">
+              <BookOpen className="h-4 w-4 text-primary" aria-hidden="true" />
+              <span>Financial Knowledge Hub</span>
+            </p>
+            <h1 id="blog-archive-title" className="mb-3 text-3xl font-bold leading-[1.4] text-foreground sm:mb-4 sm:text-4xl lg:text-5xl">
+              บทความ
+            </h1>
+            <p className="blog-hub-hero__subtitle mx-auto max-w-2xl font-light text-muted-foreground">
+              เคล็ดลับการเงิน การลงทุน และการวางแผนอนาคต
+            </p>
+            {isEnabled && (
+              <div className="mt-6 inline-flex rounded-full border border-primary/25 bg-primary/[0.07] px-4 py-2 text-sm font-medium text-primary">
+                Draft Preview เปิดอยู่ — เห็นเนื้อหา UAT ที่ยังไม่เผยแพร่
+              </div>
+            )}
+          </div>
+        </section>
+
+        <BlogArchive articles={articles} showDraft={isEnabled} />
+      </main>
+      <Footer />
+    </>
+  );
+}

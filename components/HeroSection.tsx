@@ -1,0 +1,115 @@
+import Image from "next/image";
+import Link from "next/link";
+import { ArrowUpRight, MessageCircle, Sparkles } from "lucide-react";
+
+const LINE_OA_URL = "https://lin.ee/tqLCs4f";
+
+const HeroSection = () => {
+  return (
+    <section
+      id="home"
+      aria-label="เริ่มวางแผนการเงินกับ CCPun"
+      className="relative overflow-hidden border-b border-white/[0.06] pt-24 md:pt-28"
+      data-uat-section="hero"
+    >
+      <div className="absolute inset-0 section-bg-dark" aria-hidden="true" />
+      <div
+        className="absolute inset-0"
+        data-uat-role="hero-portrait"
+        aria-hidden="true"
+      >
+        <Image
+          src="/assets/hero-pun-laptop-v3.png"
+          alt=""
+          fill
+          priority
+          quality={90}
+          sizes="100vw"
+          className="object-cover object-[53%_center] md:object-[62%_center]"
+        />
+      </div>
+      <div
+        className="absolute inset-0 pointer-events-none"
+        aria-hidden="true"
+        style={{
+          background:
+            "linear-gradient(90deg, hsl(0 24% 12% / .99) 0%, hsl(0 24% 12% / .97) 30%, hsl(0 24% 12% / .88) 46%, hsl(0 24% 12% / .48) 66%, transparent 86%), linear-gradient(180deg, hsl(0 24% 12% / .18), transparent 42%, hsl(0 24% 12% / .88) 100%)",
+        }}
+      />
+
+      <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="flex min-h-[610px] items-end pb-10 pt-12 sm:min-h-[630px] md:min-h-[650px] md:items-center md:pb-12 md:pt-10 lg:min-h-[690px]">
+          <div className="relative z-20 w-full max-w-[75%] md:max-w-[52%] xl:max-w-[56%]" data-uat-role="hero-copy">
+            <div className="mb-5 inline-flex min-h-10 items-center gap-2 rounded-full border border-primary/25 bg-primary/[0.055] px-4 text-sm font-medium text-primary">
+              <Sparkles className="h-4 w-4" strokeWidth={1.7} aria-hidden="true" />
+              <span>คุยเรื่องเงินด้วยภาษาคน</span>
+            </div>
+
+            <h1 className="max-w-[21ch] text-[2.1rem] font-semibold leading-[1.18] tracking-[-0.025em] text-foreground sm:text-[2.5rem] md:text-[3rem] xl:text-[3.35rem]">
+              ปิดความเสี่ยงการเงินของคุณ เปิดความมั่งคั่งผ่านแผนการลงทุน
+            </h1>
+
+            <p className="mt-5 max-w-[52ch] text-base leading-7 text-foreground/70 md:text-lg md:leading-8">
+              ออกแบบแผนการเงิน การลงทุนเฉพาะที่เหมาะกับตัวคุณ
+            </p>
+
+            <div className="mt-7 flex" data-uat-role="hero-actions">
+              <a
+                href={LINE_OA_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex min-h-13 items-center justify-center gap-2 rounded-full bg-[#06C755] px-7 py-3 text-base font-semibold text-white transition-colors hover:bg-[#05B94E] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#06C755] focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              >
+                <MessageCircle className="h-5 w-5" aria-hidden="true" />
+                เพิ่มเพื่อน LINE @ccpun
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <div className="border-y border-white/[0.1]" data-uat-role="hero-routes">
+          <ul className="divide-y divide-white/[0.08] md:grid md:grid-cols-2 md:divide-x md:divide-y-0">
+            <li>
+              <Link
+                href="/tools/financial-health-check/"
+                prefetch={false}
+                className="group flex min-h-[76px] items-center justify-between gap-4 px-2 py-4 transition-colors hover:bg-white/[0.025] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/60 md:min-h-20 md:px-6"
+              >
+                <div className="flex min-w-0 items-start gap-4">
+                  <span className="mt-0.5 w-7 shrink-0 text-xs font-semibold tracking-[0.14em] text-primary/65">01</span>
+                  <span className="min-w-0">
+                    <span className="block text-xs font-medium text-foreground/50">ประเมินความคุ้มครอง</span>
+                    <span className="mt-1 block text-base font-semibold leading-snug text-foreground">
+                      คำนวณทุนชีวิตที่ครอบครัวควรมี
+                    </span>
+                  </span>
+                </div>
+                <ArrowUpRight className="h-4 w-4 shrink-0 text-foreground/30 transition-colors group-hover:text-primary" aria-hidden="true" />
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/ci-planning/"
+                prefetch={false}
+                className="group flex min-h-[76px] items-center justify-between gap-4 px-2 py-4 transition-colors hover:bg-white/[0.025] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/60 md:min-h-20 md:px-6"
+              >
+                <div className="flex min-w-0 items-start gap-4">
+                  <span className="mt-0.5 w-7 shrink-0 text-xs font-semibold tracking-[0.14em] text-primary/65">02</span>
+                  <span className="min-w-0">
+                    <span className="block text-xs font-medium text-foreground/50">เตรียมรับมือรายได้สะดุด</span>
+                    <span className="mt-1 block text-base font-semibold leading-snug text-foreground">
+                      เตรียมเงินก้อนรับมือโรคร้ายแรง
+                    </span>
+                  </span>
+                </div>
+                <ArrowUpRight className="h-4 w-4 shrink-0 text-foreground/35 transition-colors group-hover:text-primary" aria-hidden="true" />
+              </Link>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </section>
+  );
+};
+
+export default HeroSection;

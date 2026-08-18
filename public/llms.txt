@@ -1,0 +1,15 @@
+# CCPun
+
+> เว็บไซต์ CCPun สำหรับข้อมูลการวางแผนการเงิน เครื่องมือประเมินเบื้องต้น และบทความความรู้
+
+## หน้าสำคัญ
+
+- [หน้าแรก CCPun](https://ccpun.com/): ข้อมูลบริการ เครื่องมือ และช่องทางติดต่อของ CCPun
+- [Financial Health Check](https://ccpun.com/tools/financial-health-check/): เครื่องมือ Research Preview เพื่อประเมินส่วนต่างทุนประกันชีวิตจากภาระครอบครัวและทรัพยากรที่ตั้งใจใช้
+- [CI Planning](https://ccpun.com/ci-planning/): เครื่องมือ Research Preview สำหรับประมาณการเบื้องต้น เปรียบเทียบรายได้หรือรายจ่ายกับเงินก้อนจากประกันโรคร้ายแรง สินทรัพย์สภาพคล่อง และหนี้อื่นคงเหลือ
+- [บทความ CCPun](https://ccpun.com/blog/): ศูนย์รวมบทความใหม่บน Website 4.0 โดยหน้า Draft จะไม่เปิดต่อสาธารณะและไม่รวมใน sitemap
+- [คลังบทความเดิม](https://blog.ccpun.com/): บทความที่ยังคงให้บริการบน WordPress ระหว่างช่วง migration
+
+## ติดต่อ
+
+- [LINE Official Account](https://lin.ee/tqLCs4f): เพิ่มเพื่อน LINE @ccpun
