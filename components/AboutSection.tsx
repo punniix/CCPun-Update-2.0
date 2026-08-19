@@ -8,12 +8,8 @@ const AboutSection = () => {
       <div className="relative z-10 mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
         <div className="grid items-center gap-10 lg:grid-cols-[minmax(300px,.8fr)_minmax(0,1.2fr)] lg:gap-16">
           <div
-            className="relative mx-auto h-[520px] w-full max-w-[430px] overflow-hidden md:h-[600px] lg:mx-0"
-            style={{
-              background: "radial-gradient(ellipse at 50% 42%, hsl(30 14% 30% / .72), hsl(0 24% 12%) 76%)",
-              WebkitMaskImage: "radial-gradient(ellipse 72% 82% at 50% 48%, #000 52%, rgba(0,0,0,.9) 68%, rgba(0,0,0,.3) 84%, transparent 98%)",
-              maskImage: "radial-gradient(ellipse 72% 82% at 50% 48%, #000 52%, rgba(0,0,0,.9) 68%, rgba(0,0,0,.3) 84%, transparent 98%)",
-            }}
+            className="relative mx-auto h-[520px] w-full max-w-[430px] overflow-hidden rounded-3xl border border-primary/30 bg-background/20 md:h-[600px] lg:mx-0"
+            data-uat-role="about-portrait-frame"
           >
             <Image
               src="/assets/about-pun-arms-crossed-v1.jpg"
@@ -23,7 +19,6 @@ const AboutSection = () => {
               className="object-cover object-top opacity-[.92]"
               style={{ filter: "saturate(.78) sepia(.08) contrast(1.04)" }}
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-background/48 via-primary/[0.025] to-background/10 mix-blend-color" aria-hidden="true" />
           </div>
 
           <div className="max-w-2xl">

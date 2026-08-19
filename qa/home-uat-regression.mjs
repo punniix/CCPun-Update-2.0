@@ -143,12 +143,20 @@ async function inspect(client) {
     };
     const hero = document.querySelector('[data-uat-section="hero"]');
     const heroCopy = document.querySelector('[data-uat-role="hero-copy"]');
-    const portrait = document.querySelector('[data-uat-role="hero-portrait"]');
+    const portrait = [...document.querySelectorAll('[data-uat-role="hero-portrait"]')].find(visible);
     const heroHeading = document.querySelector('[data-uat-section="hero"] h1');
+    const heroSupport = document.querySelector('[data-uat-role="hero-support"]');
+    const heroActionsWrapper = document.querySelector('[data-uat-role="hero-actions"]');
+    const elementRect = (element) => {
+      if (!element) return null;
+      const box = element.getBoundingClientRect();
+      return { x: box.x, y: box.y, width: box.width, height: box.height };
+    };
     const routes = [...document.querySelectorAll('[data-uat-role="hero-routes"] > ul > li')].filter(visible);
     const heroGold = hero ? [...hero.querySelectorAll('.gold-button')].filter(visible) : [];
     const heroActions = [...document.querySelectorAll('[data-uat-role="hero-actions"] a')].filter(visible);
     const finalCta = document.querySelector('.uat-contact-cta');
+    const aboutPortraitFrame = document.querySelector('[data-uat-role="about-portrait-frame"]');
     const testimonialCards = [...document.querySelectorAll('[data-uat-section="testimonials"] blockquote')];
     const storyImages = (selector) => [...document.querySelectorAll(selector)].map((wrapper) => ({
       width: wrapper.getBoundingClientRect().width,
@@ -162,15 +170,22 @@ async function inspect(client) {
     const metaRobots = document.querySelector('meta[name="robots"]')?.content ?? '';
     return {
       h1Count: document.querySelectorAll('h1').length,
-      h1Text: document.querySelector('h1')?.innerText.replace(/\\s+/g, ' ').trim() ?? '',
+      h1Text: document.querySelector('h1')?.getAttribute('aria-label') ?? document.querySelector('h1')?.innerText.replace(/\\s+/g, ' ').trim() ?? '',
       viewportWidth: innerWidth,
       clientWidth: document.documentElement.clientWidth,
       scrollWidth: document.documentElement.scrollWidth,
       hero: rect('[data-uat-section="hero"]'),
       heroCopy: rect('[data-uat-role="hero-copy"]'),
-      portrait: rect('[data-uat-role="hero-portrait"]'),
+      portrait: elementRect(portrait),
+      heroHeading: elementRect(heroHeading),
+      heroHeadingClientWidth: heroHeading?.clientWidth ?? 0,
+      heroHeadingScrollWidth: heroHeading?.scrollWidth ?? 0,
+      heroSupport: elementRect(heroSupport),
+      heroActionsRect: elementRect(heroActionsWrapper),
       portraitImageSrc: portrait?.querySelector('img')?.getAttribute('src') ?? '',
+      portraitCurrentSrc: portrait?.querySelector('img')?.currentSrc ?? '',
       heroHeadingFontSize: heroHeading ? Number.parseFloat(getComputedStyle(heroHeading).fontSize) : 0,
+      heroBadge: document.querySelector('[data-uat-section="hero"] [data-uat-role="hero-copy"] > div')?.textContent?.replace(/\s+/g, ' ').trim() ?? '',
       routeCount: routes.length,
       routeText: routes.map((item) => item.innerText.replace(/\\s+/g, ' ').trim()),
       routeLinks: routes.map((item) => {
@@ -202,6 +217,12 @@ async function inspect(client) {
       planningStoryImages: storyImages('[data-uat-role="planning-story-image"]'),
       planningIconCount: document.querySelectorAll('[data-uat-role="planning-icon"] svg').length,
       aboutImageSrc: document.querySelector('[data-uat-section="about"] img')?.getAttribute('src') ?? '',
+      aboutPortraitFrame: aboutPortraitFrame ? {
+        border: getComputedStyle(aboutPortraitFrame).borderTopWidth,
+        radius: Number.parseFloat(getComputedStyle(aboutPortraitFrame).borderRadius),
+        shadow: getComputedStyle(aboutPortraitFrame).boxShadow,
+        mask: getComputedStyle(aboutPortraitFrame).maskImage,
+      } : null,
       activityHeading: document.querySelector('[data-uat-section="credentials"] h2')?.textContent?.trim() ?? '',
       partnerCount: document.querySelectorAll('[data-uat-section="partners"] h3').length,
       hasEvidenceLabel: bodyText.includes('หลักฐานที่ตรวจสอบได้'),
@@ -236,22 +257,34 @@ function runChecks(data, viewport) {
   expect('duplicate conversation CTA removed', !data.hasDuplicateConversation);
   expect('article route removed', !data.hasArticleRoute);
   expect('no duplicate calculator hero CTA', data.heroGoldCount === 0, String(data.heroGoldCount));
-  expect('one prominent LINE hero action', data.heroActions.length === 1 && data.heroActions[0].text.includes('LINE @ccpun') && data.heroActions[0].height >= 44, JSON.stringify(data.heroActions));
-  expect('enhanced Mac portrait active', data.portraitImageSrc.includes('hero-pun-laptop-v3'), data.portraitImageSrc);
-  expect('full-bleed hero image layer', data.hero && data.portrait && Math.abs(data.hero.x - data.portrait.x) <= 1 && Math.abs(data.hero.y - data.portrait.y) <= 1 && Math.abs(data.hero.width - data.portrait.width) <= 1 && Math.abs(data.hero.height - data.portrait.height) <= 1, JSON.stringify({ hero: data.hero, portrait: data.portrait }));
-  expect('balanced hero heading scale', data.heroHeadingFontSize >= 32 && data.heroHeadingFontSize <= 54, String(data.heroHeadingFontSize));
+  expect('approved hero badge', data.heroBadge === 'ออกแบบแผนการเงินที่เหมาะกับคุณ', data.heroBadge);
+  expect('one prominent LINE hero action', data.heroActions.length === 1 && data.heroActions[0].text === 'วางแผนร่วมกับ CCPun' && data.heroActions[0].height >= 44, JSON.stringify(data.heroActions));
+  expect('enhanced Mac portrait active', viewport.width < 768 ? data.portraitImageSrc.includes('hero-pun-laptop-mobile-v5') : data.portraitImageSrc.includes('hero-pun-laptop-v3'), data.portraitImageSrc);
+  expect(
+    'responsive Mac portrait active',
+    viewport.width < 768
+      ? data.portraitCurrentSrc.includes('hero-pun-laptop-mobile-v5')
+      : data.portraitCurrentSrc.includes('hero-pun-laptop-v3'),
+    data.portraitCurrentSrc,
+  );
+  expect('desktop full-bleed hero image layer', viewport.width < 768 || (data.hero && data.portrait && Math.abs(data.hero.x - data.portrait.x) <= 1 && Math.abs(data.hero.y - data.portrait.y) <= 1 && Math.abs(data.hero.width - data.portrait.width) <= 1 && Math.abs(data.hero.height - data.portrait.height) <= 1), JSON.stringify({ hero: data.hero, portrait: data.portrait }));
+  expect('mobile headline stays in top image safe zone before support and CTA', viewport.width >= 768 || (data.heroHeading && data.portrait && data.heroSupport && data.heroActionsRect && data.heroHeading.x >= data.portrait.x && data.heroHeading.y >= data.portrait.y && data.heroHeading.y + data.heroHeading.height <= data.portrait.y + data.portrait.height * 0.42 && data.portrait.y + data.portrait.height <= data.heroSupport.y && data.heroSupport.y + data.heroSupport.height <= data.heroActionsRect.y), JSON.stringify({ heading: data.heroHeading, portrait: data.portrait, support: data.heroSupport, actions: data.heroActionsRect }));
+  expect('mobile Hero CTA keeps viewport safety margin', viewport.width >= 768 || (data.heroActionsRect && data.heroActionsRect.y + data.heroActionsRect.height <= viewport.height - 12), JSON.stringify(data.heroActionsRect));
+  expect('balanced hero heading scale', viewport.width < 768 ? data.heroHeadingFontSize >= 22 && data.heroHeadingFontSize <= 27 : data.heroHeadingFontSize >= 32 && data.heroHeadingFontSize <= 54, String(data.heroHeadingFontSize));
+  expect('hero heading content is not clipped', data.heroHeadingScrollWidth <= data.heroHeadingClientWidth + 1, `${data.heroHeadingScrollWidth}/${data.heroHeadingClientWidth}`);
   expect('pain points use text narrative without icons', data.painPointIconCount === 0, String(data.painPointIconCount));
   expect('five clear pain story images', data.painStoryImages.length === 5 && data.painStoryImages.every((image) => image.src.includes('home-stories%2Fpain-')), JSON.stringify(data.painStoryImages));
   expect('pain stories alternate at desktop width', viewport.width < 768 || data.painRows.every((row, index) => index % 2 === 0 ? row.imageX < row.textX : row.imageX > row.textX), JSON.stringify(data.painRows));
   expect('planning uses four icons without repeated images', data.planningIconCount === 4 && data.planningStoryImages.length === 0, JSON.stringify({ icons: data.planningIconCount, images: data.planningStoryImages }));
   expect('uploaded About portrait active', data.aboutImageSrc.includes('about-pun-arms-crossed-v1'), data.aboutImageSrc);
+  expect('About portrait uses a clean frame without shadow mask', data.aboutPortraitFrame?.border !== '0px' && data.aboutPortraitFrame?.radius >= 20 && data.aboutPortraitFrame?.shadow === 'none' && data.aboutPortraitFrame?.mask === 'none', JSON.stringify(data.aboutPortraitFrame));
   expect('activity section renamed', data.activityHeading === 'กิจกรรมที่เข้าร่วม', data.activityHeading);
   expect('partner section separated', data.partnerCount === 4, String(data.partnerCount));
   expect('evidence label removed', !data.hasEvidenceLabel);
   expect('testimonial frames match', data.testimonialFrames.length === 2 && data.testimonialFrames.every((frame) => frame.border !== '0px' && frame.radius >= 16), JSON.stringify(data.testimonialFrames));
   expect('final heading refined', data.finalHeading === 'เริ่มต้นพูดคุยกับ CCPun', data.finalHeading);
   expect('final support copy refined', data.finalCopy === 'เล่าปัญหาการเงินที่คุณกังวล แล้วจัดทำแผนการเงินที่เหมาะสมกับคุณโดยเฉพาะ', data.finalCopy);
-  expect('final LINE CTA refined', data.finalCta === 'คุยกับ CCPun ทาง LINE OA', data.finalCta);
+  expect('final LINE CTA refined', data.finalCta === 'วางแผนร่วมกับ CCPun', data.finalCta);
   expect('final LINE CTA is green without arrow', data.finalCtaColor.includes('6, 199, 85') && !data.finalCtaHasArrow, `${data.finalCtaColor}/${data.finalCtaHasArrow}`);
   expect('LINE new-tab note removed', !data.hasLineNewTabNote);
   expect('navbar contact wording', data.navGoldLabels.length >= 1 && data.navGoldLabels.every((label) => label === 'ติดต่อเรา'), JSON.stringify(data.navGoldLabels));

@@ -29,9 +29,10 @@ const ContactPlaceholder = () => (
         href="https://lin.ee/tqLCs4f"
         target="_blank"
         rel="noopener noreferrer"
+        aria-label="วางแผนร่วมกับ CCPun ทาง LINE OA (เปิดในแท็บใหม่)"
         className="uat-contact-cta mt-8 inline-flex min-h-14 items-center justify-center rounded-full bg-[#06C755] px-7 text-base font-semibold text-white transition-colors hover:bg-[#05B94E] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#06C755] focus-visible:ring-offset-2 focus-visible:ring-offset-background md:text-lg"
       >
-        คุยกับ CCPun ทาง LINE OA
+        วางแผนร่วมกับ CCPun
       </a>
     </div>
   </section>

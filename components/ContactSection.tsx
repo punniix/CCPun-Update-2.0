@@ -33,11 +33,11 @@ const ContactSection = () => (
           href={LINE_OA_URL}
           target="_blank"
           rel="noopener noreferrer"
-          aria-label="คุยกับ CCPun ทาง LINE OA (เปิดในแท็บใหม่)"
+          aria-label="วางแผนร่วมกับ CCPun ทาง LINE OA (เปิดในแท็บใหม่)"
           className="uat-contact-cta inline-flex min-h-14 items-center justify-center gap-2 rounded-full bg-[#06C755] px-7 text-base font-semibold text-white transition-colors hover:bg-[#05B94E] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#06C755] focus-visible:ring-offset-2 focus-visible:ring-offset-background md:text-lg"
         >
           <MessageCircle className="h-5 w-5" aria-hidden="true" />
-          คุยกับ CCPun ทาง LINE OA
+          วางแผนร่วมกับ CCPun
         </a>
       </div>
     </div>

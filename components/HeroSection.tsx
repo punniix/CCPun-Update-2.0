@@ -13,11 +13,7 @@ const HeroSection = () => {
       data-uat-section="hero"
     >
       <div className="absolute inset-0 section-bg-dark" aria-hidden="true" />
-      <div
-        className="absolute inset-0"
-        data-uat-role="hero-portrait"
-        aria-hidden="true"
-      >
+      <div className="absolute inset-0 hidden md:block" data-uat-role="hero-portrait" aria-hidden="true">
         <Image
           src="/assets/hero-pun-laptop-v3.png"
           alt=""
@@ -25,7 +21,7 @@ const HeroSection = () => {
           priority
           quality={90}
           sizes="100vw"
-          className="object-cover object-[53%_center] md:object-[62%_center]"
+          className="absolute inset-0 h-full w-full object-cover object-[62%_center]"
         />
       </div>
       <div
@@ -38,18 +34,41 @@ const HeroSection = () => {
       />
 
       <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="flex min-h-[610px] items-end pb-10 pt-12 sm:min-h-[630px] md:min-h-[650px] md:items-center md:pb-12 md:pt-10 lg:min-h-[690px]">
-          <div className="relative z-20 w-full max-w-[75%] md:max-w-[52%] xl:max-w-[56%]" data-uat-role="hero-copy">
-            <div className="mb-5 inline-flex min-h-10 items-center gap-2 rounded-full border border-primary/25 bg-primary/[0.055] px-4 text-sm font-medium text-primary">
+        <div className="pb-10 pt-8 md:flex md:min-h-[650px] md:items-center md:pb-12 md:pt-10 lg:min-h-[690px]">
+          <div className="relative z-20 w-full md:max-w-[52%] xl:max-w-[56%]" data-uat-role="hero-copy">
+            <div className="mb-5 inline-flex min-h-10 items-center gap-2 rounded-full border border-primary/25 bg-primary/[0.055] px-3 text-[13px] font-medium leading-5 text-primary sm:px-4 sm:text-sm">
               <Sparkles className="h-4 w-4" strokeWidth={1.7} aria-hidden="true" />
-              <span>คุยเรื่องเงินด้วยภาษาคน</span>
+              <span>ออกแบบแผนการเงินที่เหมาะกับคุณ</span>
             </div>
 
-            <h1 className="max-w-[21ch] text-[2.1rem] font-semibold leading-[1.18] tracking-[-0.025em] text-foreground sm:text-[2.5rem] md:text-[3rem] xl:text-[3.35rem]">
-              ปิดความเสี่ยงการเงินของคุณ เปิดความมั่งคั่งผ่านแผนการลงทุน
-            </h1>
+            <div className="relative -mx-4 aspect-[4/3] overflow-hidden sm:-mx-6 md:mx-0 md:aspect-auto md:overflow-visible">
+              <div className="absolute inset-0 md:hidden" data-uat-role="hero-portrait" aria-hidden="true">
+                <Image
+                  src="/assets/hero-pun-laptop-mobile-v5.webp"
+                  alt=""
+                  fill
+                  priority
+                  quality={92}
+                  sizes="100vw"
+                  className="object-cover object-center"
+                />
+                <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,hsl(0_24%_10%/.72)_0%,hsl(0_24%_10%/.46)_38%,transparent_62%)]" />
+              </div>
 
-            <p className="mt-5 max-w-[52ch] text-base leading-7 text-foreground/70 md:text-lg md:leading-8">
+              <h1
+                aria-label="ปิดความเสี่ยงการเงินของคุณ เปิดความมั่งคั่งผ่านแผนการลงทุน"
+                className="absolute inset-x-4 top-3 z-10 text-[1.4rem] font-semibold leading-[1.13] tracking-[-0.02em] text-foreground drop-shadow-[0_2px_12px_rgba(0,0,0,0.55)] sm:inset-x-6 sm:top-4 sm:text-[1.6rem] md:static md:block md:max-w-[21ch] md:text-[3rem] md:leading-[1.18] md:tracking-[-0.025em] md:drop-shadow-none xl:text-[3.35rem]"
+              >
+                <span className="md:hidden">
+                  <span className="block">ปิดความเสี่ยงการเงินของคุณ</span>
+                  <span className="block">เปิดความมั่งคั่ง</span>
+                  <span className="block">ผ่านแผนการลงทุน</span>
+                </span>
+                <span className="hidden md:inline">ปิดความเสี่ยงการเงินของคุณ เปิดความมั่งคั่งผ่านแผนการลงทุน</span>
+              </h1>
+            </div>
+
+            <p className="mt-5 max-w-[52ch] text-base leading-7 text-foreground/70 md:text-lg md:leading-8" data-uat-role="hero-support">
               ออกแบบแผนการเงิน การลงทุนเฉพาะที่เหมาะกับตัวคุณ
             </p>
 
@@ -61,7 +80,7 @@ const HeroSection = () => {
                 className="inline-flex min-h-13 items-center justify-center gap-2 rounded-full bg-[#06C755] px-7 py-3 text-base font-semibold text-white transition-colors hover:bg-[#05B94E] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#06C755] focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               >
                 <MessageCircle className="h-5 w-5" aria-hidden="true" />
-                เพิ่มเพื่อน LINE @ccpun
+                วางแผนร่วมกับ CCPun
               </a>
             </div>
           </div>

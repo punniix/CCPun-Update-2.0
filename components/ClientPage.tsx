@@ -1,4 +1,3 @@
-import { preload } from "react-dom";
 import Navbar from "./Navbar";
 import HeroSection from "./HeroSection";
 import PainPointsSection from "./PainPointsSection";
@@ -13,8 +12,6 @@ import ContactSectionGate from "./ContactSectionGate";
 import Footer from "./Footer";
 
 export default function ClientPage() {
-  preload("/assets/hero-pun-laptop-v2.png", { as: "image", type: "image/png", fetchPriority: "high" });
-
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
