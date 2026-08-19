@@ -180,12 +180,18 @@ async function inspect(client) {
       heroHeading: elementRect(heroHeading),
       heroHeadingClientWidth: heroHeading?.clientWidth ?? 0,
       heroHeadingScrollWidth: heroHeading?.scrollWidth ?? 0,
+      heroHeadingLineMetrics: heroHeading ? [...heroHeading.querySelectorAll('span.block')].filter(visible).map((line) => {
+        const range = document.createRange();
+        range.selectNodeContents(line);
+        return { text: line.textContent, contentWidth: range.getBoundingClientRect().width, clientWidth: line.clientWidth };
+      }) : [],
       heroSupport: elementRect(heroSupport),
       heroActionsRect: elementRect(heroActionsWrapper),
       portraitImageSrc: portrait?.querySelector('img')?.getAttribute('src') ?? '',
       portraitCurrentSrc: portrait?.querySelector('img')?.currentSrc ?? '',
       heroHeadingFontSize: heroHeading ? Number.parseFloat(getComputedStyle(heroHeading).fontSize) : 0,
-      heroBadge: document.querySelector('[data-uat-section="hero"] [data-uat-role="hero-copy"] > div')?.textContent?.replace(/\s+/g, ' ').trim() ?? '',
+      heroHeadingTextAlign: heroHeading ? getComputedStyle(heroHeading).textAlign : '',
+      heroBadgePresent: bodyText.includes('ออกแบบแผนการเงินที่เหมาะกับคุณ'),
       routeCount: routes.length,
       routeText: routes.map((item) => item.innerText.replace(/\\s+/g, ' ').trim()),
       routeLinks: routes.map((item) => {
@@ -257,7 +263,7 @@ function runChecks(data, viewport) {
   expect('duplicate conversation CTA removed', !data.hasDuplicateConversation);
   expect('article route removed', !data.hasArticleRoute);
   expect('no duplicate calculator hero CTA', data.heroGoldCount === 0, String(data.heroGoldCount));
-  expect('approved hero badge', data.heroBadge === 'ออกแบบแผนการเงินที่เหมาะกับคุณ', data.heroBadge);
+  expect('hero badge removed', !data.heroBadgePresent);
   expect('one prominent LINE hero action', data.heroActions.length === 1 && data.heroActions[0].text === 'วางแผนร่วมกับ CCPun' && data.heroActions[0].height >= 44, JSON.stringify(data.heroActions));
   expect('enhanced Mac portrait active', viewport.width < 768 ? data.portraitImageSrc.includes('hero-pun-laptop-mobile-v5') : data.portraitImageSrc.includes('hero-pun-laptop-v3'), data.portraitImageSrc);
   expect(
@@ -270,8 +276,10 @@ function runChecks(data, viewport) {
   expect('desktop full-bleed hero image layer', viewport.width < 768 || (data.hero && data.portrait && Math.abs(data.hero.x - data.portrait.x) <= 1 && Math.abs(data.hero.y - data.portrait.y) <= 1 && Math.abs(data.hero.width - data.portrait.width) <= 1 && Math.abs(data.hero.height - data.portrait.height) <= 1), JSON.stringify({ hero: data.hero, portrait: data.portrait }));
   expect('mobile headline stays in top image safe zone before support and CTA', viewport.width >= 768 || (data.heroHeading && data.portrait && data.heroSupport && data.heroActionsRect && data.heroHeading.x >= data.portrait.x && data.heroHeading.y >= data.portrait.y && data.heroHeading.y + data.heroHeading.height <= data.portrait.y + data.portrait.height * 0.42 && data.portrait.y + data.portrait.height <= data.heroSupport.y && data.heroSupport.y + data.heroSupport.height <= data.heroActionsRect.y), JSON.stringify({ heading: data.heroHeading, portrait: data.portrait, support: data.heroSupport, actions: data.heroActionsRect }));
   expect('mobile Hero CTA keeps viewport safety margin', viewport.width >= 768 || (data.heroActionsRect && data.heroActionsRect.y + data.heroActionsRect.height <= viewport.height - 12), JSON.stringify(data.heroActionsRect));
-  expect('balanced hero heading scale', viewport.width < 768 ? data.heroHeadingFontSize >= 22 && data.heroHeadingFontSize <= 27 : data.heroHeadingFontSize >= 32 && data.heroHeadingFontSize <= 54, String(data.heroHeadingFontSize));
+  expect('balanced hero heading scale', viewport.width < 768 ? data.heroHeadingFontSize >= 19 && data.heroHeadingFontSize <= 27 : data.heroHeadingFontSize >= 32 && data.heroHeadingFontSize <= 54, String(data.heroHeadingFontSize));
+  expect('hero heading alignment follows viewport', data.heroHeadingTextAlign === (viewport.width < 768 ? 'center' : 'left'), data.heroHeadingTextAlign);
   expect('hero heading content is not clipped', data.heroHeadingScrollWidth <= data.heroHeadingClientWidth + 1, `${data.heroHeadingScrollWidth}/${data.heroHeadingClientWidth}`);
+  expect('hero heading lines are not clipped', data.heroHeadingLineMetrics.every((line) => line.contentWidth <= line.clientWidth + 1), JSON.stringify(data.heroHeadingLineMetrics));
   expect('pain points use text narrative without icons', data.painPointIconCount === 0, String(data.painPointIconCount));
   expect('five clear pain story images', data.painStoryImages.length === 5 && data.painStoryImages.every((image) => image.src.includes('home-stories%2Fpain-')), JSON.stringify(data.painStoryImages));
   expect('pain stories alternate at desktop width', viewport.width < 768 || data.painRows.every((row, index) => index % 2 === 0 ? row.imageX < row.textX : row.imageX > row.textX), JSON.stringify(data.painRows));

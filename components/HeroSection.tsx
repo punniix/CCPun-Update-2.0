@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowUpRight, MessageCircle, Sparkles } from "lucide-react";
+import { ArrowUpRight, MessageCircle } from "lucide-react";
 
 const LINE_OA_URL = "https://lin.ee/tqLCs4f";
 
@@ -36,11 +36,6 @@ const HeroSection = () => {
       <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="pb-10 pt-8 md:flex md:min-h-[650px] md:items-center md:pb-12 md:pt-10 lg:min-h-[690px]">
           <div className="relative z-20 w-full md:max-w-[52%] xl:max-w-[56%]" data-uat-role="hero-copy">
-            <div className="mb-5 inline-flex min-h-10 items-center gap-2 rounded-full border border-primary/25 bg-primary/[0.055] px-3 text-[13px] font-medium leading-5 text-primary sm:px-4 sm:text-sm">
-              <Sparkles className="h-4 w-4" strokeWidth={1.7} aria-hidden="true" />
-              <span>ออกแบบแผนการเงินที่เหมาะกับคุณ</span>
-            </div>
-
             <div className="relative -mx-4 aspect-[4/3] overflow-hidden sm:-mx-6 md:mx-0 md:aspect-auto md:overflow-visible">
               <div className="absolute inset-0 md:hidden" data-uat-role="hero-portrait" aria-hidden="true">
                 <Image
@@ -57,7 +52,7 @@ const HeroSection = () => {
 
               <h1
                 aria-label="ปิดความเสี่ยงการเงินของคุณ เปิดความมั่งคั่งผ่านแผนการลงทุน"
-                className="absolute inset-x-4 top-3 z-10 text-[1.4rem] font-semibold leading-[1.13] tracking-[-0.02em] text-foreground drop-shadow-[0_2px_12px_rgba(0,0,0,0.55)] sm:inset-x-6 sm:top-4 sm:text-[1.6rem] md:static md:block md:max-w-[21ch] md:text-[3rem] md:leading-[1.18] md:tracking-[-0.025em] md:drop-shadow-none xl:text-[3.35rem]"
+                className="absolute inset-x-4 top-3 z-10 text-center text-[1.2rem] font-semibold leading-[1.13] tracking-[-0.02em] text-foreground drop-shadow-[0_2px_12px_rgba(0,0,0,0.55)] min-[360px]:text-[1.4rem] sm:inset-x-6 sm:top-4 sm:text-[1.6rem] md:static md:block md:max-w-[21ch] md:text-left md:text-[3rem] md:leading-[1.18] md:tracking-[-0.025em] md:drop-shadow-none xl:text-[3.35rem]"
               >
                 <span className="md:hidden">
                   <span className="block">ปิดความเสี่ยงการเงินของคุณ</span>
