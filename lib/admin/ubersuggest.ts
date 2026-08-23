@@ -32,6 +32,13 @@ const AUTH_MAX_AGE_MS = 10 * 60 * 1000;
 const PROVIDER_MAX_RESPONSE_BYTES = 2 * 1024 * 1024;
 const KEYWORD_TOOL_TIMEOUT_MS = 45_000;
 
+export const CCPUN_SEO_MARKET = {
+  locationId: 2764,
+  language: "th",
+  country: "th",
+  label: "Thailand",
+} as const;
+
 type Store = {
   clientByIssuer?: Record<string, StoredOAuthClientInformation>;
   tokensByIssuer?: Record<string, StoredOAuthTokens>;
@@ -265,8 +272,23 @@ export async function fetchUbersuggestResearch(keyword: string): Promise<Researc
     await client.connect(transport, { timeout: 15_000 });
     if (provider.authorizationUrl) throw new Error("UBERSUGGEST_AUTH_REQUIRED");
     const [overviewResult, serpResult] = await Promise.all([
-      client.callTool({ name: "keyword_overview", arguments: { keyword: cleanKeyword } }, { timeout: KEYWORD_TOOL_TIMEOUT_MS, maxTotalTimeout: KEYWORD_TOOL_TIMEOUT_MS }),
-      client.callTool({ name: "serp_analysis", arguments: { keyword: cleanKeyword, limit: 10 } }, { timeout: KEYWORD_TOOL_TIMEOUT_MS, maxTotalTimeout: KEYWORD_TOOL_TIMEOUT_MS }),
+      client.callTool({
+        name: "keyword_overview",
+        arguments: {
+          keyword: cleanKeyword,
+          locId: CCPUN_SEO_MARKET.locationId,
+          language: CCPUN_SEO_MARKET.language,
+        },
+      }, { timeout: KEYWORD_TOOL_TIMEOUT_MS, maxTotalTimeout: KEYWORD_TOOL_TIMEOUT_MS }),
+      client.callTool({
+        name: "serp_analysis",
+        arguments: {
+          keyword: cleanKeyword,
+          locId: CCPUN_SEO_MARKET.locationId,
+          language: CCPUN_SEO_MARKET.language,
+          limit: 10,
+        },
+      }, { timeout: KEYWORD_TOOL_TIMEOUT_MS, maxTotalTimeout: KEYWORD_TOOL_TIMEOUT_MS }),
     ]);
     if (overviewResult.isError || serpResult.isError) throw new Error("UBERSUGGEST_TOOL_FAILED");
     const overview = overviewSchema.parse(overviewResult.structuredContent);
@@ -275,7 +297,7 @@ export async function fetchUbersuggestResearch(keyword: string): Promise<Researc
     return researchInputSchema.parse({
       keyword: cleanKeyword,
       provider: "ubersuggest",
-      scope: overview.location ?? "Global",
+      scope: overview.location ?? CCPUN_SEO_MARKET.label,
       volume: overview.search_volume ?? undefined,
       difficulty: overview.seo_difficulty ?? undefined,
       intent: normalizedIntent(overview.search_intent),
