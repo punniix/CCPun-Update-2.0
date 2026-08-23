@@ -208,12 +208,12 @@ test("apply changes only category references with revision guards and one atomic
 
   assert.equal(result.changed, 4);
   assert.equal(commitCount, 1);
-  assert.equal(operations.filter((operation) => operation.kind === "patch").length, 4);
-  for (const operation of operations.filter((item) => item.kind === "patch")) {
+  const patchOperations = operations.filter((operation) => operation.kind === "patch");
+  assert.equal(patchOperations.length, 4);
+  for (const operation of patchOperations) {
     assert.deepEqual(Object.keys(operation.set as Record<string, unknown>), ["category"]);
     assert.ok(operation.revision);
+    assert.doesNotMatch(JSON.stringify(operation), /body|title|seo|tags|publishedAt|delete|createOrReplace/);
   }
-  const serialized = JSON.stringify(operations);
-  assert.doesNotMatch(serialized, /body|title|seo|tags|publishedAt|delete|createOrReplace/);
-  assert.match(serialized, /uat-taxonomy:v2-health-critical/);
+  assert.match(JSON.stringify(operations), /uat-taxonomy:v2-health-critical/);
 });
