@@ -2,15 +2,17 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { ACTIVE_ARTICLE_CATEGORIES, isReservedArticleSlug, normalizeArticleTaxonomy } from "../../lib/content/taxonomy";
 
-test("taxonomy exposes exactly three primary URL-bearing categories", () => {
+test("taxonomy exposes the five semantic URL-bearing categories", () => {
   assert.deepEqual(ACTIVE_ARTICLE_CATEGORIES, [
     { slug: "personal-finance", title: "การเงินส่วนบุคคล" },
     { slug: "life-insurance", title: "ประกันชีวิต" },
+    { slug: "health-insurance", title: "ประกันสุขภาพ" },
+    { slug: "critical-illness", title: "ประกันโรคร้ายแรง" },
     { slug: "investment", title: "การลงทุน" },
   ]);
 });
 
-test("active category slugs and titles normalize without adding tags", () => {
+test("active category slugs and titles normalize to their semantic canonical categories", () => {
   assert.deepEqual(normalizeArticleTaxonomy({ categorySlug: "personal-finance" }), {
     categorySlug: "personal-finance",
     tags: [],
@@ -20,11 +22,11 @@ test("active category slugs and titles normalize without adding tags", () => {
     tags: [],
   });
   assert.deepEqual(normalizeArticleTaxonomy({ categorySlug: "health-insurance" }), {
-    categorySlug: "life-insurance",
+    categorySlug: "health-insurance",
     tags: ["ประกันสุขภาพ"],
   });
   assert.deepEqual(normalizeArticleTaxonomy({ categoryTitle: "ประกันโรคร้ายแรง" }), {
-    categorySlug: "life-insurance",
+    categorySlug: "critical-illness",
     tags: ["ประกันโรคร้ายแรง"],
   });
   assert.deepEqual(normalizeArticleTaxonomy({ categoryTitle: "การลงทุน" }), {
@@ -40,23 +42,23 @@ test("the legacy UAT personal-finance slug normalizes to the active category", (
   });
 });
 
-test("legacy category landing slugs stay reserved for redirects", () => {
+test("health and critical first-level slugs stay reserved for category/topic routing", () => {
   assert.equal(isReservedArticleSlug("health-insurance"), true);
   assert.equal(isReservedArticleSlug("critical-illness"), true);
   assert.equal(isReservedArticleSlug("critical-illness-insurance"), false);
 });
 
-test("legacy health and critical categories become life-insurance topic tags", () => {
+test("legacy combined labels require an explicit semantic slug and preserve topic metadata", () => {
   assert.deepEqual(normalizeArticleTaxonomy({ categoryTitle: "ประกันสุขภาพและโรคร้ายแรง", categorySlug: "health-insurance" }), {
-    categorySlug: "life-insurance",
-    tags: ["ประกันสุขภาพ"],
+    categorySlug: "health-insurance",
+    tags: ["ประกันสุขภาพ", "ประกันโรคร้ายแรง"],
   });
   assert.deepEqual(normalizeArticleTaxonomy({ categoryTitle: "ประกันสุขภาพและโรคร้ายแรง", categorySlug: "critical-illness" }), {
-    categorySlug: "life-insurance",
-    tags: ["ประกันโรคร้ายแรง"],
+    categorySlug: "critical-illness",
+    tags: ["ประกันสุขภาพ", "ประกันโรคร้ายแรง"],
   });
   assert.deepEqual(normalizeArticleTaxonomy({ categoryTitle: "ประกันสุขภาพและโรคร้ายแรง" }), {
-    categorySlug: "life-insurance",
+    categorySlug: null,
     tags: ["ประกันสุขภาพ", "ประกันโรคร้ายแรง"],
   });
 });
@@ -70,7 +72,7 @@ test("existing tags are trimmed, blanks dropped, and deduped case-insensitively 
       tags: sourceTags,
     }),
     {
-      categorySlug: "life-insurance",
+      categorySlug: "health-insurance",
       tags: ["Retirement", "ประกันสุขภาพ", "Health"],
     },
   );
