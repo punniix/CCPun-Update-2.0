@@ -42,10 +42,10 @@ jobs:
       - name: Admin policy regression
         run: npm run test:admin
 
-      - name: Production taxonomy migration self-test
-        run: npm run cms:taxonomy:production:self-test
+      - name: Insurance taxonomy V2 self-test
+        run: npm run cms:taxonomy:v2:self-test
 
-      - name: Production build
+      - name: Production-parity build on non-production data plane
         run: npm run build
         env:
           CCPUN_APP_ENV: development
