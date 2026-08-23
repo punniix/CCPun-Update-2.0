@@ -22,6 +22,7 @@ declare global {
 export type EventParams = Record<string, unknown>;
 type SafeParams = Record<string, string | number>;
 type MetaMode = 'custom' | 'standard' | 'none';
+export type ConsentState = { analytics: boolean; social: boolean };
 const pendingGA: Array<[string, SafeParams]> = [];
 const pendingMeta: Array<[Exclude<MetaMode, 'none'>, string, SafeParams]> = [];
 const MAX_PENDING = 50;
@@ -34,8 +35,8 @@ const ALLOWED_STRINGS: Record<string, Set<string> | RegExp> = {
   tool_name: new Set(['ci_planning', 'fhc']),
   step_name: new Set(['risk_assessment', 'expenses', 'existing_ci', 'risk_handling']),
   contact_channel: new Set(['facebook_inbox', 'line']),
-  cta_location: new Set(['ci_landing', 'ci_calculator', 'ci_result', 'fhc_landing', 'fhc_calculator', 'fhc_result', 'navbar']),
-  surface_group: new Set(['homepage', 'ci_planning', 'fhc']),
+  cta_location: new Set(['ci_landing', 'ci_calculator', 'ci_result', 'fhc_landing', 'fhc_calculator', 'fhc_result', 'navbar', 'navbar_mobile', 'home_hero', 'home_contact', 'blog_article']),
+  surface_group: new Set(['homepage', 'ci_planning', 'fhc', 'blog']),
   calculator_version: new Set(['ci_planning_v6']),
   page_version: CI_PAGE_VERSIONS,
   utm_source: /^[a-z0-9][a-z0-9_-]{0,63}$/,
@@ -70,6 +71,8 @@ export function getCIPlanningPageVersion(): string {
 export function resolveEventMapping(eventName: string, params: SafeParams): { ga: string[]; meta: MetaMode; metaName?: string } {
   const ci = params.tool_name === 'ci_planning';
   const fhc = params.tool_name === 'fhc';
+  if (eventName === 'cta_click' && params.contact_channel === 'line') return { ga: [], meta: 'none' };
+  if (eventName === 'line_oa_click' && params.contact_channel === 'line') return { ga: ['line_oa_click'], meta: 'none' };
   if (eventName === 'ci_landing_view' && ci) return { ga: ['ci_landing_view'], meta: 'none' };
   if ((eventName === 'ci_calculator_start' || eventName === 'tool_start') && ci) return { ga: ['ci_calculator_start'], meta: 'custom', metaName: 'StartCIPlanning' };
   if ((eventName === 'ci_step_view' || eventName === 'tool_step') && ci) return { ga: ['ci_step_view'], meta: 'custom', metaName: 'CalculatorStep' };
@@ -114,6 +117,19 @@ export function clearPendingAnalyticsEvents(category?: 'analytics' | 'social'): 
   if (!category || category === 'social') pendingMeta.length = 0;
 }
 
+export function buildSemanticDataLayerEvent(eventName: string, params: SafeParams, consent: ConsentState): Record<string, string | number> | null {
+  if (process.env.NEXT_PUBLIC_SEMANTIC_EVENT_LAYER_ENABLED !== 'true') return null;
+  if (!consent.analytics && !consent.social) return null;
+  return {
+    event: 'ccpun_event',
+    event_name: eventName,
+    event_schema_version: 1,
+    analytics_consent: consent.analytics ? 'granted' : 'denied',
+    social_consent: consent.social ? 'granted' : 'denied',
+    ...params,
+  };
+}
+
 export function flushPendingAnalyticsEvents(category: 'analytics' | 'social'): void {
   if (typeof window === 'undefined') return;
   const consent = getConsentData();
@@ -138,6 +154,14 @@ export function trackEvent(eventName: string, params: EventParams = {}): void {
     ? sanitizeEventParams({ ...sanitized, page_version: getCIPlanningPageVersion() })
     : sanitized;
   const event = resolveEventMapping(eventName, safe);
+  if (!event.ga.length && event.meta === 'none') return;
+  const semanticEvent = buildSemanticDataLayerEvent(eventName, safe, consent);
+  if (semanticEvent) {
+    // ponytail: one cutover flag keeps destination ownership singular.
+    window.dataLayer = window.dataLayer ?? [];
+    window.dataLayer.push(semanticEvent);
+    return;
+  }
   if (consent.analytics && isNewGAEventScope(eventName, safe)) {
     const gaParams = safe.tool_name === 'ci_planning'
       ? sanitizeEventParams({ ...safe, ...getGAAttribution(), device_type: getDeviceType() })

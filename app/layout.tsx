@@ -1,12 +1,16 @@
 import type { Metadata } from "next";
+import { draftMode } from "next/headers";
 import { Kanit } from "next/font/google";
 import "./globals.css";
 import { ccpunSchemaGraph } from "@/lib/schema";
 import ClientWidgets from "@/components/ClientWidgets";
-import { IS_REVIEW_ENVIRONMENT, PRODUCTION_ANALYTICS_ENABLED } from "@/lib/deployment-environment";
+import { VisualEditing } from "next-sanity/visual-editing";
+import { SanityLive } from "@/lib/sanity-live";
+import { IS_DRAFT_PREVIEW_ALLOWED, IS_REVIEW_ENVIRONMENT, PRODUCTION_ANALYTICS_ENABLED } from "@/lib/deployment-environment";
 
 const GA_ID = PRODUCTION_ANALYTICS_ENABLED ? (process.env.NEXT_PUBLIC_GA_ID ?? "") : "";
 const META_PIXEL_ID = PRODUCTION_ANALYTICS_ENABLED ? (process.env.NEXT_PUBLIC_META_PIXEL_ID ?? "") : "";
+const GTM_ID = PRODUCTION_ANALYTICS_ENABLED ? "GTM-5DKMGSK3" : "";
 const kanit = Kanit({
   subsets: ["thai", "latin"],
   weight: ["300", "400", "600", "700"],
@@ -46,10 +50,13 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const isDraftMode = (await draftMode()).isEnabled;
+
   return (
-    <html lang="th" className={kanit.variable}>
+    <html lang="th" className={kanit.variable} suppressHydrationWarning>
       <head>
+        {IS_REVIEW_ENVIRONMENT ? <meta name="darkreader-lock" /> : null}
         <meta httpEquiv="X-Content-Type-Options" content="nosniff" />
         <meta name="referrer" content="strict-origin-when-cross-origin" />
         {/* Critical hero CSS — inlined to unblock above-the-fold render */}
@@ -79,7 +86,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           ข้ามไปเนื้อหาหลัก
         </a>
         {children}
-        <ClientWidgets gaId={GA_ID} metaPixelId={META_PIXEL_ID} />
+        <ClientWidgets gaId={GA_ID} gtmId={GTM_ID} metaPixelId={META_PIXEL_ID} />
+        <SanityLive includeDrafts={IS_DRAFT_PREVIEW_ALLOWED && isDraftMode} />
+        {IS_DRAFT_PREVIEW_ALLOWED && isDraftMode ? <VisualEditing /> : null}
       </body>
     </html>
   );

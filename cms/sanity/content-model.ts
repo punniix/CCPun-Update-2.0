@@ -1,5 +1,19 @@
+import { ACTIVE_ARTICLE_CATEGORIES } from "../../lib/content/taxonomy";
+
 export const sanityContentModel = {
-  version: "4.0",
+  version: "4.1",
+  taxonomy: {
+    primaryCategory: {
+      role: "One required primary category controls article grouping and the category URL segment.",
+      active: ACTIVE_ARTICLE_CATEGORIES,
+      legacyReferencesRemainReadable: true,
+    },
+    tags: {
+      role: "Optional, repeatable topic labels; legacy health and critical-illness categories normalize here.",
+      preserveExistingNonblankValues: true,
+      caseInsensitiveDedupe: true,
+    },
+  },
   documents: {
     article: {
       title: "Article",
@@ -10,8 +24,16 @@ export const sanityContentModel = {
         { name: "title", type: "string", required: true, group: "content" },
         { name: "slug", type: "slug", required: true, source: "title", unique: true, group: "content" },
         { name: "excerpt", type: "text", required: true, maxLength: 240, group: "content" },
-        { name: "category", type: "reference", to: "category", required: true, group: "content" },
-        { name: "tags", type: "array", of: "string", group: "content" },
+        {
+          name: "category",
+          type: "reference",
+          to: "category",
+          required: true,
+          group: "content",
+          role: "primary",
+          selectableSlugs: ACTIVE_ARTICLE_CATEGORIES.map(({ slug }) => slug),
+        },
+        { name: "tags", type: "array", of: "string", group: "content", role: "topic-labels" },
         { name: "author", type: "reference", to: "author", required: true, group: "content" },
         { name: "featuredImage", type: "imageWithAlt", group: "content" },
         { name: "body", type: "portableText", required: true, group: "content" },
@@ -20,16 +42,17 @@ export const sanityContentModel = {
         { name: "review", type: "reviewMetadata", required: true, group: "sources-review" },
         { name: "seo", type: "seoMetadata", required: true, group: "seo-geo" },
         { name: "geo", type: "geoMetadata", group: "seo-geo" },
+        { name: "contentUpdatedAt", type: "datetime", group: "publication" },
         { name: "publishedAt", type: "datetime", requiredWhenPublished: true, group: "publication" },
       ],
       derivedFields: [
-        "updatedAt should map from Sanity _updatedAt instead of requiring editors to maintain a duplicate date field.",
-        "canonical should default to https://ccpun.com/blog/{slug}/ and only be overridden by an explicit migration decision.",
+        "updatedAt maps from contentUpdatedAt, then migration.sourceModifiedAt, and only then Sanity _updatedAt so audit-only writes cannot pretend the article changed.",
+        "canonical should default to https://ccpun.com/blog/{category-slug}/{slug}/ and only be overridden by an explicit migration decision.",
       ],
       publicationRules: [
         "Draft must never enter production sitemap.",
         "Draft preview must render with noindex,nofollow.",
-        "Published article requires title, slug, excerpt, body, author, category, SEO title and meta description.",
+        "Published article requires title, slug, excerpt, body, author, category and meta description; SEO title may fall back to the article title.",
         "Featured image requires meaningful alt text when present.",
         "FAQPage structured data may only be emitted when the same questions and answers are visible in the article UI.",
         "Sources should be stored as structured references, not pasted into presentation markup.",
@@ -89,8 +112,11 @@ export const sanityContentModel = {
     },
     seoMetadata: {
       fields: [
-        { name: "title", type: "string", required: true, recommendedLength: "45-60" },
+        { name: "title", type: "string", required: false, fallback: "article.title", recommendedLength: "45-60" },
         { name: "description", type: "text", required: true, recommendedLength: "130-160" },
+        { name: "focusKeyword", type: "string" },
+        { name: "secondaryKeywords", type: "array", of: "string" },
+        { name: "searchIntent", type: "string" },
         { name: "canonical", type: "url", generatedByDefault: true },
         { name: "noindex", type: "boolean", default: false, publicationGuard: true },
       ],

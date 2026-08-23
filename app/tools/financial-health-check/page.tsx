@@ -3,10 +3,11 @@ import ClientFHC from '@/components/FinancialHealthCheck/ClientFHC';
 import { FHC_FAQS } from '@/components/FinancialHealthCheck/FHCLandingIntro';
 import { IS_REVIEW_ENVIRONMENT } from '@/lib/deployment-environment';
 
+const FHC_DESCRIPTION = 'ตรวจสุขภาพการเงินผ่านโมดูลประเมินทุนประกันชีวิต ซึ่งครอบคลุมเฉพาะความคุ้มครองชีวิต เปรียบเทียบภาระครอบครัว หนี้ การศึกษาบุตร ความคุ้มครอง และสินทรัพย์ที่พร้อมใช้ เพื่อเริ่มทบทวนแผนการเงิน';
+
 export const metadata: Metadata = {
-  title: 'คำนวณทุนประกันชีวิตที่ครอบครัวต้องใช้ | CCPun',
-  description:
-    'คำนวณทุนประกันชีวิตเบื้องต้นจากค่าใช้จ่ายครัวเรือน หนี้ และทุนการศึกษา แล้วเทียบกับทุนประกันชีวิตและสินทรัพย์ที่ตั้งใจใช้',
+  title: 'ตรวจสุขภาพการเงิน เริ่มจากช่องว่างความคุ้มครอง | CCPun',
+  description: FHC_DESCRIPTION,
   keywords: [
     'ตรวจสุขภาพการเงิน',
     'financial health check',
@@ -20,9 +21,8 @@ export const metadata: Metadata = {
     'ความคุ้มครองที่ขาด',
   ],
   openGraph: {
-    title: 'คำนวณทุนประกันชีวิตที่ครอบครัวต้องใช้ | CCPun',
-    description:
-      'ดูส่วนต่างทุนประกันชีวิตเบื้องต้นจากภาระที่คนข้างหลังต้องดูแล',
+    title: 'ตรวจสุขภาพการเงิน เริ่มจากช่องว่างความคุ้มครอง | CCPun',
+    description: FHC_DESCRIPTION,
     url: 'https://ccpun.com/tools/financial-health-check/',
     siteName: 'CCPun Financial Advisor',
     images: [
@@ -38,8 +38,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'คำนวณทุนประกันชีวิตที่ครอบครัวต้องใช้ | CCPun',
-    description: 'ดูส่วนต่างทุนประกันชีวิตเบื้องต้นจากภาระที่คนข้างหลังต้องดูแล',
+    title: 'ตรวจสุขภาพการเงิน เริ่มจากช่องว่างความคุ้มครอง | CCPun',
+    description: FHC_DESCRIPTION,
     images: ['https://ccpun.com/og-image-20260610.webp?v=68ae8d8'],
   },
   robots: IS_REVIEW_ENVIRONMENT ? { index: false, follow: false } : { index: true, follow: true },
@@ -54,14 +54,14 @@ const breadcrumbSchema = {
   "@type": "BreadcrumbList",
   "itemListElement": [
     { "@type": "ListItem", "position": 1, "name": "หน้าหลัก", "item": "https://ccpun.com/" },
-    { "@type": "ListItem", "position": 2, "name": "คำนวณทุนประกันชีวิต", "item": "https://ccpun.com/tools/financial-health-check/" },
+    { "@type": "ListItem", "position": 2, "name": "ตรวจสุขภาพการเงิน", "item": "https://ccpun.com/tools/financial-health-check/" },
   ],
 };
 
 const jsonLd = {
   "@context": "https://schema.org",
   "@type": "WebApplication",
-  "name": "เครื่องคำนวณทุนประกันชีวิต · Research Preview",
+  "name": "Financial Health Check: โมดูลประเมินทุนประกันชีวิต · Research Preview",
   "url": "https://ccpun.com/tools/financial-health-check/",
   "applicationCategory": "FinanceApplication",
   "operatingSystem": "Web",
@@ -70,7 +70,7 @@ const jsonLd = {
     "name": "CCPun Financial Advisor",
     "url": "https://ccpun.com"
   },
-  "description": "เครื่องมือประเมินส่วนต่างทุนประกันชีวิตจากภาระครอบครัวและทรัพยากรที่ผู้ใช้ตั้งใจใช้"
+  "description": "เครื่องมือประเมินช่องว่างความคุ้มครองชีวิตจากภาระครอบครัวและทรัพยากรที่ผู้ใช้ตั้งใจใช้ เป็นจุดเริ่มต้นสำหรับทบทวนแผนการเงิน"
 };
 
 const faqSchema = {

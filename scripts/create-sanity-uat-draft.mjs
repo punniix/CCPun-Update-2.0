@@ -2,10 +2,13 @@ import { createClient } from "@sanity/client";
 
 if (process.env.CCPUN_UAT_MODE !== "1") throw new Error("Refusing to write outside explicit UAT mode");
 
+const UAT_PROJECT_ID = "ccb9lnw5";
 const projectId = process.env.SANITY_API_PROJECT_ID || process.env.NEXT_PUBLIC_SANITY_PROJECT_ID;
 const dataset = process.env.SANITY_API_DATASET || process.env.NEXT_PUBLIC_SANITY_DATASET;
 const token = process.env.SANITY_API_WRITE_TOKEN;
 if (!projectId || !dataset || !token) throw new Error("Missing Sanity UAT configuration");
+if (projectId.trim() !== UAT_PROJECT_ID) throw new Error("Refusing to write outside the isolated Sanity UAT project");
+if (dataset.trim() !== "uat") throw new Error("Refusing to write outside the Sanity uat dataset");
 
 const documents = [
   {

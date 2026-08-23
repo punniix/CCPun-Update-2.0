@@ -1,6 +1,7 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { createClient } from '@sanity/client';
+import { LEGACY_ARTICLES as LEGACY_FIXTURES, mergeLegacyArticles } from '../lib/content/legacy.ts';
 
 const CDP_HTTP = 'http://127.0.0.1:9222';
 const BASE_URL = process.env.UAT_BASE_URL || 'http://localhost:3001';
@@ -14,6 +15,13 @@ const VIEWPORTS = [
   { name: 'tablet-820', width: 820, height: 1180, mobile: false },
   { name: 'tablet-1024', width: 1024, height: 1366, mobile: false },
   { name: 'desktop-1440', width: 1440, height: 1000, mobile: false },
+];
+const LEGACY_ARTICLES = [
+  ['aia-vitality', 'https://blog.ccpun.com/aia-vitality/'],
+  ['aia-health-happy-describe', 'https://blog.ccpun.com/aia-health-happy-describe/'],
+  ['critical-illness-insurance', 'https://blog.ccpun.com/critical-illness-insurance/'],
+  ['aia-health-ci-hero-guide', 'https://blog.ccpun.com/aia-health-ci-hero-guide/'],
+  ['financial-pyramid', 'https://blog.ccpun.com/financial-pyramid/'],
 ];
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -142,6 +150,35 @@ const target = await createTarget();
 const client = new CDPClient(target.webSocketDebuggerUrl);
 const report = { generatedAt: new Date().toISOString(), baseUrl: BASE_URL, viewports: {}, summary: { passed: 0, failed: 0 } };
 
+const publishedReplacement = { ...LEGACY_FIXTURES[0], id: 'cms-aia-vitality', legacyUrl: undefined };
+const draftReplacement = { ...publishedReplacement, id: 'drafts.cms-aia-vitality', status: 'draft' };
+const previewDraft = { ...draftReplacement, id: 'drafts.uat-article-system', slug: 'uat-article-system' };
+const publishedMerge = mergeLegacyArticles([publishedReplacement]);
+const draftMerge = mergeLegacyArticles([draftReplacement]);
+const previewMerge = mergeLegacyArticles([previewDraft]);
+const mergeChecks = [
+  {
+    name: 'published CMS slug suppresses its legacy card',
+    pass: publishedMerge.filter((article) => article.slug === 'aia-vitality').length === 1
+      && publishedMerge.find((article) => article.slug === 'aia-vitality')?.legacyUrl === undefined,
+  },
+  {
+    name: 'draft CMS slug does not hide its published legacy card',
+    pass: draftMerge.filter((article) => article.slug === 'aia-vitality').length === 2
+      && draftMerge.some((article) => article.slug === 'aia-vitality' && article.legacyUrl),
+  },
+  {
+    name: 'Preview composition includes five legacy cards plus its draft',
+    pass: previewMerge.filter((article) => article.legacyUrl).length === 5
+      && previewMerge.filter((article) => article.status === 'draft').length === 1,
+  },
+];
+for (const check of mergeChecks) {
+  if (check.pass) report.summary.passed++;
+  else report.summary.failed++;
+}
+report.legacyMerge = { checks: mergeChecks };
+
 try {
   await client.connect();
   await client.send('Page.enable');
@@ -149,14 +186,71 @@ try {
   await client.send('Network.enable');
 
   const rejectedPreview = await fetch(`${BASE_URL}/api/preview/enable/`, { redirect: 'manual' });
+  const rejectedPreviewLocation = rejectedPreview.headers.get('location') || '';
+  const rejectedByVercelProtection = rejectedPreview.status === 302
+    && /^https:\/\/vercel\.com\/sso-api\?/.test(rejectedPreviewLocation);
   const rejectedPreviewCheck = {
     name: 'unauthenticated preview handshake is rejected',
-    pass: rejectedPreview.status === 401,
-    details: `HTTP ${rejectedPreview.status}`,
+    pass: rejectedPreview.status === 401 || rejectedByVercelProtection,
+    details: rejectedByVercelProtection ? 'HTTP 302 (Vercel Deployment Protection)' : `HTTP ${rejectedPreview.status}`,
   };
   if (rejectedPreviewCheck.pass) report.summary.passed++;
   else report.summary.failed++;
   report.previewSecurity = { checks: [rejectedPreviewCheck] };
+
+  await navigate(client, `${BASE_URL}/blog/`);
+  const normalLegacyCount = await evaluate(client, `document.querySelectorAll('[data-legacy-article="true"]').length`);
+  for (let index = 0; index < normalLegacyCount; index++) {
+    await evaluate(client, `document.querySelectorAll('[data-legacy-article="true"]')[${index}]?.scrollIntoView({ block: 'center' })`);
+    await sleep(150);
+  }
+  await evaluate(client, `Promise.all([...document.querySelectorAll('[data-legacy-article="true"] img')].map((image) => {
+    if (image.complete) return true;
+    return new Promise((resolve) => {
+      const done = () => resolve(true);
+      image.addEventListener('load', done, { once: true });
+      image.addEventListener('error', done, { once: true });
+      setTimeout(done, 5000);
+    });
+  }))`);
+  const normalState = await evaluate(client, `(() => ({
+    totalCards: document.querySelectorAll('.blog-archive-grid article').length,
+    draftCards: document.querySelectorAll('[data-article-slug="uat-article-system"]').length,
+    legacyCards: [...document.querySelectorAll('[data-legacy-article="true"]')].map((card) => ({
+      slug: card.getAttribute('data-article-slug'),
+      href: card.querySelector('[data-article-link]')?.href || '',
+      target: card.querySelector('[data-article-link]')?.getAttribute('target'),
+      imageLoaded: Boolean(card.querySelector('img')?.complete && card.querySelector('img')?.naturalWidth > 0),
+      legacyLabel: card.innerText.includes('คลังบทความเดิม'),
+    })),
+  }))()`);
+  const sitemapResponse = await fetch(`${BASE_URL}/sitemaps/blog.xml/`);
+  const sitemap = await sitemapResponse.text();
+  const normalChecks = [
+    {
+      name: 'normal mode shows exactly five legacy cards and no draft',
+      pass: normalState.totalCards === 5 && normalState.legacyCards.length === 5 && normalState.draftCards === 0,
+      details: `${normalState.totalCards} total, ${normalState.legacyCards.length} legacy, ${normalState.draftCards} draft`,
+    },
+    {
+      name: 'legacy cards use exact same-tab WordPress URLs',
+      pass: LEGACY_ARTICLES.every(([slug, href]) => normalState.legacyCards.some((card) => card.slug === slug && card.href === href && card.target === null)),
+    },
+    {
+      name: 'all legacy remote images and transition labels render',
+      pass: normalState.legacyCards.every((card) => card.imageLoaded && card.legacyLabel),
+    },
+    {
+      name: 'legacy WordPress cards never enter the Website 4.0 blog sitemap',
+      pass: sitemapResponse.ok && !sitemap.includes('blog.ccpun.com') && LEGACY_ARTICLES.every(([slug]) => !sitemap.includes(`/blog/${slug}/`)),
+      details: `HTTP ${sitemapResponse.status}`,
+    },
+  ];
+  for (const check of normalChecks) {
+    if (check.pass) report.summary.passed++;
+    else report.summary.failed++;
+  }
+  report.normalMode = { checks: normalChecks, state: normalState };
 
   await navigate(client, await createSecurePreviewUrl());
 
@@ -172,6 +266,8 @@ try {
         imageLoaded: Boolean(image?.complete && image?.naturalWidth > 0),
         imageSource: image?.currentSrc || image?.src || '',
         heroHeight: hero?.getBoundingClientRect().height || 0,
+        legacyCards: document.querySelectorAll('[data-legacy-article="true"]').length,
+        draftCards: document.querySelectorAll('[data-article-slug="uat-article-system"]').length,
       };
     })()`);
     const hubChecks = [
@@ -179,6 +275,7 @@ try {
       { name: 'Blog hub has no horizontal overflow', pass: !hubState.overflow },
       { name: 'CCPun finance hero image loads', pass: hubState.imageLoaded && hubState.imageSource.includes('blog-hub-hero-ccpun-v1') },
       { name: 'Blog hub hero retains responsive height', pass: hubState.heroHeight >= 304, details: `${Math.round(hubState.heroHeight)}px` },
+      { name: 'Preview shows five legacy cards plus the CMS draft', pass: hubState.legacyCards === 5 && hubState.draftCards === 1 },
     ];
     for (const check of hubChecks) {
       if (check.pass) report.summary.passed++;
@@ -197,6 +294,7 @@ try {
       url: location.href,
       active: document.querySelector('[data-blog-category="การเงินส่วนบุคคล"]')?.getAttribute('aria-pressed'),
       resultCount: document.querySelectorAll('.blog-archive-grid article').length,
+      resultSlugs: [...document.querySelectorAll('.blog-archive-grid article')].map((article) => article.getAttribute('data-article-slug')),
     })`);
     await evaluate(client, `document.querySelector('[data-blog-category="all"]')?.click()`);
     await sleep(100);
@@ -208,6 +306,19 @@ try {
     })()`);
     await sleep(100);
     const emptyState = await evaluate(client, `document.body.innerText.includes('ไม่พบบทความที่ตรงกับตัวกรอง')`);
+    await evaluate(client, `(() => {
+      const input = document.querySelector('#blog-search');
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+      setter?.call(input, 'AIA Vitality');
+      input?.dispatchEvent(new Event('input', { bubbles: true }));
+    })()`);
+    await sleep(100);
+    const legacySearchState = await evaluate(client, `({
+      url: location.href,
+      value: document.querySelector('#blog-search')?.value || '',
+      resultCount: document.querySelectorAll('.blog-archive-grid article').length,
+      resultSlug: document.querySelector('.blog-archive-grid article')?.getAttribute('data-article-slug') || '',
+    })`);
     await evaluate(client, `(() => {
       const input = document.querySelector('#blog-search');
       const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
@@ -223,8 +334,9 @@ try {
     const interactionChecks = [
       { name: 'five category filters and search controls are interactive', pass: controls.categoryButtons === 5 && controls.searchInput && controls.searchButton },
       { name: 'category click updates active state and shareable URL', pass: categoryState.active === 'true' && categoryState.url.includes('category=') },
-      { name: 'category filter returns imported CMS drafts', pass: categoryState.resultCount > 0, details: `${categoryState.resultCount} articles` },
+      { name: 'category filter includes the matching legacy article', pass: categoryState.resultSlugs.includes('financial-pyramid'), details: `${categoryState.resultCount} articles` },
       { name: 'empty search state gives useful feedback', pass: emptyState },
+      { name: 'search filters legacy articles and updates shareable URL', pass: legacySearchState.value === 'AIA Vitality' && legacySearchState.resultCount === 1 && legacySearchState.resultSlug === 'aia-vitality' && legacySearchState.url.includes('q=AIA+Vitality') },
       { name: 'search filters CMS articles and updates shareable URL', pass: searchState.value === 'Sanity Draft CMS' && searchState.result && searchState.url.includes('q=Sanity+Draft+CMS') },
     ];
     for (const check of interactionChecks) {
@@ -233,23 +345,33 @@ try {
     }
 
     await navigate(client, `${BASE_URL}${ARTICLE_PATH}`);
-    const state = await evaluate(client, `(() => ({
-      viewport: window.innerWidth,
-      overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
-      h1: document.querySelector('h1')?.textContent?.trim() || '',
-      robots: document.querySelector('meta[name="robots"]')?.content || '',
-      canonical: document.querySelector('link[rel="canonical"]')?.href || '',
-      navbar: Boolean(document.querySelector('nav')),
-      footer: Boolean(document.querySelector('footer')),
-      draftBadge: document.body.innerText.includes('Draft UAT · noindex'),
-      articleWidth: document.querySelector('.blog-content')?.getBoundingClientRect().width || 0,
-      bodyFont: getComputedStyle(document.body).fontFamily,
-      faqVisible: document.body.innerText.includes('คำถามที่พบบ่อย') && document.querySelectorAll('section details').length >= 2,
-      articleSchemaPresent: [...document.querySelectorAll('script[type="application/ld+json"]')].some((script) => {
-        const text = script.textContent || '';
-        return text.includes('BlogPosting') || text.includes('#article') || text.includes('#faq');
-      }),
-    }))()`);
+    const state = await evaluate(client, `(() => {
+      const featuredImageWrapper = document.querySelector('[data-uat-role="article-featured-image"]');
+      const featuredImage = featuredImageWrapper?.querySelector('img');
+      const featuredImageBounds = featuredImageWrapper?.getBoundingClientRect();
+      return {
+        viewport: window.innerWidth,
+        overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+        h1: document.querySelector('h1')?.textContent?.trim() || '',
+        robots: document.querySelector('meta[name="robots"]')?.content || '',
+        canonical: document.querySelector('link[rel="canonical"]')?.href || '',
+        navbar: Boolean(document.querySelector('nav')),
+        footer: Boolean(document.querySelector('footer')),
+        draftBadge: document.body.innerText.includes('Draft UAT · noindex'),
+        articleWidth: document.querySelector('.blog-content')?.getBoundingClientRect().width || 0,
+        bodyFont: getComputedStyle(document.body).fontFamily,
+        featuredImage: {
+          present: Boolean(featuredImageWrapper && featuredImage),
+          ratio: featuredImageBounds?.height ? featuredImageBounds.width / featuredImageBounds.height : 0,
+          objectFit: featuredImage ? getComputedStyle(featuredImage).objectFit : '',
+        },
+        faqVisible: document.body.innerText.includes('คำถามที่พบบ่อย') && document.querySelectorAll('section details').length >= 2,
+        articleSchemaPresent: [...document.querySelectorAll('script[type="application/ld+json"]')].some((script) => {
+          const text = script.textContent || '';
+          return text.includes('BlogPosting') || text.includes('#article') || text.includes('#faq');
+        }),
+      };
+    })()`);
 
     const checks = [
       { name: 'viewport width matches', pass: Math.abs(state.viewport - viewport.width) <= 1, details: `${state.viewport} vs ${viewport.width}` },
@@ -261,6 +383,13 @@ try {
       { name: 'shared footer present', pass: state.footer },
       { name: 'draft badge visible', pass: state.draftBadge },
       { name: 'article measure stays readable', pass: state.articleWidth > 0 && state.articleWidth <= 768, details: `${Math.round(state.articleWidth)}px` },
+      {
+        name: 'Draft Preview featured image matches Blog thumbnail 16:9 cover contract',
+        pass: state.featuredImage.present
+          && Math.abs(state.featuredImage.ratio - (16 / 9)) <= 0.02
+          && state.featuredImage.objectFit === 'cover',
+        details: `${state.featuredImage.ratio.toFixed(3)} ratio, ${state.featuredImage.objectFit || 'missing'} fit`,
+      },
       { name: 'Kanit remains primary font', pass: state.bodyFont.toLowerCase().includes('kanit'), details: state.bodyFont },
       { name: 'visible FAQ renders from content model', pass: state.faqVisible },
       { name: 'draft emits no article structured data', pass: !state.articleSchemaPresent },

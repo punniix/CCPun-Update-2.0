@@ -1,0 +1,170 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-06-01T16:00:00Z",
+  "title": "Design System: CCPun Homepage",
+  "extensions": {
+    "colorMeta": {
+      "warm-gold": {
+        "role": "primary",
+        "displayName": "Warm Gold",
+        "canonical": "hsl(45, 60%, 70%)",
+        "tonalRamp": ["#31280c","#5a4916","#836a21","#ab8b2b","#cea93b","#d8bb64","#e0c985","#eddfb6"]
+      },
+      "gold-bright": {
+        "role": "primary",
+        "displayName": "Gold Bright",
+        "canonical": "hsl(45, 65%, 78%)",
+        "tonalRamp": ["#31280c","#5a4916","#836a21","#ab8b2b","#cea93b","#d8bb64","#e0c985","#eddfb6"]
+      },
+      "gold-deep": {
+        "role": "primary",
+        "displayName": "Gold Deep",
+        "canonical": "hsl(45, 55%, 60%)",
+        "tonalRamp": ["#31280c","#5a4916","#836a21","#ab8b2b","#cea93b","#d8bb64","#e0c985","#eddfb6"]
+      },
+      "main-bg": {
+        "role": "neutral",
+        "displayName": "Main Background",
+        "canonical": "hsl(0, 15%, 18%)",
+        "tonalRamp": ["#120d0d","#231a1a","#352727","#4c3838","#6f5252","#936c6c","#bea7a7","#e5dcdc"]
+      },
+      "deep-charcoal": {
+        "role": "neutral",
+        "displayName": "Deep Charcoal",
+        "canonical": "hsl(0, 20%, 12%)",
+        "tonalRamp": ["#120d0d","#231a1a","#352727","#4c3838","#6f5252","#936c6c","#bea7a7","#e5dcdc"]
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "Surface",
+        "canonical": "hsl(0, 12%, 26%)",
+        "tonalRamp": ["#120d0d","#231a1a","#352727","#4c3838","#6f5252","#936c6c","#bea7a7","#e5dcdc"]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "canonical": "hsl(0, 10%, 98%)",
+        "tonalRamp": ["#120d0d","#231a1a","#352727","#4c3838","#6f5252","#936c6c","#bea7a7","#e5dcdc"]
+      },
+      "ink-muted": {
+        "role": "neutral",
+        "displayName": "Ink Muted",
+        "canonical": "hsl(0, 10%, 70%)",
+        "tonalRamp": ["#120d0d","#231a1a","#352727","#4c3838","#6f5252","#936c6c","#bea7a7","#e5dcdc"]
+      }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Hero headlines only. One per page." },
+      "headline": { "displayName": "Headline", "purpose": "Section titles. text-wrap: balance always." },
+      "title": { "displayName": "Title", "purpose": "Card headings, subsection labels, nav items." },
+      "body": { "displayName": "Body", "purpose": "All prose. Max 65-75ch. text-wrap: pretty." },
+      "label": { "displayName": "Label", "purpose": "Button text, metadata, badges. Never Thai all-caps." }
+    },
+    "shadows": [
+      { "name": "glass-ambient", "value": "0 8px 32px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.1)", "purpose": "Glass cards and panels. The inset is the glass edge." },
+      { "name": "gold-glow", "value": "0 4px 24px rgba(197,160,89,0.4)", "purpose": "Primary CTA button default state." },
+      { "name": "gold-glow-lg", "value": "0 8px 32px rgba(197,160,89,0.5)", "purpose": "Primary CTA button hover state only." }
+    ],
+    "motion": [
+      { "name": "fade-in", "value": "fade-in 0.6s ease-out forwards", "purpose": "Section entrance." },
+      { "name": "fade-in-up", "value": "fade-in-up 0.8s ease-out forwards", "purpose": "Hero content entrance." },
+      { "name": "scale-in", "value": "scale-in 0.5s ease-out forwards", "purpose": "Card/modal entrance." },
+      { "name": "ease-standard", "value": "cubic-bezier(0.0, 0, 0.2, 1)", "purpose": "All state transitions." }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" },
+      { "name": "xl", "value": "1280px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Main CTA. Warm Gold — at most one per viewport.",
+      "html": "<button class=\"ds-btn-primary\">นัดหมายปรึกษา</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; background: #e0c985; color: #251818; font-family: 'Kanit', system-ui, sans-serif; font-size: 0.875rem; font-weight: 500; line-height: 1.4; padding: 12px 28px; border-radius: 14px; border: none; cursor: pointer; box-shadow: 0 4px 24px rgba(197,160,89,0.4); transition: background 200ms cubic-bezier(0,0,0.2,1), box-shadow 200ms cubic-bezier(0,0,0.2,1), transform 200ms cubic-bezier(0,0,0.2,1); text-decoration: none; } .ds-btn-primary:hover { background: #ebd9a2; box-shadow: 0 8px 32px rgba(197,160,89,0.5); transform: translateY(-2px); } .ds-btn-primary:focus-visible { outline: 2px solid #e0c985; outline-offset: 2px; } .ds-btn-primary:active { transform: translateY(0); box-shadow: 0 2px 12px rgba(197,160,89,0.3); }"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Secondary CTA. Transparent with gold outline.",
+      "html": "<button class=\"ds-btn-ghost\">ดูบริการทั้งหมด</button>",
+      "css": ".ds-btn-ghost { display: inline-flex; align-items: center; justify-content: center; background: transparent; color: #e0c985; font-family: 'Kanit', system-ui, sans-serif; font-size: 0.875rem; font-weight: 500; line-height: 1.4; padding: 11px 27px; border-radius: 14px; border: 1px solid #e0c985; cursor: pointer; transition: background 200ms cubic-bezier(0,0,0.2,1), color 200ms cubic-bezier(0,0,0.2,1); text-decoration: none; } .ds-btn-ghost:hover { background: rgba(224,201,133,0.1); color: #ebd9a2; border-color: #ebd9a2; } .ds-btn-ghost:focus-visible { outline: 2px solid #e0c985; outline-offset: 2px; }"
+    },
+    {
+      "name": "Glass Card",
+      "kind": "card",
+      "refersTo": "card-glass",
+      "description": "Floating interactive card. Glass treatment — purposeful, not decorative.",
+      "html": "<div class=\"ds-card-glass\"><h3 class=\"ds-card-title\">วางแผนเกษียณ</h3><p class=\"ds-card-body\">สร้างแผนการเงินที่มั่นคงสำหรับอนาคตของคุณ ด้วยกลยุทธ์ที่ปรับให้เหมาะกับเป้าหมายส่วนตัว</p></div>",
+      "css": ".ds-card-glass { background: rgba(74,58,58,0.6); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 24px; box-shadow: 0 8px 32px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.1); transition: box-shadow 200ms cubic-bezier(0,0,0.2,1), transform 200ms cubic-bezier(0,0,0.2,1); } .ds-card-glass:hover { box-shadow: 0 12px 40px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.15); transform: translateY(-2px); } .ds-card-title { font-family: 'Kanit', system-ui, sans-serif; font-size: 1.25rem; font-weight: 500; color: #faf9f9; margin: 0 0 12px; line-height: 1.4; } .ds-card-body { font-family: 'Kanit', system-ui, sans-serif; font-size: 1rem; font-weight: 300; color: #baabab; margin: 0; line-height: 1.6; }"
+    },
+    {
+      "name": "Navigation Bar",
+      "kind": "nav",
+      "refersTo": "nav-glass",
+      "description": "Fixed glass navigation. Gold underline for active state.",
+      "html": "<nav class=\"ds-nav\"><a class=\"ds-nav-link\" href=\"#\">หน้าแรก</a><a class=\"ds-nav-link ds-nav-link--active\" href=\"#\">บริการ</a><a class=\"ds-nav-link\" href=\"#\">บทความ</a><button class=\"ds-btn-primary\" style=\"padding: 8px 20px; font-size: 0.8125rem;\">ปรึกษาฟรี</button></nav>",
+      "css": ".ds-nav { display: flex; align-items: center; gap: 32px; background: rgba(53,39,39,0.8); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border-bottom: 1px solid rgba(255,255,255,0.08); padding: 16px 32px; } .ds-nav-link { font-family: 'Kanit', system-ui, sans-serif; font-size: 0.875rem; font-weight: 500; color: #baabab; text-decoration: none; padding-bottom: 2px; border-bottom: 2px solid transparent; transition: color 200ms cubic-bezier(0,0,0.2,1), border-color 200ms cubic-bezier(0,0,0.2,1); } .ds-nav-link:hover { color: #e0c985; } .ds-nav-link--active { color: #e0c985; border-bottom-color: #e0c985; } .ds-nav-link:focus-visible { outline: 2px solid #e0c985; outline-offset: 4px; border-radius: 2px; }"
+    },
+    {
+      "name": "Text Input",
+      "kind": "input",
+      "refersTo": "input-text",
+      "description": "Form input. Gold focus ring, no background color change.",
+      "html": "<div class=\"ds-field\"><label class=\"ds-label\" for=\"ds-input-demo\">ชื่อ-นามสกุล</label><input class=\"ds-input\" id=\"ds-input-demo\" type=\"text\" placeholder=\"กรุณากรอกชื่อ\" /></div>",
+      "css": ".ds-field { display: flex; flex-direction: column; gap: 6px; } .ds-label { font-family: 'Kanit', system-ui, sans-serif; font-size: 0.875rem; font-weight: 500; color: #faf9f9; } .ds-input { font-family: 'Kanit', system-ui, sans-serif; font-size: 1rem; font-weight: 300; color: #faf9f9; background: #4a3a3a; border: 1px solid #5b4848; border-radius: 14px; padding: 12px 16px; outline: none; transition: border-color 200ms cubic-bezier(0,0,0.2,1), box-shadow 200ms cubic-bezier(0,0,0.2,1); } .ds-input::placeholder { color: #7a6868; } .ds-input:focus { border-color: #e0c985; box-shadow: 0 0 0 2px rgba(224,201,133,0.3); }"
+    },
+    {
+      "name": "Category Chip",
+      "kind": "chip",
+      "refersTo": "chip-category",
+      "description": "Filter/category tag. Gold border for selected state.",
+      "html": "<div style=\"display:flex;gap:8px;\"><span class=\"ds-chip\">การลงทุน</span><span class=\"ds-chip ds-chip--active\">ประกันชีวิต</span><span class=\"ds-chip\">วางแผนเกษียณ</span></div>",
+      "css": ".ds-chip { display: inline-flex; align-items: center; font-family: 'Kanit', system-ui, sans-serif; font-size: 0.875rem; font-weight: 500; color: #baabab; background: #4a3a3a; border: 1px solid #5b4848; border-radius: 12px; padding: 6px 14px; cursor: pointer; transition: color 200ms cubic-bezier(0,0,0.2,1), border-color 200ms cubic-bezier(0,0,0.2,1); } .ds-chip:hover { color: #e0c985; border-color: #e0c985; } .ds-chip--active { color: #e0c985; border-color: #e0c985; } .ds-chip:focus-visible { outline: 2px solid #e0c985; outline-offset: 2px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Golden Compass",
+    "overview": "CCPun's visual language is built on one premise: a person of genuine expertise handing you a precision instrument — something that orients, clarifies, and earns trust through quality alone. The dark warm-charcoal surfaces create an intimate atmosphere, while the muted gold speaks of accumulated value rather than performative wealth.\n\nThe system is deliberately warm without being casual. Warmth is carried through temperature (the charcoal has a red-orange undertone, not cold grey), through typography (Kanit's humanist geometry reads Thai and Latin with equal dignity), and through controlled use of gold as a signal of care rather than luxury.\n\nWhat this system explicitly rejects: the cold institutional aesthetic of Thai state banks, the amateur clip-art energy of generic insurance agent sites, and the untouchable distance of luxury lifestyle brands.",
+    "keyCharacteristics": [
+      "Dark-warm, not dark-cold — charcoal surfaces carry red-orange undertone",
+      "Gold as signal of care, not of wealth",
+      "Glass reserved for interactive elevation, not decoration",
+      "Kanit for all type: Thai/Latin parity at one typeface weight range",
+      "Framer Motion for transitions that feel intentional, not reflexive"
+    ],
+    "rules": [
+      { "name": "The One Compass Rule", "body": "Warm Gold appears on at most one primary CTA per viewport. It is a signal, not a decoration. If every button is gold, none of them are.", "section": "colors" },
+      { "name": "The Temperature Rule", "body": "Never introduce a neutral that trends toward cool grey or blue-grey. All neutrals must carry the red-orange hue of the charcoal base.", "section": "colors" },
+      { "name": "The One-Family Rule", "body": "Kanit is the only typeface. Do not introduce a serif display face or a mono for code unless the UI genuinely requires it.", "section": "typography" },
+      { "name": "The Purposeful Glass Rule", "body": "Glass is reserved for the interactive layer that floats above content. Do not apply backdrop-filter to section backgrounds or decorative cards.", "section": "elevation" },
+      { "name": "The Flat-By-Default Rule", "body": "Content sections and non-interactive containers carry no shadow. Depth is created through tonal layering, not shadows.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do use Warm Gold on at most one primary CTA per viewport.",
+      "Do apply text-wrap: balance to all headlines (h1–h3).",
+      "Do use the inset white highlight on every glass element.",
+      "Do apply Framer Motion ease-out easing (no bounce, no elastic) for all entrance animations.",
+      "Do add @media (prefers-reduced-motion: reduce) alternatives for every animation.",
+      "Do verify ink-muted (#baabab) passes 4.5:1 against Surface (#4a3a3a).",
+      "Do use Kanit 300 (light) for body copy."
+    ],
+    "donts": [
+      "Don't use gradient text (background-clip: text).",
+      "Don't apply glassmorphism to section backgrounds or decorative elements.",
+      "Don't introduce a second typeface.",
+      "Don't make the interface look like a Thai state bank (cold neutrals, government blue).",
+      "Don't make it look like a generic Thai insurance agent site.",
+      "Don't make it look like a Bulgari-style luxury brand (untouchable, distant).",
+      "Don't use border-left as a colored accent stripe on cards or callouts.",
+      "Don't use identical card grids.",
+      "Don't use all-caps Thai text at any size.",
+      "Don't animate CSS layout properties."
+    ]
+  }
+}

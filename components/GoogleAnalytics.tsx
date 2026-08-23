@@ -1,11 +1,12 @@
 'use client';
 
 import { useEffect } from 'react';
-import { CCPUN_SITE_VERSION, clearPendingAnalyticsEvents, flushPendingAnalyticsEvents } from '@/lib/analytics';
+import { CCPUN_SITE_VERSION, clearPendingAnalyticsEvents, flushPendingAnalyticsEvents, trackEvent } from '@/lib/analytics';
 import { getConsentData } from '@/lib/cookie-consent';
 
 function loadGA(gaId: string) {
   if (document.getElementById('ga-script')) return flushPendingAnalyticsEvents('analytics');
+  if (!document.getElementById('gtm-script') || typeof window.gtag !== 'function') return;
   window.dataLayer = window.dataLayer || [];
   window.gtag = (...args: unknown[]) => window.dataLayer?.push(args);
   window.gtag('js', new Date());
@@ -27,15 +28,48 @@ function disableGA() {
     document.cookie = `${name}=; Path=/; Max-Age=0; SameSite=Lax`;
     document.cookie = `${name}=; Path=/; Domain=.ccpun.com; Max-Age=0; SameSite=Lax`;
   }
-  delete window.gtag;
-  delete window.dataLayer;
+  if (!document.getElementById('gtm-script')) {
+    delete window.gtag;
+    delete window.dataLayer;
+  }
 }
 
 export default function GoogleAnalytics({ gaId }: { gaId: string }) {
   useEffect(() => {
     const apply = () => getConsentData()?.analytics ? loadGA(gaId) : disableGA();
-    apply(); window.addEventListener('ccpun:consent', apply);
-    return () => window.removeEventListener('ccpun:consent', apply);
+    const trackLineClick = (event: MouseEvent) => {
+      if (!(event.target instanceof Element)) return;
+      const link = event.target.closest<HTMLAnchorElement>('a[href^="https://lin.ee/"]');
+      if (!link || link.closest('#ci-calculator, #fhc-calculator')) return;
+
+      const path = window.location.pathname;
+      if (path.startsWith('/privacy') || path.startsWith('/cookie-policy')) return;
+
+      const nav = link.closest('nav');
+      const surface = path.startsWith('/ci-planning') ? 'ci_planning'
+        : path.startsWith('/tools/fhc') || path.startsWith('/tools/financial-health-check') ? 'fhc'
+        : path.startsWith('/blog/') ? 'blog'
+        : path === '/' ? 'homepage'
+        : null;
+      const location = nav ? (link.closest('#mobile-navigation') ? 'navbar_mobile' : 'navbar')
+        : link.closest('#home') ? 'home_hero'
+        : link.closest('[data-uat-section="contact"]') ? 'home_contact'
+        : surface === 'fhc' ? 'fhc_landing'
+        : surface === 'blog' ? 'blog_article'
+        : null;
+      if (!surface || !location) return;
+      trackEvent('line_oa_click', { contact_channel: 'line', cta_location: location, surface_group: surface });
+    };
+
+    apply();
+    window.addEventListener('ccpun:consent', apply);
+    window.addEventListener('ccpun:gtm-ready', apply);
+    document.addEventListener('click', trackLineClick);
+    return () => {
+      window.removeEventListener('ccpun:consent', apply);
+      window.removeEventListener('ccpun:gtm-ready', apply);
+      document.removeEventListener('click', trackLineClick);
+    };
   }, [gaId]);
   return null;
 }

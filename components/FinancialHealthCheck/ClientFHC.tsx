@@ -12,11 +12,11 @@ export default function ClientFHC() {
       <Navbar isToolPage />
 
       <ToolHero
-        badge="เครื่องคำนวณทุนประกันชีวิต · Research Preview"
-        title="ทุนประกันชีวิต"
-        highlight="ที่ครอบครัวต้องใช้"
+        badge="Financial Health Check · โมดูลความคุ้มครองชีวิต"
+        title="ตรวจสุขภาพการเงิน"
+        highlight="เริ่มจากช่องว่างความคุ้มครอง"
         highlightOnNewLine
-        description="เริ่มจากภาระและหนี้สินที่คนข้างหลังต้องดูแล แล้วเทียบกับทุนประกันชีวิตและสินทรัพย์ที่มี"
+        description="ประเมินภาระที่ครอบครัวยังต้องดูแล แล้วเทียบกับทุนประกันชีวิตและสินทรัพย์ที่พร้อมใช้ เพื่อเห็นจุดที่ควรทบทวนต่อในแผนการเงิน"
       />
 
       {/* Main content */}

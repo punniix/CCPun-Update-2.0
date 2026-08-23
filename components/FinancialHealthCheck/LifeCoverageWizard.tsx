@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight, Edit3, MessageCircle, RefreshCw, Shield, Wal
 import FHCLifeResultImageDownloadButton from '@/components/FHCLifeResultImageDownloadButton';
 import CurrencyInput from '@/components/FinancialHealthCheck/CurrencyInput';
 import { trackEvent } from '@/lib/analytics';
+import { getConsentData } from '@/lib/cookie-consent';
 
 type Values = {
   householdMonthly: number;
@@ -42,14 +43,25 @@ export default function LifeCoverageWizard() {
   const [error, setError] = useState('');
   const [errorField, setErrorField] = useState<keyof Values | ''>('');
   const [showResult, setShowResult] = useState(false);
+  const landingTrackedRef = useRef(false);
   const startedRef = useRef(false);
   const completedRef = useRef(false);
   const trackedStepsRef = useRef(new Set<number>());
   useEffect(() => {
-    const trackLanding = () => trackEvent('fhc_landing_view', { tool_name: 'fhc', cta_location: 'fhc_landing', surface_group: 'fhc' });
-    trackLanding();
-    window.addEventListener('ccpun:consent', trackLanding);
-    return () => window.removeEventListener('ccpun:consent', trackLanding);
+    const trackLanding = () => {
+      if (landingTrackedRef.current || !getConsentData()?.analytics) return;
+      if (process.env.NEXT_PUBLIC_SEMANTIC_EVENT_LAYER_ENABLED === 'true' && !document.getElementById('gtm-script')) return;
+      landingTrackedRef.current = true;
+      trackEvent('fhc_landing_view', { tool_name: 'fhc', cta_location: 'fhc_landing', surface_group: 'fhc' });
+    };
+    const queueLanding = () => queueMicrotask(trackLanding);
+    queueLanding();
+    window.addEventListener('ccpun:consent', queueLanding);
+    window.addEventListener('ccpun:gtm-ready', queueLanding);
+    return () => {
+      window.removeEventListener('ccpun:consent', queueLanding);
+      window.removeEventListener('ccpun:gtm-ready', queueLanding);
+    };
   }, []);
   const trackStep = (stepNumber: number) => {
     if (trackedStepsRef.current.has(stepNumber)) return;
@@ -95,9 +107,9 @@ export default function LifeCoverageWizard() {
     trackStep(2);
   };
   if (showResult) return <section aria-labelledby="life-result-title" className="space-y-6">
-    <p className="text-sm font-semibold text-primary">ผลการคำนวณเบื้องต้น</p>
-    <h2 id="life-result-title" className="text-3xl font-bold text-foreground">ทุนประกันชีวิตที่ต้องการเพิ่ม<br /><span className="text-primary">{money(result.gap)} บาท</span></h2>
-    <p className="leading-relaxed text-muted-foreground">ผลลัพธ์นี้เป็นประมาณการเบื้องต้นจากข้อมูลที่คุณกรอก เพื่อให้เห็นภาระที่ยังต้องดูแล เทียบกับทุนประกันชีวิตและสินทรัพย์ที่มี</p>
+    <p className="text-sm font-semibold text-primary">ผลการประเมินโมดูลความคุ้มครองชีวิต</p>
+    <h2 id="life-result-title" className="text-3xl font-bold text-foreground">ช่องว่างความคุ้มครองเบื้องต้น<br /><span className="text-primary">{money(result.gap)} บาท</span></h2>
+    <p className="leading-relaxed text-muted-foreground">ตัวเลขนี้คือส่วนต่างระหว่างภาระที่คุณกรอกกับทุนประกันชีวิตและสินทรัพย์ที่ระบุ ไม่ใช่วงเงินที่ควรซื้อโดยอัตโนมัติ และยังไม่ใช่ผลประเมินสุขภาพการเงินทั้งแผน</p>
     <dl className="divide-y divide-border/30 rounded-xl border border-border/40 bg-card/40 px-4">
       <div className="flex flex-col gap-1 py-4 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
         <dt className="leading-relaxed">ค่าใช้จ่ายในครอบครัวตามจำนวนปีที่ต้องการให้เงินก้อนรองรับ</dt>
@@ -113,7 +125,7 @@ export default function LifeCoverageWizard() {
       </div>
     </dl>
     <p className="rounded-xl border border-border/30 bg-background/25 p-4 text-sm leading-relaxed text-muted-foreground">ผลลัพธ์นี้เป็นประมาณการเบื้องต้นจากข้อมูลและสมมติฐานที่คุณกรอก ไม่ใช่คำแนะนำเฉพาะบุคคล และไม่รับรองว่าจำนวนเงินนี้จะเพียงพอในทุกกรณี โปรดทำความเข้าใจรายละเอียดความคุ้มครอง เงื่อนไข และข้อยกเว้นก่อนตัดสินใจทำประกันภัย และประกันไม่ใช่เงินฝาก</p>
-    <section className="form-glass space-y-4 p-5 md:p-6" aria-labelledby="fhc-next-steps-title"><div><p className="text-sm font-semibold text-primary">หลังดูผลลัพธ์</p><h3 id="fhc-next-steps-title" className="mt-1 text-xl font-bold text-foreground">ขั้นตอนต่อไปของคุณ</h3></div><ul className="space-y-3 text-sm leading-relaxed text-muted-foreground"><li className="border-l border-primary/50 pl-4">ทบทวนว่าค่าใช้จ่าย ระยะเวลาที่เลือก และเงินก้อนที่กรอก สะท้อนสถานการณ์ปัจจุบันของคุณหรือไม่</li><li className="border-l border-primary/50 pl-4">ลองปรับข้อมูลที่ยังไม่แน่ใจ แล้วดูว่าส่วนต่างทุนประกันชีวิตเปลี่ยนไปอย่างไร</li><li className="border-l border-primary/50 pl-4">หากต้องการมุมมองเพิ่มเติม เตรียมหน้าสรุปนี้ไว้คุยกับ CCPun ทาง LINE OA @ccpun ได้</li></ul></section>
+    <section className="form-glass space-y-4 p-5 md:p-6" aria-labelledby="fhc-next-steps-title"><div><p className="text-sm font-semibold text-primary">หลังดูผลลัพธ์</p><h3 id="fhc-next-steps-title" className="mt-1 text-xl font-bold text-foreground">อ่านผลลัพธ์ให้เชื่อมกับแผนการเงิน</h3></div><ul className="space-y-3 text-sm leading-relaxed text-muted-foreground"><li className="border-l border-primary/50 pl-4">หากมีส่วนต่างมากกว่า 0 บาท หมายถึงทรัพยากรที่กรอกยังต่ำกว่าภาระตามสมมติฐานชุดนี้</li><li className="border-l border-primary/50 pl-4">หากส่วนต่างเป็น 0 บาท หมายถึงทรัพยากรที่กรอกไม่น้อยกว่าภาระตามสมมติฐานนี้ แต่ไม่ได้ยืนยันว่าความคุ้มครองหรือแผนการเงินทั้งหมดเพียงพอ</li><li className="border-l border-primary/50 pl-4">ทบทวนต่อเรื่องเงินสำรองฉุกเฉิน หนี้ ความเสี่ยงโรคร้ายแรง ความพร้อมลงทุน และเกษียณ ก่อนตัดสินใจ</li></ul></section>
     <div className="form-glass space-y-3 p-5 text-center md:p-6">
       <FHCLifeResultImageDownloadButton summary={{ familySupport: result.familySupport, debtAndEducation: values.debt + values.education, resources: result.resources, gap: result.gap }} />
       <div>

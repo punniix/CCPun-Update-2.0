@@ -78,8 +78,14 @@ export default function PrivacyPage() {
               ช่องทางหลักในการเริ่มสนทนาคือ LINE OA และมี Facebook กับอีเมลเป็นช่องทางรอง
             </p>
             <p className="text-muted-foreground leading-relaxed mt-4">
-              เว็บไซต์ใช้ Google Analytics หลังจากคุณให้ความยินยอม เพื่อวิเคราะห์การใช้งานโดยรวม
-              เช่น จำนวนผู้เยี่ยมชม หน้าที่ได้รับความสนใจ และระยะเวลาที่ใช้บนเว็บไซต์
+              เว็บไซต์ใช้ Google Tag Manager แบบ Advanced Consent Mode โดยตั้งค่าการวิเคราะห์และโฆษณาเป็นปฏิเสธไว้ก่อน
+              Google อาจได้รับคำขอทางเทคนิคแบบไม่ใช้คุกกี้เพื่อประมวลผลสถานะความยินยอม ส่วน Google Analytics
+              จะใช้คุกกี้และวิเคราะห์การใช้งาน เช่น จำนวนผู้เยี่ยมชมและหน้าที่ได้รับความสนใจ หลังจากคุณให้ความยินยอมเท่านั้น
+            </p>
+            <p className="text-muted-foreground leading-relaxed mt-4">
+              หากคุณเปิดตัวเลือก Meta Pixel เว็บไซต์จะโหลด Pixel เฉพาะหน้า CI Planning และ Financial Health Check
+              เพื่อวัดการเข้าชมและปฏิสัมพันธ์สำหรับประเมินผลโฆษณา ข้อมูลทางเทคนิคของอุปกรณ์ เบราว์เซอร์
+              และตัวระบุออนไลน์อาจส่งไปยัง Meta Platforms, Inc. แต่ event ของ CCPun ไม่แนบค่าที่กรอกในเครื่องมือหรือข้อมูลติดต่อ
             </p>
           </section>
 
@@ -113,10 +119,11 @@ export default function PrivacyPage() {
             </h2>
             <div className="section-divider mb-5" style={{ marginLeft: 0, width: "3rem" }} />
             <p className="text-foreground leading-relaxed font-medium mb-3">
-              เราไม่ขาย ไม่ให้เช่า และไม่แชร์ข้อมูลส่วนบุคคลของคุณกับบุคคลที่สามเพื่อวัตถุประสงค์ทางการตลาด
+              เราไม่ขายหรือให้เช่าข้อมูลส่วนบุคคลของคุณ
             </p>
             <p className="text-muted-foreground leading-relaxed">
-              เว็บไซต์ไม่ส่งหรือบันทึกข้อมูลติดต่อผ่านแบบฟอร์มของเว็บไซต์
+              เมื่อคุณยินยอม เว็บไซต์อาจให้ Google Analytics และ Meta Pixel ประมวลผลข้อมูลการใช้งานตามวัตถุประสงค์ที่แจ้งไว้ข้างต้น
+              การประมวลผลโดยผู้ให้บริการนี้ไม่ใช่การขายหรือให้เช่าข้อมูล เว็บไซต์ไม่ส่งหรือบันทึกข้อมูลติดต่อผ่านแบบฟอร์มของเว็บไซต์
               เมื่อคุณติดต่อผ่าน LINE OA, Facebook หรืออีเมล การรับส่งข้อมูลจะอยู่ภายใต้นโยบายของแพลตฟอร์มนั้น
             </p>
           </section>
@@ -260,8 +267,11 @@ export default function PrivacyPage() {
             </h2>
             <div className="section-divider mb-5" style={{ marginLeft: 0, width: "3rem" }} />
             <p className="text-muted-foreground leading-relaxed mb-3">
-              เว็บไซต์นี้ใช้ Google Analytics (คุกกี้ประเภท Analytics) เพื่อวิเคราะห์การใช้งาน
-              คุณสามารถยอมรับหรือปฏิเสธคุกกี้ได้จาก banner ด้านล่างหน้าจอเมื่อเข้าเว็บไซต์
+              เว็บไซต์โหลด Google Tag Manager โดยปฏิเสธการจัดเก็บข้อมูลไว้เป็นค่าเริ่มต้น และอาจส่งคำขอทางเทคนิคแบบไม่ใช้คุกกี้
+              Google Analytics จะใช้คุกกี้หลังคุณยินยอม ส่วน Meta Pixel จะโหลดหลังคุณเปิดตัวเลือก Meta Pixel และเฉพาะหน้า CI Planning กับ Financial Health Check
+              Meta อาจใช้ _fbp สูงสุด 90 วันและ _fbc เมื่อเกี่ยวข้อง คุณถอนความยินยอมได้ผ่านลิงก์ “ตั้งค่าคุกกี้”
+              จากนั้นเว็บไซต์จะหยุดโหลด Pixel และลบคุกกี้ดังกล่าวบนโดเมน CCPun เท่าที่เบราว์เซอร์อนุญาต
+              การถอนความยินยอมไม่ลบข้อมูลที่ผู้ให้บริการได้รับก่อนหน้านั้นโดยอัตโนมัติ
             </p>
             <p className="text-muted-foreground leading-relaxed">
               อ่านรายละเอียดเพิ่มเติมได้ที่{" "}

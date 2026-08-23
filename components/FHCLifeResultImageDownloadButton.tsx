@@ -29,7 +29,7 @@ async function makeImage(summary: Summary): Promise<Blob> {
     methodTitle: 'วิธีดูผลลัพธ์',
     methodDetail: 'ภาระครอบครัว + หนี้/การศึกษา − ทุนเดิมและสินทรัพย์',
     noticeTitle: 'เป็นประมาณการเบื้องต้นจากข้อมูลที่กรอก',
-    noticeDetail: 'ไม่ใช่คำแนะนำเฉพาะบุคคลหรือเอกสารรับรอง',
+    noticeDetail: 'ไม่ใช่คำแนะนำเฉพาะบุคคลหรือเอกสารรับรอง ประกันไม่ใช่เงินฝาก',
     actionLabel: 'เพิ่มเพื่อน LINE @ccpun',
   }, '/assets/ccpun-text-logo.svg', '/assets/line-oa-qr.png');
 }

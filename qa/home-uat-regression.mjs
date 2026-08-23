@@ -13,6 +13,26 @@ const VIEWPORTS = [
   { name: '1024', width: 1024, height: 900, mobile: false },
   { name: '1440', width: 1440, height: 1000, mobile: false },
 ];
+const MOBILE_HERO_TARGETS = {
+  320: { imageHeight: 240, fontSize: 20, lineHeight: 22.4, headingBottom: 76 },
+  375: { imageHeight: 281.25, fontSize: 22, lineHeight: 24.64, headingBottom: 87 },
+  390: { imageHeight: 292.5, fontSize: 22, lineHeight: 24.64, headingBottom: 87 },
+  414: { imageHeight: 310.5, fontSize: 23, lineHeight: 25.76, headingBottom: 90 },
+};
+
+function contrastRatio(foreground, background) {
+  const channels = (value) => (value.match(/[\d.]+/g) ?? []).slice(0, 3).map(Number);
+  const luminance = (value) => {
+    const [red, green, blue] = channels(value).map((channel) => {
+      const normalized = channel / 255;
+      return normalized <= 0.04045 ? normalized / 12.92 : ((normalized + 0.055) / 1.055) ** 2.4;
+    });
+    return 0.2126 * red + 0.7152 * green + 0.0722 * blue;
+  };
+  const lighter = Math.max(luminance(foreground), luminance(background));
+  const darker = Math.min(luminance(foreground), luminance(background));
+  return (lighter + 0.05) / (darker + 0.05);
+}
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -153,8 +173,14 @@ async function inspect(client) {
       return { x: box.x, y: box.y, width: box.width, height: box.height };
     };
     const routes = [...document.querySelectorAll('[data-uat-role="hero-routes"] > ul > li')].filter(visible);
+    const heroRoutes = document.querySelector('[data-uat-role="hero-routes"]');
     const heroGold = hero ? [...hero.querySelectorAll('.gold-button')].filter(visible) : [];
     const heroActions = [...document.querySelectorAll('[data-uat-role="hero-actions"] a')].filter(visible);
+    const heroAction = heroActions[0];
+    const portraitImage = portrait?.querySelector('img');
+    const heroHeadingStyle = heroHeading ? getComputedStyle(heroHeading) : null;
+    const heroSupportStyle = heroSupport ? getComputedStyle(heroSupport) : null;
+    const heroActionStyle = heroAction ? getComputedStyle(heroAction) : null;
     const finalCta = document.querySelector('.uat-contact-cta');
     const aboutPortraitFrame = document.querySelector('[data-uat-role="about-portrait-frame"]');
     const testimonialCards = [...document.querySelectorAll('[data-uat-section="testimonials"] blockquote')];
@@ -187,10 +213,22 @@ async function inspect(client) {
       }) : [],
       heroSupport: elementRect(heroSupport),
       heroActionsRect: elementRect(heroActionsWrapper),
-      portraitImageSrc: portrait?.querySelector('img')?.getAttribute('src') ?? '',
-      portraitCurrentSrc: portrait?.querySelector('img')?.currentSrc ?? '',
-      heroHeadingFontSize: heroHeading ? Number.parseFloat(getComputedStyle(heroHeading).fontSize) : 0,
-      heroHeadingTextAlign: heroHeading ? getComputedStyle(heroHeading).textAlign : '',
+      heroActionRect: elementRect(heroAction),
+      heroRoutesRect: elementRect(heroRoutes),
+      portraitImageRect: elementRect(portraitImage),
+      portraitImageSrc: portraitImage?.getAttribute('src') ?? '',
+      portraitCurrentSrc: portraitImage?.currentSrc ?? '',
+      portraitNaturalWidth: portraitImage?.naturalWidth ?? 0,
+      portraitNaturalHeight: portraitImage?.naturalHeight ?? 0,
+      portraitObjectFit: portraitImage ? getComputedStyle(portraitImage).objectFit : '',
+      portraitObjectPosition: portraitImage ? getComputedStyle(portraitImage).objectPosition : '',
+      heroHeadingFontSize: heroHeadingStyle ? Number.parseFloat(heroHeadingStyle.fontSize) : 0,
+      heroHeadingLineHeight: heroHeadingStyle ? Number.parseFloat(heroHeadingStyle.lineHeight) : 0,
+      heroHeadingTextAlign: heroHeadingStyle?.textAlign ?? '',
+      heroHeadingShadow: heroHeadingStyle?.textShadow ?? '',
+      heroSupportTextAlign: heroSupportStyle?.textAlign ?? '',
+      heroActionBackground: heroActionStyle?.backgroundColor ?? '',
+      heroActionColor: heroActionStyle?.color ?? '',
       heroBadgePresent: bodyText.includes('ออกแบบแผนการเงินที่เหมาะกับคุณ'),
       routeCount: routes.length,
       routeText: routes.map((item) => item.innerText.replace(/\\s+/g, ' ').trim()),
@@ -280,6 +318,26 @@ function runChecks(data, viewport) {
   expect('hero heading alignment follows viewport', data.heroHeadingTextAlign === (viewport.width < 768 ? 'center' : 'left'), data.heroHeadingTextAlign);
   expect('hero heading content is not clipped', data.heroHeadingScrollWidth <= data.heroHeadingClientWidth + 1, `${data.heroHeadingScrollWidth}/${data.heroHeadingClientWidth}`);
   expect('hero heading lines are not clipped', data.heroHeadingLineMetrics.every((line) => line.contentWidth <= line.clientWidth + 1), JSON.stringify(data.heroHeadingLineMetrics));
+  const mobileTarget = MOBILE_HERO_TARGETS[viewport.width];
+  if (mobileTarget) {
+    const headingBottom = data.heroHeading.y + data.heroHeading.height - data.portrait.y;
+    const supportCenter = data.heroSupport.x + data.heroSupport.width / 2;
+    const actionCenter = data.heroActionRect.x + data.heroActionRect.width / 2;
+    const portraitRatio = data.portrait.width / data.portrait.height;
+    const imageRatio = data.portraitNaturalWidth / data.portraitNaturalHeight;
+    const routeGap = data.heroRoutesRect.y - (data.heroActionRect.y + data.heroActionRect.height);
+    const actionContrast = contrastRatio(data.heroActionColor, data.heroActionBackground);
+    expect('mobile image begins directly below 80px navbar', Math.abs(data.portrait.y - 80) <= 1, String(data.portrait.y));
+    expect('mobile image keeps exact viewport 4:3 box', Math.abs(data.portrait.x) <= 1 && Math.abs(data.portrait.width - viewport.width) <= 1 && Math.abs(data.portrait.height - mobileTarget.imageHeight) <= 1, JSON.stringify(data.portrait));
+    expect('mobile image is centered and undistorted', Math.abs(portraitRatio - 4 / 3) <= 0.01 && Math.abs(imageRatio - 4 / 3) <= 0.01 && Math.abs(data.portraitImageRect.x + data.portraitImageRect.width / 2 - viewport.width / 2) <= 1 && data.portraitObjectFit === 'cover' && data.portraitObjectPosition === '50% 50%', JSON.stringify({ box: data.portraitImageRect, natural: [data.portraitNaturalWidth, data.portraitNaturalHeight], fit: data.portraitObjectFit, position: data.portraitObjectPosition }));
+    expect('mobile headline has three visible lines', data.heroHeadingLineMetrics.length === 3, JSON.stringify(data.heroHeadingLineMetrics));
+    expect('mobile headline exact responsive type scale', Math.abs(data.heroHeadingFontSize - mobileTarget.fontSize) <= 0.1 && Math.abs(data.heroHeadingLineHeight - mobileTarget.lineHeight) <= 0.1, `${data.heroHeadingFontSize}/${data.heroHeadingLineHeight}`);
+    expect('mobile headline stays above 33% image safe line', headingBottom <= mobileTarget.headingBottom + 1 && headingBottom <= data.portrait.height * 0.33 + 1, `${headingBottom}/${mobileTarget.headingBottom}`);
+    expect('mobile headline has no drop shadow', data.heroHeadingShadow === 'none', data.heroHeadingShadow);
+    expect('mobile support and LINE action share centered axis', Math.abs(supportCenter - viewport.width / 2) <= 1 && Math.abs(actionCenter - viewport.width / 2) <= 1 && data.heroSupportTextAlign === 'center', JSON.stringify({ supportCenter, actionCenter, textAlign: data.heroSupportTextAlign }));
+    expect('LINE action uses accessible green contrast and touch target', actionContrast >= 4.5 && data.heroActionRect.height >= 52, `${actionContrast.toFixed(2)}/${data.heroActionRect.height}`);
+    expect('decision rail follows LINE action by 32px', routeGap >= 31 && routeGap <= 32.5, String(routeGap));
+  }
   expect('pain points use text narrative without icons', data.painPointIconCount === 0, String(data.painPointIconCount));
   expect('five clear pain story images', data.painStoryImages.length === 5 && data.painStoryImages.every((image) => image.src.includes('home-stories%2Fpain-')), JSON.stringify(data.painStoryImages));
   expect('pain stories alternate at desktop width', viewport.width < 768 || data.painRows.every((row, index) => index % 2 === 0 ? row.imageX < row.textX : row.imageX > row.textX), JSON.stringify(data.painRows));

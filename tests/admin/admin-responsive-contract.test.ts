@@ -1,0 +1,30 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import test from "node:test";
+
+const readSource = (relativePath: string) =>
+  readFileSync(new URL(`../../${relativePath}`, import.meta.url), "utf8");
+
+test("Admin layout contains wide content without widening the mobile viewport", () => {
+  const layout = readSource("app/snt-admin/(protected)/layout.tsx");
+
+  assert.match(layout, /<div className="[^"]*\boverflow-x-hidden\b[^"]*">/);
+  assert.match(layout, /grid-cols-\[minmax\(0,1fr\)\]/);
+  assert.match(layout, /lg:grid-cols-\[220px_minmax\(0,1fr\)\]/);
+  assert.match(layout, /<aside className="[^"]*\bmin-w-0\b/);
+  assert.match(layout, /<main[^>]*className="[^"]*\bmin-w-0\b/);
+});
+
+test("Admin data tables remain horizontally scrollable inside labelled regions", () => {
+  const tablePages = [
+    "app/snt-admin/(protected)/content/page.tsx",
+    "app/snt-admin/(protected)/seo/page.tsx",
+    "app/snt-admin/(protected)/research/page.tsx",
+    "app/snt-admin/(protected)/audit/page.tsx",
+  ];
+
+  for (const page of tablePages) {
+    const source = readSource(page);
+    assert.match(source, /role="region"[^>]*className="overflow-x-auto"/, page);
+  }
+});

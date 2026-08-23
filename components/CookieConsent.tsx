@@ -277,7 +277,7 @@ export default function CookieConsent() {
                   id="cookie-desc"
                   className="text-xs text-muted-foreground leading-relaxed"
                 >
-                  เว็บไซต์นี้ใช้คุกกี้เพื่อวิเคราะห์การใช้งานและพัฒนาประสบการณ์ของคุณ{' '}
+                  เว็บไซต์ใช้ Google Analytics เพื่อวิเคราะห์การใช้งาน และใช้ Meta Pixel เฉพาะหน้า CI Planning กับ Financial Health Check หลังคุณเลือกยินยอม{' '}
                   <Link
                     href="/cookie-policy"
                     className="text-primary hover:underline underline-offset-2"
@@ -373,16 +373,16 @@ export default function CookieConsent() {
             {/* 4 หมวดคุกกี้ */}
             <CategoryRow
               toggleId="toggle-essential"
-              label="คุกกี้ที่มีความจำเป็นต่อการใช้งานเว็บไซต์"
-              description="จำการตั้งค่าคุกกี้ ภาษา และช่วยให้เว็บไซต์ทำงานได้อย่างถูกต้อง"
+              label="การจัดเก็บสถานะความยินยอมที่จำเป็น"
+              description="บันทึกตัวเลือกความยินยอมไว้ใน localStorage เพื่อให้เว็บไซต์ใช้ตัวเลือกเดิมควบคุมแท็ก"
               checked={true}
               onChange={() => {}}
               alwaysActive
             />
             <CategoryRow
               toggleId="toggle-performance"
-              label="คุกกี้เพื่อเพิ่มประสิทธิภาพในการใช้งานเว็บไซต์"
-              description="ช่วยให้เว็บไซต์จดจำการตั้งค่าของคุณ เช่น การเข้าสู่ระบบ หรือค่าที่คุณเลือกไว้"
+              label="คุกกี้เพื่อเพิ่มประสิทธิภาพ (ยังไม่ใช้งาน)"
+              description="ปัจจุบันเว็บไซต์ยังไม่ใช้คุกกี้หรือบริการบุคคลที่สามในหมวดนี้ การเปิดหรือปิดตัวเลือกจะบันทึกเฉพาะสถานะความยินยอมไว้ใน localStorage ของเบราว์เซอร์"
               checked={performance}
               onChange={setPerformance}
             />
@@ -395,8 +395,8 @@ export default function CookieConsent() {
             />
             <CategoryRow
               toggleId="toggle-social"
-              label="คุกกี้สำหรับสื่อสังคมออนไลน์"
-              description="ใช้เพื่อเชื่อมต่อกับสื่อสังคมออนไลน์และแสดงเนื้อหาที่เกี่ยวข้อง"
+              label="Meta Pixel เพื่อการวัดผลและการตลาด"
+              description="Meta Platforms, Inc. — โหลดเฉพาะหน้า CI Planning และ Financial Health Check หลังคุณเปิดตัวเลือกนี้ เพื่อวัดการเข้าชมและปฏิสัมพันธ์สำหรับประเมินผลโฆษณา อาจใช้ _fbp สูงสุด 90 วันและ _fbc เมื่อเกี่ยวข้อง โดยไม่ส่งค่าที่กรอกในเครื่องมือหรือข้อมูลติดต่อ คุณถอนความยินยอมได้ที่ตั้งค่าคุกกี้"
               checked={social}
               onChange={setSocial}
             />
@@ -409,7 +409,7 @@ export default function CookieConsent() {
                 className="gold-button min-h-11 text-sm font-semibold px-5 py-2"
                 aria-label="บันทึกการตั้งค่าคุกกี้"
               >
-                ตกลงการตั้งค่า
+                บันทึกการตั้งค่า
               </button>
             </div>
           </div>

@@ -4,19 +4,29 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "local:uat": "CCPUN_UAT_MODE=1 CCPUN_APP_ENV=local-uat NEXT_PUBLIC_CCPUN_APP_ENV=local-uat NEXT_PUBLIC_SANITY_PROJECT_ID=ccb9lnw5 NEXT_PUBLIC_SANITY_DATASET=uat SANITY_STUDIO_PROJECT_ID=ccb9lnw5 SANITY_STUDIO_DATASET=uat AUTH_URL=http://localhost:3100 next dev --hostname 127.0.0.1 --port 3100",
+    "local:production:read": "CCPUN_UAT_MODE=0 CCPUN_LOCAL_PRODUCTION_DRAFT_WRITES=0 NEXT_PUBLIC_CCPUN_LOCAL_PRODUCTION_DRAFT_WRITES=0 CCPUN_APP_ENV=local-production NEXT_PUBLIC_CCPUN_APP_ENV=local-production NEXT_PUBLIC_SANITY_PROJECT_ID=kyfxgjnq NEXT_PUBLIC_SANITY_DATASET=production SANITY_STUDIO_PROJECT_ID=kyfxgjnq SANITY_STUDIO_DATASET=production AUTH_URL=http://localhost:3000 next dev --webpack --hostname 127.0.0.1 --port 3000",
+    "local:production:draft": "CCPUN_UAT_MODE=0 CCPUN_LOCAL_PRODUCTION_DRAFT_WRITES=1 NEXT_PUBLIC_CCPUN_LOCAL_PRODUCTION_DRAFT_WRITES=1 CCPUN_APP_ENV=local-production NEXT_PUBLIC_CCPUN_APP_ENV=local-production NEXT_PUBLIC_SANITY_PROJECT_ID=kyfxgjnq NEXT_PUBLIC_SANITY_DATASET=production SANITY_STUDIO_PROJECT_ID=kyfxgjnq SANITY_STUDIO_DATASET=production AUTH_URL=http://localhost:3000 next dev --webpack --hostname 127.0.0.1 --port 3000",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test:vercel": "node tests/vercel-native-regression.mjs",
+    "test:vercel": "node tests/vercel-native-regression.mjs && tsx tests/analytics-regression.ts",
+    "qa:legacy-urls": "node qa/legacy-url-regression.mjs",
     "qa:site": "node qa/uat-text-responsive-check.mjs",
     "qa:blog": "CCPUN_UAT_MODE=1 node --env-file-if-exists=.env.local qa/blog-uat-regression.mjs",
     "qa:home": "node qa/home-uat-regression.mjs",
     "qa:tracking": "node qa/tracking-consent-regression.mjs",
     "cms:export:wp-drafts": "node scripts/export-wordpress-drafts-via-cdp.mjs",
     "cms:import:wp-drafts": "CCPUN_UAT_MODE=1 node --env-file-if-exists=.env.local scripts/import-wordpress-drafts-to-sanity.mjs",
-    "cms:seed:uat": "CCPUN_UAT_MODE=1 node --env-file-if-exists=.env.local scripts/create-sanity-uat-draft.mjs"
+    "cms:seed:uat": "CCPUN_UAT_MODE=1 node --env-file-if-exists=.env.local scripts/create-sanity-uat-draft.mjs",
+    "cms:remediate:wordpress": "CCPUN_APP_ENV=local-production NEXT_PUBLIC_SANITY_PROJECT_ID=kyfxgjnq NEXT_PUBLIC_SANITY_DATASET=production node --env-file-if-exists=.env.local scripts/remediate-wordpress-mapping.mjs --dry-run",
+    "cms:taxonomy:uat:dry-run": "CCPUN_APP_ENV=local-uat SANITY_API_PROJECT_ID=ccb9lnw5 SANITY_API_DATASET=uat tsx scripts/migrate-uat-taxonomy.ts --dry-run",
+    "guard:admin-lab": "node scripts/guard-admin-lab-deploy.mjs",
+    "build:admin-lab": "npm run guard:admin-lab && next build",
+    "test:admin": "tsx --test tests/admin/*.test.ts"
   },
   "dependencies": {
+    "@modelcontextprotocol/client": "^2.0.0",
     "@radix-ui/react-slot": "^1.2.4",
     "@radix-ui/react-toast": "^1.2.15",
     "@sanity/client": "^7.24.0",
@@ -25,6 +35,7 @@
     "framer-motion": "^12.38.0",
     "lucide-react": "^0.575.0",
     "next": "16.3.0",
+    "next-auth": "^5.0.0-beta.32",
     "next-sanity": "^13.1.5",
     "react": "19.2.3",
     "react-dom": "19.2.3",
@@ -43,6 +54,7 @@
     "sanity": "^5.29.0",
     "styled-components": "^6.1.19",
     "tailwindcss": "^4",
+    "tsx": "^4.23.12",
     "typescript": "^5"
   },
   "browserslist": [

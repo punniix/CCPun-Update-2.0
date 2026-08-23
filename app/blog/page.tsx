@@ -15,7 +15,8 @@ export const metadata: Metadata = {
 
 export default async function BlogPage() {
   const { isEnabled } = await draftMode();
-  const articles = await getContentProvider().listArticles({ includeDrafts: isEnabled });
+  const cmsArticles = await getContentProvider().listArticles({ includeDrafts: isEnabled });
+  const articles = cmsArticles;
 
   return (
     <>

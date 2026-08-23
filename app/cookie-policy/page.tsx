@@ -7,17 +7,17 @@ import Footer from "@/components/Footer";
 
 export const metadata: Metadata = {
   title: "นโยบายคุกกี้ | CCPun ที่ปรึกษาทางการเงิน",
-  description: "CCPun ใช้คุกกี้เพื่อวิเคราะห์การใช้งานเว็บไซต์ด้วย Google Analytics อ่านรายละเอียดประเภท วัตถุประสงค์ และวิธีจัดการคุกกี้",
+  description: "CCPun ใช้ Google Analytics และ Meta Pixel ตามตัวเลือกความยินยอม อ่านรายละเอียดผู้ให้บริการ วัตถุประสงค์ ขอบเขต และวิธีถอนความยินยอม",
   robots: IS_REVIEW_ENVIRONMENT ? { index: false, follow: false } : { index: true, follow: true },
   alternates: { canonical: "https://ccpun.com/cookie-policy/" },
   openGraph: {
     title: "นโยบายคุกกี้ | CCPun ที่ปรึกษาทางการเงิน",
-    description: "CCPun ใช้คุกกี้เพื่อวิเคราะห์การใช้งานเว็บไซต์ด้วย Google Analytics อ่านรายละเอียดประเภท วัตถุประสงค์ และวิธีจัดการคุกกี้",
+    description: "CCPun ใช้ Google Analytics และ Meta Pixel ตามตัวเลือกความยินยอม อ่านรายละเอียดผู้ให้บริการ วัตถุประสงค์ ขอบเขต และวิธีถอนความยินยอม",
     url: "https://ccpun.com/cookie-policy/",
   },
   twitter: {
     title: "นโยบายคุกกี้ | CCPun ที่ปรึกษาทางการเงิน",
-    description: "CCPun ใช้คุกกี้เพื่อวิเคราะห์การใช้งานเว็บไซต์ด้วย Google Analytics อ่านรายละเอียดประเภท วัตถุประสงค์ และวิธีจัดการคุกกี้",
+    description: "CCPun ใช้ Google Analytics และ Meta Pixel ตามตัวเลือกความยินยอม อ่านรายละเอียดผู้ให้บริการ วัตถุประสงค์ ขอบเขต และวิธีถอนความยินยอม",
   },
 };
 
@@ -55,7 +55,7 @@ export default function CookiePolicyPage() {
           </h1>
           <div className="section-divider mb-4" />
           <p className="text-muted-foreground text-sm">
-            อัปเดตล่าสุด: มีนาคม 2568
+            อัปเดตล่าสุด: สิงหาคม 2569
           </p>
         </div>
 
@@ -69,7 +69,7 @@ export default function CookiePolicyPage() {
             และคุณสามารถจัดการหรือปฏิเสธคุกกี้ได้อย่างไร
           </p>
 
-          {/* Section 1 — ประเภทคุกกี้ที่ใช้ (ตาราง 3 หมวด) */}
+          {/* Section 1 — ประเภทคุกกี้ที่ใช้ (ตาราง 4 หมวด) */}
           <section>
             <h2 className="text-xl font-semibold text-gold-gradient mb-3">
               1. ประเภทคุกกี้ที่เราใช้
@@ -97,20 +97,20 @@ export default function CookiePolicyPage() {
                 </span>
                 <div>
                   <p className="text-foreground font-medium text-sm mb-1">
-                    คุกกี้ที่จำเป็น (Essential Cookies)
+                    การจัดเก็บที่จำเป็น (Essential Storage)
                   </p>
                   <p className="text-muted-foreground text-[13px] md:text-sm leading-relaxed">
-                    จำเป็นสำหรับการทำงานของเว็บไซต์ — ไม่สามารถปิดได้
+                    เว็บไซต์เก็บสถานะความยินยอมไว้ใน localStorage ของเบราว์เซอร์เพื่อจำตัวเลือกของคุณ — ไม่ใช่คุกกี้ติดตาม
                   </p>
                 </div>
               </div>
               <table className="w-full text-[13px] md:text-sm text-muted-foreground">
                 <tbody className="divide-y divide-border/20">
                   {[
-                    { label: "ชื่อคุกกี้", value: "ccpun_cookie_consent" },
+                    { label: "ชื่อรายการ", value: "ccpun_cookie_consent (localStorage)" },
                     { label: "วัตถุประสงค์", value: "จำการตั้งค่าความยินยอมคุกกี้ของคุณ" },
                     { label: "ระยะเวลา", value: "1 ปี" },
-                    { label: "ปิดได้", value: "ไม่ได้ — จำเป็นต่อการทำงานของเว็บไซต์" },
+                    { label: "การล้างข้อมูล", value: "หากล้างข้อมูลเว็บไซต์ ระบบจะถามตัวเลือกอีกครั้ง" },
                   ].map(({ label, value }) => (
                     <tr key={label}>
                       <td className="py-2 pr-4 text-foreground font-medium w-36 align-top">{label}</td>
@@ -121,7 +121,37 @@ export default function CookiePolicyPage() {
               </table>
             </div>
 
-            {/* หมวด 2 — คุกกี้วิเคราะห์ */}
+            {/* หมวด 2 — คุกกี้เพิ่มประสิทธิภาพ */}
+            <div
+              className="rounded-xl p-5 mb-4"
+              style={{
+                background: "rgba(255,255,255,0.04)",
+                border: "1px solid rgba(255,255,255,0.1)",
+              }}
+            >
+              <div className="flex items-start gap-3">
+                <span
+                  className="text-xs font-semibold px-2 py-0.5 rounded-full flex-shrink-0 mt-0.5"
+                  style={{
+                    background: "rgba(255,255,255,0.08)",
+                    color: "hsl(0,10%,75%)",
+                    border: "1px solid rgba(255,255,255,0.14)",
+                  }}
+                >
+                  Performance
+                </span>
+                <div>
+                  <p className="text-foreground font-medium text-sm mb-1">
+                    คุกกี้เพื่อเพิ่มประสิทธิภาพ — ยังไม่ใช้งาน
+                  </p>
+                  <p className="text-muted-foreground text-[13px] md:text-sm leading-relaxed">
+                    ปัจจุบันเว็บไซต์ไม่ใช้คุกกี้หรือบริการบุคคลที่สามในหมวดนี้ การเปิดหรือปิดตัวเลือกจะบันทึกเฉพาะสถานะความยินยอมไว้ใน ccpun_cookie_consent บน localStorage ของเบราว์เซอร์
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* หมวด 3 — คุกกี้วิเคราะห์ */}
             <div
               className="rounded-xl p-5 mb-4"
               style={{
@@ -142,10 +172,12 @@ export default function CookiePolicyPage() {
                 </span>
                 <div>
                   <p className="text-foreground font-medium text-sm mb-1">
-                    คุกกี้วิเคราะห์ — Google Analytics 4 (GA4)
+                    คุกกี้วิเคราะห์ — Google Analytics 4 (GA4) และ Google Tag Manager (GTM)
                   </p>
                   <p className="text-muted-foreground text-[13px] md:text-sm leading-relaxed">
-                    ให้บริการโดย Google LLC — เก็บข้อมูลการใช้งานในรูปแบบที่ไม่ระบุตัวตน
+                    ให้บริการโดย Google LLC — เว็บไซต์โหลด GTM ด้วย Advanced Consent Mode
+                    โดยตั้งค่าการวิเคราะห์และโฆษณาเป็นปฏิเสธไว้ก่อน ระบบจะไม่สร้างคุกกี้วิเคราะห์ก่อนคุณอนุญาต
+                    แต่อาจส่งคำขอทางเทคนิคแบบไม่ใช้คุกกี้ไปยัง Google เพื่อรับและประมวลผลสถานะความยินยอม
                   </p>
                 </div>
               </div>
@@ -167,7 +199,7 @@ export default function CookiePolicyPage() {
               </table>
             </div>
 
-            {/* หมวด 3 — คุกกี้การตลาด */}
+            {/* หมวด 4 — คุกกี้การตลาด */}
             <div
               className="rounded-xl p-5 mb-4"
               style={{
@@ -188,20 +220,21 @@ export default function CookiePolicyPage() {
                 </span>
                 <div>
                   <p className="text-foreground font-medium text-sm mb-1">
-                    คุกกี้การตลาด (Marketing Cookies)
+                    Meta Pixel เพื่อการวัดผลและการตลาด
                   </p>
                   <p className="text-muted-foreground text-[13px] md:text-sm leading-relaxed">
-                    ยังไม่เปิดใช้งาน — เตรียมไว้สำหรับการแสดงโฆษณาที่เกี่ยวข้องกับคุณในอนาคต
+                    ให้บริการโดย Meta Platforms, Inc. และบริษัทในเครือ เว็บไซต์โหลด Pixel เฉพาะหน้า CI Planning และ Financial Health Check หลังคุณเปิดตัวเลือก Meta Pixel เท่านั้น
                   </p>
                 </div>
               </div>
               <table className="w-full text-[13px] md:text-sm text-muted-foreground">
                 <tbody className="divide-y divide-border/20">
                   {[
-                    { label: "ชื่อคุกกี้", value: "ยังไม่มี — ยังไม่เปิดใช้งาน" },
-                    { label: "วัตถุประสงค์", value: "เตรียมไว้สำหรับการแสดงโฆษณาที่ตรงกับความสนใจ หากเปิดใช้งานในอนาคต" },
-                    { label: "ระยะเวลา", value: "ยังไม่มี" },
-                    { label: "ผู้ให้บริการ", value: "ยังไม่มี" },
+                    { label: "ชื่อคุกกี้", value: "_fbp (สูงสุด 90 วัน), _fbc (เมื่อเกี่ยวข้อง)" },
+                    { label: "วัตถุประสงค์", value: "วัดการเข้าชมและปฏิสัมพันธ์บนหน้าที่ใช้โฆษณา เพื่อประเมินประสิทธิภาพการตลาด" },
+                    { label: "ขอบเขต", value: "/ci-planning/ และ /tools/financial-health-check/ เท่านั้น" },
+                    { label: "ข้อมูล", value: "ข้อมูลการเข้าชม ปฏิสัมพันธ์ และข้อมูลทางเทคนิคของอุปกรณ์ เบราว์เซอร์ หรือตัวระบุออนไลน์อาจส่งไป Meta แต่ event ของ CCPun ไม่แนบค่าที่กรอกในเครื่องมือหรือข้อมูลติดต่อ" },
+                    { label: "ผู้ให้บริการ", value: "Meta Platforms, Inc. และบริษัทในเครือ" },
                     { label: "ปิดได้", value: "ได้ — ค่าเริ่มต้นคือ ปิด" },
                   ].map(({ label, value }) => (
                     <tr key={label}>
@@ -226,6 +259,7 @@ export default function CookiePolicyPage() {
                 "ทำความเข้าใจว่าผู้ใช้ค้นพบเว็บไซต์จากช่องทางใด",
                 "ระบุหน้าที่ผู้ใช้ให้ความสนใจ เพื่อพัฒนาเนื้อหาให้ตรงความต้องการ",
                 "ปรับปรุงโครงสร้างเว็บไซต์ให้ใช้งานสะดวกยิ่งขึ้น",
+                "วัดการเข้าชมและปฏิสัมพันธ์บนหน้า CI Planning และ Financial Health Check เพื่อประเมินผลโฆษณาหลังได้รับความยินยอม",
               ].map((item) => (
                 <li key={item} className="flex items-start gap-3">
                   <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0" />
@@ -234,7 +268,7 @@ export default function CookiePolicyPage() {
               ))}
             </ul>
             <p className="text-muted-foreground text-sm leading-relaxed mt-4">
-              ข้อมูลที่ได้จาก Google Analytics เป็นข้อมูลในเชิงสถิติรวม (aggregate) และไม่สามารถระบุตัวตนผู้ใช้แต่ละคนได้
+              Google Analytics จัดทำรายงานเชิงสถิติรวม แต่ข้อมูลออนไลน์และข้อมูลทางเทคนิคบางส่วนอาจยังถือเป็นข้อมูลส่วนบุคคลตามกฎหมายหรือเงื่อนไขของผู้ให้บริการ
             </p>
           </section>
 
@@ -253,8 +287,8 @@ export default function CookiePolicyPage() {
                 <div>
                   <p className="font-medium text-sm mb-1">ผ่านแถบตั้งค่าคุกกี้เมื่อเข้าเว็บไซต์ครั้งแรก</p>
                   <p className="text-muted-foreground text-sm leading-relaxed">
-                    แถบแจ้งเตือนจะปรากฏที่ด้านล่างหน้าจอ กด &ldquo;ยอมรับทั้งหมด&rdquo; &ldquo;เฉพาะที่จำเป็น&rdquo;
-                    หรือกด &ldquo;ตั้งค่า&rdquo; เพื่อเลือกแต่ละประเภทได้เอง
+                    แถบแจ้งเตือนจะปรากฏที่ด้านล่างหน้าจอ คุณกด &ldquo;ยอมรับ&rdquo; หรือ &ldquo;ตั้งค่าคุกกี้&rdquo;
+                    แล้วเลือกแต่ละประเภทก่อนกด &ldquo;บันทึกการตั้งค่า&rdquo;
                     การตั้งค่าจะถูกจำไว้เป็นเวลา 1 ปี
                   </p>
                 </div>
@@ -265,7 +299,7 @@ export default function CookiePolicyPage() {
                   <p className="font-medium text-sm mb-1">ผ่านลิงก์ &ldquo;ตั้งค่าคุกกี้&rdquo; ที่ด้านล่างของเว็บไซต์</p>
                   <p className="text-muted-foreground text-sm leading-relaxed">
                     คุณสามารถเปลี่ยนการตั้งค่าคุกกี้ได้ตลอดเวลา โดยกดที่ลิงก์ &ldquo;ตั้งค่าคุกกี้&rdquo;
-                    ที่ด้านล่างของทุกหน้าในเว็บไซต์
+                    ที่ด้านล่างของทุกหน้าในเว็บไซต์ เมื่อปิด Meta Pixel เว็บไซต์จะถอนสิทธิ์ หยุดโหลดสคริปต์ และลบ _fbp/_fbc ที่ตั้งบนโดเมน CCPun เท่าที่เบราว์เซอร์อนุญาต
                   </p>
                 </div>
               </li>
@@ -283,10 +317,10 @@ export default function CookiePolicyPage() {
             </ul>
           </section>
 
-          {/* Section 4 — Privacy */}
+          {/* Section 4 — Provider privacy */}
           <section>
             <h2 className="text-xl font-semibold text-gold-gradient mb-3">
-              4. นโยบายความเป็นส่วนตัวของ Google
+              4. นโยบายของผู้ให้บริการภายนอก
             </h2>
             <div className="section-divider mb-5" style={{ marginLeft: 0, width: "3rem" }} />
             <p className="text-muted-foreground text-sm leading-relaxed">
@@ -300,8 +334,16 @@ export default function CookiePolicyPage() {
               >
                 นโยบายความเป็นส่วนตัวของ Google
               </a>
-              {" "}เราตั้งค่า GA4 ให้ anonymize IP address
-              และไม่แชร์ข้อมูลเพื่อการโฆษณาของ Google
+              {" "}ส่วนข้อมูลจาก Meta Pixel อยู่ภายใต้{" "}
+              <a
+                href="https://www.facebook.com/privacy/policy/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary hover:underline underline-offset-2"
+              >
+                นโยบายความเป็นส่วนตัวของ Meta
+              </a>
+              {" "}การถอนความยินยอมจะหยุดการส่งข้อมูลใหม่จาก CCPun แต่ไม่ลบข้อมูลที่ผู้ให้บริการได้รับก่อนหน้านั้นโดยอัตโนมัติ
             </p>
           </section>
 

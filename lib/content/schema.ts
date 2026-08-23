@@ -1,11 +1,12 @@
 import type { Article } from "./types";
+import { getArticleCanonical } from "./url";
 
 const SITE_URL = "https://ccpun.com";
 
 export function buildArticleSchemaGraph(article: Article) {
   if (article.status !== "published" || !article.publishedAt) return null;
 
-  const canonical = article.canonical ?? `${SITE_URL}/blog/${article.slug}/`;
+  const canonical = getArticleCanonical(article);
   const graph: Record<string, unknown>[] = [
     {
       "@type": "BlogPosting",
@@ -37,7 +38,8 @@ export function buildArticleSchemaGraph(article: Article) {
       itemListElement: [
         { "@type": "ListItem", position: 1, name: "หน้าแรก", item: `${SITE_URL}/` },
         { "@type": "ListItem", position: 2, name: "บทความ", item: `${SITE_URL}/blog/` },
-        { "@type": "ListItem", position: 3, name: article.title, item: canonical },
+        { "@type": "ListItem", position: 3, name: article.category, item: `${SITE_URL}/blog/?category=${encodeURIComponent(article.category)}` },
+        { "@type": "ListItem", position: 4, name: article.title, item: canonical },
       ],
     },
   ];

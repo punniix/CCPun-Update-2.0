@@ -1,122 +1,166 @@
-# CCPun Website 4.0
+# CCPun Website 4.1 — Admin & Intelligence Lab
 
-Current development source for `ccpun.com`.
+Current Lab source for the private CCPun Control Plane layered on the Website 4.0 public foundation.
+
+This repository is not the public Production deployment source and does not authorize a Production deploy, Sanity `production` mutation, DNS change or content publication.
 
 ## Runtime
 
 - Next.js 16.3 / App Router
 - React 19
 - Tailwind CSS v4
-- Vercel-native server runtime for Website 4.0 UAT
-- Kanit / warm-charcoal + gold design system
+- Sanity 5 / `next-sanity`
+- Auth.js with Google OAuth and email allowlists
+- Vercel-native server runtime
 
-Production has **not** been migrated yet. The current live site remains on the existing production infrastructure until COO approves cutover.
+Stable protected Lab entry:
 
-## Local UAT
+- Control Plane: `https://ccpun-web-lab-punniixs-projects.vercel.app/snt-admin/`
+- Sanity Studio: `https://ccpun-web-lab-punniixs-projects.vercel.app/studio/`
+
+Stable protected UAT entry:
+
+- Control Plane: `https://ccpun-web-v4-1-uat-punniixs-projects.vercel.app/snt-admin/`
+- Sanity Studio: `https://ccpun-web-v4-1-uat-punniixs-projects.vercel.app/studio/`
+
+Lab and UAT use the isolated Sanity Non-Production project `ccb9lnw5` and dataset `uat`. They must fail closed instead of falling back to the real Production project `kyfxgjnq/production`.
+
+## Environment contract
+
+| Application lane | Sanity dataset | Purpose |
+|---|---|---|
+| `local-uat` | `ccb9lnw5/uat` only | Owner-safe Mac runtime for testing the complete Draft workflow |
+| `development`, `lab`, `uat` | `uat` only | Development, QA and synthetic Draft workflows |
+| `production-admin` | `production` only | Future private Production editorial tool; code boundary only |
+| public `production` | `production`, Published perspective only | Public website rendering; Admin/Studio disabled |
+| missing, unknown or mismatch | none | Fail closed |
+
+The future private Production Admin project exists but remains paused and disconnected from Production credentials/data. It is a deferred always-on/multi-device deployment option, not a dependency for the Local Ubersuggest, SEO, GEO or Growth Dashboard path. See `docs/admin-layer/environment-boundary.md`.
+
+## Local UAT on Mac
+
+Start the protected UAT runtime with:
 
 ```bash
-npm install
-npm run lint
-npm run build
-CCPUN_UAT_MODE=1 NEXT_PUBLIC_GA_ID= NEXT_PUBLIC_META_PIXEL_ID= npm run start -- -p 3001
+npm run local:uat
 ```
 
-Open `http://localhost:3001`.
+Then open `http://localhost:3100/snt-admin/`. The command binds only to the Mac loopback interface `127.0.0.1` and pins the application to the separate Sanity project `ccb9lnw5`, dataset `uat`. Requests using another host or port return `404`; Production project `kyfxgjnq` is rejected by the shared data-plane guard.
 
-### Draft article preview
+Google OAuth must contain the exact authorized redirect URI `http://localhost:3100/api/auth/callback/google`. Credentials stay in untracked local environment configuration. Local UAT keeps Publish, Unpublish, Delete and scheduled publishing unavailable; it is for creating/editing test Drafts, SEO audits, research snapshots, human review, Apply to Draft and Preview only.
 
-Drafts are hidden in normal mode. Sanity Studio is embedded at:
+The article editor supports headings, lists, quotes, safe links, callouts, inline images with required alt text, galleries, CTA buttons, PDF cards, expandable details, tables and dividers. Every custom block is validated before rendering on the public theme. Custom HTML/scripts and video embeds are intentionally unavailable; video requires a consent-safe player first.
 
-`/studio/`
+## Local Production Draft on Mac
 
-The Presentation tool calls `/api/preview/enable` with a short-lived Sanity Preview URL secret. Direct unauthenticated requests are rejected. Disable preview at:
+The owner uses the single native `CCPun Admin.app` installed on the Desktop. Its control window shows the current server/CORS status and provides `เปิดระบบ`, `ปิดระบบ` and `ออกและปิดระบบ`. Opening adds only `http://localhost:3000` to Sanity CORS with credentials, starts the loopback-only `local:production:draft` runtime and opens Safari. Closing stops only the process recorded by the app and removes that exact CORS origin.
 
-`http://localhost:3001/api/preview/disable`
+The launcher fails closed if Sanity CORS cannot be verified, another program owns port `3000`, or the local runtime does not bind only to `127.0.0.1`. Runtime state and logs stay in the ignored `.ccpun-local/` directory with owner-only permissions. This lane reads the real `kyfxgjnq/production` dataset and permits the authenticated owner to create and edit Articles, Preview, Human Publish, Unpublish and schedule a Draft through native Sanity Studio. Studio autosaves field changes to the same Sanity Draft; the public page remains on the Published version until the owner publishes. A Published Article must be Unpublished before the permanent Draft delete action appears.
 
-Studio and Preview enablement are available only when `VERCEL_ENV=preview` or `CCPUN_UAT_MODE=1`. A future Production build returns 404 for `/studio/` and the Preview enable route.
+These native Studio actions do not authorize AI/system or Control Plane APIs to Publish/Delete, and they do not grant canonical, redirect, noindex, Production deploy or DNS changes. Local UAT keeps all Publish/Unpublish/Delete/schedule actions disabled.
+
+Local UAT and Local Production are intentionally concurrent and isolated:
+
+| Lane | URL | Sanity | Session/build state |
+|---|---|---|---|
+| Local UAT | `http://localhost:3100` | `ccb9lnw5/uat` | `ccpun-uat.authjs.*`, `.ccpun-local/next-uat` |
+| Local Production | `http://localhost:3000` | `kyfxgjnq/production` | `ccpun-production.authjs.*`, `.ccpun-local/next-production` |
+
+Each lane rejects the other lane's Host/port with `404`. Neither lane may reuse the other lane's dataset or silently fall back when its own data plane is unavailable.
+
+## Admin workflow
+
+Routes:
+
+- `/snt-admin/` — owner start page
+- `/snt-admin/content/` — Draft inventory
+- `/snt-admin/seo/` — deterministic SEO audits
+- `/snt-admin/research/` — normalized research snapshots
+- `/snt-admin/reviews/` — human approval and Apply to Draft
+- `/snt-admin/audit/` — Control Plane mutation history
+- `/studio/` — Sanity editing and Draft Preview
+
+The current safe flow is:
+
+`Audit → Human edit in Studio → Preview → Human Publish`
+
+The proposal/review/apply lane remains available for proposals backed by sufficient evidence, but automatic SEO Title, Meta description and Search intent generation is disabled until the relevant keyword/SERP/GSC evidence exists.
+
+Human and AI actors may analyze; system actors may run deterministic audits only. Any future generated proposal still requires human review. AI/system actors may not approve, Apply to Draft, publish, delete or change canonical/redirect/noindex/Production configuration.
 
 ## Content architecture
 
 - Public blog hub: `/blog/`
-- Article route: `/blog/[slug]/`
+- Canonical article route: `/blog/[category]/[slug]/`
+- Legacy one-segment article URLs redirect to the canonical category route
 - Provider contract: `lib/content/types.ts`
 - Sanity provider: `lib/content/sanity.ts`
 - Local/no-CMS fallback: `lib/content/local.ts`
 - Sanity schemas: `cms/sanity/schema.ts`
-- Draft articles are `noindex,nofollow` and excluded from sitemap.
 
-Sanity Draft Mode uses the server-only read token. The browser Studio uses Sanity authentication and public project/dataset identifiers; no API token is bundled client-side. SanityLive and Visual Editing are intentionally deferred until controlled Draft Mode is stable.
+Normal public reads use the Published perspective. Authenticated Draft Mode is available only in an allowed Admin lane/dataset pair. Draft pages are `noindex,nofollow` and excluded from the sitemap.
 
-During transition, Blog UX/UI intentionally mirrors `blog.ccpun.com` v4 editorial patterns while reusing the shared CCPun brand tokens and navigation foundation.
+Sanity Live uses the server-only read token and does not forward it to the browser. Studio uses Sanity authentication plus public project/dataset identifiers.
 
-## Sitemap
+## Configuration names
 
-`/sitemap.xml` is the master sitemap index:
+Values belong in local/Vercel Sensitive environment configuration and must never be committed or printed.
 
-- `/sitemaps/core.xml`
-- `/sitemaps/tools.xml`
-- `/sitemaps/blog.xml`
+- `CCPUN_APP_ENV`
+- `CCPUN_PRODUCTION_ADMIN_VERCEL_PROJECT_ID` (future private Production Admin only; must equal Vercel's current `VERCEL_PROJECT_ID`)
+- `NEXT_PUBLIC_CCPUN_APP_ENV`
+- `CCPUN_ADMIN_OWNER_EMAILS`
+- `CCPUN_ADMIN_EDITOR_EMAILS`
+- `CCPUN_ADMIN_ANALYST_EMAILS`
+- `CCPUN_ADMIN_VIEWER_EMAILS`
+- `AUTH_URL`
+- `AUTH_SECRET`
+- `AUTH_GOOGLE_ID`
+- `AUTH_GOOGLE_SECRET`
+- `NEXT_PUBLIC_SANITY_PROJECT_ID`
+- `NEXT_PUBLIC_SANITY_DATASET`
+- `SANITY_API_READ_TOKEN`
+- `SANITY_API_WRITE_TOKEN`
+- `SANITY_STUDIO_PROJECT_ID`
+- `SANITY_STUDIO_DATASET`
 
-Only published article URLs may enter `blog.xml`. The Blog hub itself is indexable in `core.xml`.
+Do not copy `.env*`, OAuth JSON, tokens or `.vercel/` into Git.
 
-## Legacy redirects
+## Local verification
 
-Next.js owns permanent redirects in `next.config.ts`:
-
-- `/living-benefits/*` → `/ci-planning/`
-- `/tools/fhc/*` → `/tools/financial-health-check/`
-
-Static-host artifacts such as `CNAME`, `.nojekyll`, `public/_headers`, and the old static post-processing script are retired from Website 4.0 source.
-
-## QA gates
-
-The responsive UAT matrix is fixed at:
-
-`320 / 375 / 390 / 414 / 820 / 1024 / 1440 px`
-
-Before any deployment decision:
+Use the explicit Local UAT lane; never use Production credentials for local verification.
 
 ```bash
-npm run lint
-npm run build
+npm install
+npm run local:uat
+npm run test:admin
 npm run test:vercel
+npm run lint
+npx tsc --noEmit --incremental false
+npx sanity schema validate
+npm run guard:admin-lab
+npm run build:admin-lab -- --webpack
 npm audit --omit=dev --audit-level=high
-UAT_BASE_URL=http://localhost:3001 npm run qa:site
-UAT_BASE_URL=http://localhost:3001 npm run qa:blog
 ```
 
-The responsive suites must be run sequentially because both control the same managed Chrome/CDP session during calculator state testing.
+The responsive public-site suites remain available separately through `qa:site`, `qa:blog`, `qa:home` and `qa:tracking` when their exact scope is required.
 
-Production deployment, DNS changes, Vercel domain attachment, Sanity publishing, and content publication remain COO-controlled actions.
+## Audit authority
 
+`/snt-admin/audit/` records Control Plane mutations with request IDs. Direct Studio Draft edits and Human Publish use Sanity History. Before activating a Production Admin, verify Sanity History retention/access, least-privilege membership, administrator-email retention and recoverable backups.
 
-## Environment separation contract
+## Release order
 
-Website 4.0 uses separate Vercel projects for operational clarity while keeping one canonical Next.js source and one Sanity project.
+Active Local path:
 
-### Current UAT
+`Lab checkpoint → UAT release candidate → read-only Production inventory → Local Production Draft lane → Ubersuggest UAT → Local Production research → deterministic GEO → Growth Dashboard → final security review → owner-controlled Publish gate`
 
-- Local development branch: `v4-cloud-preview-review`
-- Frozen local UAT baseline: `v4-vercel-sanity-uat` at the last approved Local UAT checkpoint
-- Vercel UAT project: `ccpun-web-v4-uat`
-- UAT has no `ccpun.com` custom domain
-- UAT is protected by Vercel Authentication / SSO protection
-- UAT is `noindex,nofollow` at HTTP header, metadata, and `robots.txt` levels
-- Production analytics are disabled unless `VERCEL_ENV=production` and `CCPUN_ENABLE_PRODUCTION_ANALYTICS=1`
-- Sanity content used for UAT must remain Draft/Preview until COO explicitly approves publication
+Current checkpoint (2026-08-22): SOL-H1–H3 source implementation and the independent `gpt-5.6-sol / xhigh` adversarial review are complete with no residual P0/P1. Ubersuggest owner OAuth, the first Local UAT keyword acceptance and approved read-only Growth credentials remain separate runtime gates. No Production publish/deploy/content mutation is included.
 
-### Future Production
+Deferred Cloud path:
 
-Production is intentionally not created during UAT. When COO approves a production launch:
+`accepted Local system → commercial hosting approval → protected Production Admin → admin.ccpun.com → multi-device owner handoff`
 
-- Create/use a separate Vercel project such as `ccpun-web-v4-prod`
-- Attach `ccpun.com` only to the Production project
-- Production reads Sanity published content; UAT may read Draft content through authenticated Draft Mode
-- Create a production Git tag/checkpoint only after a real production release, using a convention such as `prod-v4.0.0-YYYY-MM-DD`
-- Never use the production checkpoint/tag as the normal development workspace
+The Cloud path changes hosting and access convenience; it does not unlock or require a rewrite of the Local intelligence workflow.
 
-### Release workflow
-
-`Develop locally → ccpun-web-v4-uat → online QA/review → COO approval → production checkpoint → ccpun-web-v4-prod`
-
-UX/UI experiments, including Blog redesigns, stay in UAT until approved. Published production UI/content must remain unchanged while UAT work continues.
+Committing this Lab source is a local source checkpoint only. Push, UAT deploy and every Production action require their own explicit approval.

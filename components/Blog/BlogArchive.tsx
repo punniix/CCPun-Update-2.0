@@ -4,28 +4,28 @@ import { useEffect, useMemo, useState } from "react";
 import { BookOpen, Search } from "lucide-react";
 import ArticleCard from "./ArticleCard";
 import type { Article } from "@/lib/content/types";
+import { ACTIVE_ARTICLE_CATEGORIES } from "@/lib/content/taxonomy";
 
 const CATEGORIES = [
   { id: "all", label: "ทั้งหมด" },
-  { id: "การเงินส่วนบุคคล", label: "การเงินส่วนบุคคล" },
-  { id: "ประกันชีวิต", label: "ประกันชีวิต" },
-  { id: "ประกันสุขภาพและโรคร้ายแรง", label: "ประกันสุขภาพและโรคร้ายแรง" },
-  { id: "การลงทุน", label: "การลงทุน" },
+  ...ACTIVE_ARTICLE_CATEGORIES.map(({ title }) => ({ id: title, label: title })),
 ];
+const TOPIC_TAGS = ["ประกันสุขภาพ", "ประกันโรคร้ายแรง"];
 
-type Filters = { category: string; query: string };
+type Filters = { category: string; tag: string; query: string };
 
 function readFilters(): Filters {
   const params = new URLSearchParams(window.location.search);
   const category = params.get("category") || "all";
   return {
     category: CATEGORIES.some((item) => item.id === category) ? category : "all",
+    tag: TOPIC_TAGS.includes(params.get("tag") ?? "") ? params.get("tag")! : "all",
     query: params.get("q") || "",
   };
 }
 
 export default function BlogArchive({ articles, showDraft }: { articles: Article[]; showDraft: boolean }) {
-  const [filters, setFilters] = useState<Filters>({ category: "all", query: "" });
+  const [filters, setFilters] = useState<Filters>({ category: "all", tag: "all", query: "" });
 
   useEffect(() => {
     const sync = () => setFilters(readFilters());
@@ -34,27 +34,29 @@ export default function BlogArchive({ articles, showDraft }: { articles: Article
     return () => window.removeEventListener("popstate", sync);
   }, []);
 
-  const updateFilters = (category: string, query: string, replace = false) => {
+  const updateFilters = (category: string, tag: string, query: string, replace = false) => {
     const params = new URLSearchParams();
     if (category !== "all") params.set("category", category);
+    if (tag !== "all") params.set("tag", tag);
     if (query.trim()) params.set("q", query.trim());
     const url = `/blog/${params.size ? `?${params}` : ""}`;
     window.history[replace ? "replaceState" : "pushState"]({}, "", url);
-    setFilters({ category, query });
+    setFilters({ category, tag, query });
   };
 
   const filteredArticles = useMemo(() => {
     const query = filters.query.trim().toLocaleLowerCase("th");
     return articles.filter((article) => {
       const categoryMatch = filters.category === "all" || article.category === filters.category;
+      const tagMatch = filters.tag === "all" || article.tags?.includes(filters.tag);
       const searchable = [article.title, article.excerpt, article.category, ...(article.tags || [])]
         .join(" ")
         .toLocaleLowerCase("th");
-      return categoryMatch && (!query || searchable.includes(query));
+      return categoryMatch && tagMatch && (!query || searchable.includes(query));
     });
   }, [articles, filters]);
 
-  const hasFilters = filters.category !== "all" || Boolean(filters.query.trim());
+  const hasFilters = filters.category !== "all" || filters.tag !== "all" || Boolean(filters.query.trim());
 
   return (
     <>
@@ -71,7 +73,7 @@ export default function BlogArchive({ articles, showDraft }: { articles: Article
                     data-blog-category={category.id}
                     aria-pressed={active}
                     className={`blog-cat-pill whitespace-nowrap${active ? " blog-cat-pill--active" : ""}`}
-                    onClick={() => updateFilters(category.id, filters.query)}
+                    onClick={() => updateFilters(category.id, filters.tag, filters.query)}
                   >
                     {category.label}
                   </button>
@@ -79,12 +81,26 @@ export default function BlogArchive({ articles, showDraft }: { articles: Article
               })}
             </div>
 
+            <div className="flex flex-wrap gap-2" aria-label="แท็กหัวข้อย่อย">
+              {TOPIC_TAGS.map((tag) => (
+                <button
+                  key={tag}
+                  type="button"
+                  aria-pressed={filters.tag === tag}
+                  className={`blog-cat-pill whitespace-nowrap${filters.tag === tag ? " blog-cat-pill--active" : ""}`}
+                  onClick={() => updateFilters(filters.category, filters.tag === tag ? "all" : tag, filters.query)}
+                >
+                  {tag}
+                </button>
+              ))}
+            </div>
+
             <form
               role="search"
               className="relative w-full shrink-0 sm:w-56"
               onSubmit={(event) => {
                 event.preventDefault();
-                updateFilters(filters.category, filters.query.trim(), true);
+                updateFilters(filters.category, filters.tag, filters.query.trim(), true);
               }}
             >
               <button
@@ -100,7 +116,7 @@ export default function BlogArchive({ articles, showDraft }: { articles: Article
                 type="search"
                 name="q"
                 value={filters.query}
-                onChange={(event) => updateFilters(filters.category, event.target.value, true)}
+                onChange={(event) => updateFilters(filters.category, filters.tag, event.target.value, true)}
                 placeholder="ค้นหาบทความ..."
                 className="min-h-11 w-full rounded-full border border-border/50 bg-background/50 py-2.5 pl-12 pr-4 text-base text-foreground placeholder:text-muted-foreground/50 focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/30"
               />
@@ -128,21 +144,17 @@ export default function BlogArchive({ articles, showDraft }: { articles: Article
               <p className="mx-auto mt-3 max-w-xl text-sm leading-7 text-muted-foreground">
                 {hasFilters
                   ? "ลองเลือกหมวดอื่น เปลี่ยนคำค้นหา หรือล้างตัวกรองเพื่อดูบทความทั้งหมด"
-                  : "ระหว่างช่วง migration คุณยังอ่านบทความที่เผยแพร่แล้วทั้งหมดได้จากคลังบทความเดิม"}
+                  : "เมื่อมีบทความเผยแพร่ใหม่ ระบบจะแสดงบทความในหน้านี้โดยอัตโนมัติ"}
               </p>
               {hasFilters ? (
                 <button
                   type="button"
                   className="mt-5 inline-flex min-h-11 items-center text-sm font-medium text-primary underline decoration-primary/40 underline-offset-4 hover:decoration-primary"
-                  onClick={() => updateFilters("all", "")}
+                  onClick={() => updateFilters("all", "all", "")}
                 >
                   ล้างตัวกรอง
                 </button>
-              ) : (
-                <a href="https://blog.ccpun.com/" className="mt-5 inline-flex min-h-11 items-center text-sm font-medium text-primary underline decoration-primary/40 underline-offset-4 hover:decoration-primary">
-                  ไปยังคลังบทความเดิม
-                </a>
-              )}
+              ) : null}
             </div>
           )}
         </div>

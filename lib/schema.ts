@@ -28,7 +28,6 @@ export const personSchema = {
   "worksFor": { "@id": "https://ccpun.com/#organization" },
   "sameAs": [
     "https://www.facebook.com/profile.php?id=61585953063887",
-    "https://blog.ccpun.com",
   ],
 };
 
@@ -43,7 +42,7 @@ export const websiteSchema = {
     "@type": "SearchAction",
     "target": {
       "@type": "EntryPoint",
-      "urlTemplate": "https://blog.ccpun.com/?s={search_term_string}",
+      "urlTemplate": "https://ccpun.com/blog/?q={search_term_string}",
     },
     "query-input": "required name=search_term_string",
   },
@@ -125,7 +124,6 @@ export const financialServiceSchema = {
     ],
   },
   "sameAs": [
-    "https://blog.ccpun.com",
     "https://www.facebook.com/profile.php?id=61585953063887",
   ],
 };

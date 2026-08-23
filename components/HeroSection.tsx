@@ -9,7 +9,7 @@ const HeroSection = () => {
     <section
       id="home"
       aria-label="เริ่มวางแผนการเงินกับ CCPun"
-      className="relative overflow-hidden border-b border-white/[0.06] pt-24 md:pt-28"
+      className="relative overflow-hidden border-b border-white/[0.06] pt-20 md:pt-28"
       data-uat-section="hero"
     >
       <div className="absolute inset-0 section-bg-dark" aria-hidden="true" />
@@ -25,7 +25,7 @@ const HeroSection = () => {
         />
       </div>
       <div
-        className="absolute inset-0 pointer-events-none"
+        className="pointer-events-none absolute inset-0 hidden md:block"
         aria-hidden="true"
         style={{
           background:
@@ -34,7 +34,7 @@ const HeroSection = () => {
       />
 
       <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="pb-10 pt-8 md:flex md:min-h-[650px] md:items-center md:pb-12 md:pt-10 lg:min-h-[690px]">
+        <div className="pb-8 md:flex md:min-h-[650px] md:items-center md:pb-12 md:pt-10 lg:min-h-[690px]">
           <div className="relative z-20 w-full md:max-w-[52%] xl:max-w-[56%]" data-uat-role="hero-copy">
             <div className="relative -mx-4 aspect-[4/3] overflow-hidden sm:-mx-6 md:mx-0 md:aspect-auto md:overflow-visible">
               <div className="absolute inset-0 md:hidden" data-uat-role="hero-portrait" aria-hidden="true">
@@ -47,12 +47,18 @@ const HeroSection = () => {
                   sizes="100vw"
                   className="object-cover object-center"
                 />
-                <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,hsl(0_24%_10%/.72)_0%,hsl(0_24%_10%/.46)_38%,transparent_62%)]" />
+                <div
+                  className="pointer-events-none absolute inset-0"
+                  style={{
+                    background:
+                      "linear-gradient(180deg, hsl(0 24% 10% / .78) 0%, hsl(0 24% 10% / .58) 26%, hsl(0 24% 10% / .18) 35%, transparent 44%)",
+                  }}
+                />
               </div>
 
               <h1
                 aria-label="ปิดความเสี่ยงการเงินของคุณ เปิดความมั่งคั่งผ่านแผนการลงทุน"
-                className="absolute inset-x-4 top-3 z-10 text-center text-[1.2rem] font-semibold leading-[1.13] tracking-[-0.02em] text-foreground drop-shadow-[0_2px_12px_rgba(0,0,0,0.55)] min-[360px]:text-[1.4rem] sm:inset-x-6 sm:top-4 sm:text-[1.6rem] md:static md:block md:max-w-[21ch] md:text-left md:text-[3rem] md:leading-[1.18] md:tracking-[-0.025em] md:drop-shadow-none xl:text-[3.35rem]"
+                className="absolute left-1/2 top-2 z-10 w-[calc(100%_-_2rem)] max-w-[22rem] -translate-x-1/2 text-center text-[1.25rem] font-semibold leading-[1.12] tracking-[-0.02em] text-foreground min-[360px]:top-3 min-[360px]:text-[1.375rem] min-[400px]:text-[1.4375rem] md:static md:left-auto md:block md:w-auto md:max-w-[21ch] md:translate-x-0 md:text-left md:text-[3rem] md:leading-[1.18] md:tracking-[-0.025em] xl:text-[3.35rem]"
               >
                 <span className="md:hidden">
                   <span className="block">ปิดความเสี่ยงการเงินของคุณ</span>
@@ -63,16 +69,16 @@ const HeroSection = () => {
               </h1>
             </div>
 
-            <p className="mt-5 max-w-[52ch] text-base leading-7 text-foreground/70 md:text-lg md:leading-8" data-uat-role="hero-support">
+            <p className="mx-auto mt-5 max-w-[31ch] text-center text-base leading-[1.6] text-foreground/70 text-balance md:mx-0 md:max-w-[52ch] md:text-left md:text-lg md:leading-8" data-uat-role="hero-support">
               ออกแบบแผนการเงิน การลงทุนเฉพาะที่เหมาะกับตัวคุณ
             </p>
 
-            <div className="mt-7 flex" data-uat-role="hero-actions">
+            <div className="mt-5 flex justify-center md:mt-7 md:justify-start" data-uat-role="hero-actions">
               <a
                 href={LINE_OA_URL}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex min-h-13 items-center justify-center gap-2 rounded-full bg-[#06C755] px-7 py-3 text-base font-semibold text-white transition-colors hover:bg-[#05B94E] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#06C755] focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                className="inline-flex min-h-13 items-center justify-center gap-2 rounded-full bg-[#06C755] px-7 py-3 text-base font-semibold text-[#1f1414] transition-colors hover:bg-[#05B94E] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#06C755] focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               >
                 <MessageCircle className="h-5 w-5" aria-hidden="true" />
                 วางแผนร่วมกับ CCPun

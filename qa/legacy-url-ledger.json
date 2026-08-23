@@ -1,0 +1,55 @@
+{
+  "version": 1,
+  "frozenAt": "2026-08-23",
+  "mappings": [
+    {
+      "id": "blog-root",
+      "state": "live",
+      "source": "https://blog.ccpun.com/",
+      "destination": "https://ccpun.com/blog/",
+      "sourceStatus": 301,
+      "destinationStatus": 200,
+      "preserveQueryString": true
+    },
+    {
+      "id": "aia-health-happy",
+      "state": "live",
+      "source": "https://blog.ccpun.com/aia-health-happy-describe/",
+      "destination": "https://ccpun.com/blog/health-insurance/aia-health-happy-describe/",
+      "sourceStatus": 301,
+      "destinationStatus": 200
+    },
+    {
+      "id": "aia-health-ci-hero",
+      "state": "live",
+      "source": "https://blog.ccpun.com/aia-health-ci-hero-guide/",
+      "destination": "https://ccpun.com/blog/health-insurance/aia-health-ci-hero-guide/",
+      "sourceStatus": 301,
+      "destinationStatus": 200
+    },
+    {
+      "id": "financial-pyramid",
+      "state": "live",
+      "source": "https://blog.ccpun.com/financial-pyramid/",
+      "destination": "https://ccpun.com/blog/personal-finance/financial-pyramid/",
+      "sourceStatus": 301,
+      "destinationStatus": 200
+    },
+    {
+      "id": "aia-vitality",
+      "state": "live",
+      "source": "https://blog.ccpun.com/aia-vitality/",
+      "destination": "https://ccpun.com/blog/life-insurance/aia-vitality/",
+      "sourceStatus": 301,
+      "destinationStatus": 200
+    },
+    {
+      "id": "critical-illness-insurance",
+      "state": "live",
+      "source": "https://blog.ccpun.com/critical-illness-insurance/",
+      "destination": "https://ccpun.com/blog/critical-illness/critical-illness-insurance/",
+      "sourceStatus": 301,
+      "destinationStatus": 200
+    }
+  ]
+}

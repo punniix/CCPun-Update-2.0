@@ -2,16 +2,20 @@ import Image from "next/image";
 import Link from "next/link";
 import { BookOpen, CalendarDays } from "lucide-react";
 import type { Article } from "@/lib/content/types";
+import { getArticlePath } from "@/lib/content/url";
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("th-TH", { dateStyle: "medium" }).format(new Date(value));
 }
 
 export default function ArticleCard({ article, showDraft = false }: { article: Article; showDraft?: boolean }) {
+  const href = getArticlePath(article);
+
   return (
-    <article>
+    <article data-article-slug={article.slug}>
       <Link
-        href={`/blog/${article.slug}/`}
+        href={href}
+        data-article-link
         className="group block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-2xl"
       >
         <div className="blog-card overflow-hidden">
@@ -40,7 +44,7 @@ export default function ArticleCard({ article, showDraft = false }: { article: A
               </span>
               {showDraft && article.status === "draft" && (
                 <span className="inline-flex rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium text-muted-foreground">
-                  Draft UAT
+                  ฉบับร่าง Preview
                 </span>
               )}
             </div>

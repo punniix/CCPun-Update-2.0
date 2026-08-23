@@ -672,3 +672,78 @@
   .blog-card:hover,
   .group:hover .blog-card__image { transform: none; }
 }
+
+
+/* ── Article parity: preserve the latest WordPress editorial rhythm ── */
+.blog-article-featured-image {
+  margin: 1.25rem 0 1.75rem;
+  box-shadow: none !important;
+  line-height: 0;
+}
+.blog-article-featured-image img { box-shadow: none !important; }
+.blog-article-featured-image figcaption { line-height: 1.5; }
+
+.blog-content {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.blog-content figure,
+.blog-content table {
+  max-width: 100%;
+}
+.blog-content img,
+.blog-content video,
+.blog-content iframe,
+.blog-content embed,
+.blog-content object {
+  box-sizing: border-box;
+  max-width: 100%;
+  height: auto;
+}
+
+@media (max-width: 640px) {
+  .blog-article-hero__content { padding-bottom: 0.75rem; }
+  .blog-article-featured-image { margin-top: 0.75rem; margin-bottom: 1rem; }
+
+  .blog-article-meta {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr);
+    width: 100%;
+    min-width: 0;
+    gap: 0.75rem !important;
+    align-items: start !important;
+  }
+  .blog-article-meta > * { min-width: 0; }
+  .blog-article-meta > :last-child {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr);
+    width: 100%;
+    gap: 0.5rem !important;
+  }
+
+  .blog-content h2 {
+    font-size: 1.35rem !important;
+    margin-top: 1.5rem !important;
+  }
+  .blog-content h3 {
+    font-size: 1.125rem !important;
+    margin-top: 1.25rem !important;
+  }
+  .blog-content p { font-size: 1rem !important; }
+  .blog-content ul,
+  .blog-content ol { padding-left: 1rem !important; }
+  .blog-content blockquote {
+    padding: 0.75rem 1rem !important;
+    padding-left: 1rem !important;
+  }
+  .blog-content figure,
+  .blog-content table,
+  .article-line-cta {
+    box-sizing: border-box;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0;
+  }
+  .article-line-cta { overflow: hidden; }
+  .article-line-cta a { white-space: normal; overflow-wrap: anywhere; }
+}

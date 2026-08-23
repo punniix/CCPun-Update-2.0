@@ -1,12 +1,34 @@
 export type ArticleStatus = "draft" | "published";
 
+export type ArticleInline = {
+  text: string;
+  href?: string;
+  strong?: boolean;
+  emphasis?: boolean;
+  openInNewTab?: boolean;
+  nofollow?: boolean;
+  sponsored?: boolean;
+};
+
+export type ArticleRichText = {
+  text: string;
+  segments?: ArticleInline[];
+};
+
 export type ArticleBlock =
-  | { type: "paragraph"; text: string }
-  | { type: "heading"; level: 2 | 3; text: string }
-  | { type: "bulletList"; items: string[] }
-  | { type: "numberList"; items: string[] }
-  | { type: "quote"; text: string }
-  | { type: "callout"; title?: string; text: string };
+  | ({ type: "paragraph" } & ArticleRichText)
+  | ({ type: "heading"; level: 2 | 3 } & ArticleRichText)
+  | { type: "bulletList"; items: Array<string | ArticleRichText> }
+  | { type: "numberList"; items: Array<string | ArticleRichText> }
+  | ({ type: "quote" } & ArticleRichText)
+  | { type: "callout"; title?: string; text: string }
+  | { type: "image"; src: string; alt: string; width: number; height: number; caption?: string; credit?: string }
+  | { type: "gallery"; images: Array<{ src: string; alt: string; width: number; height: number; caption?: string; credit?: string }> }
+  | { type: "cta"; label: string; url: string; style: "primary" | "secondary"; openInNewTab?: boolean }
+  | { type: "pdf"; title: string; description?: string; url: string; filename?: string; size?: number }
+  | { type: "details"; summary: string; text: string }
+  | { type: "table"; headers: string[]; rows: string[][] }
+  | { type: "divider" };
 
 export type ArticleSource = {
   label: string;
@@ -39,6 +61,7 @@ export type Article = {
   title: string;
   excerpt: string;
   category: string;
+  categorySlug?: string;
   tags?: string[];
   authorName: string;
   status: ArticleStatus;
@@ -48,6 +71,7 @@ export type Article = {
   seoDescription: string;
   canonical?: string;
   noindex?: boolean;
+  legacyUrl?: string;
   featuredImage?: {
     src: string;
     alt: string;

@@ -14,6 +14,12 @@ const LOCAL_ARTICLES: Article[] = [
     seoTitle: "ตัวอย่างบทความ UAT | CCPun 4.0",
     seoDescription:
       "หน้าทดสอบระบบบทความ CCPun 4.0 สำหรับตรวจรูปแบบการอ่าน Draft Preview และองค์ประกอบ SEO ก่อนเชื่อม CMS จริง",
+    featuredImage: {
+      src: "/assets/blog-hub-hero-ccpun-v1.webp",
+      alt: "CCPun กำลังอธิบายแผนการเงิน",
+      width: 1774,
+      height: 887,
+    },
     review: { status: "ready-for-coo", contentReviewedAt: "2026-08-18T12:00:00+07:00", factCheckedAt: "2026-08-18T12:00:00+07:00" },
     geo: {
       summary: "ตัวอย่าง Draft สำหรับตรวจระบบบทความและ Preview ของ CCPun Website 4.0",

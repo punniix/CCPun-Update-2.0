@@ -103,6 +103,30 @@ Tailwind v4 CSS-first configuration
 	    -moz-osx-font-smoothing: grayscale;
 	    overflow-x: clip;
 	  }
+
+  :focus-visible {
+    outline: 3px solid #e0c985;
+    outline-offset: 3px;
+  }
+}
+
+.admin-skip-link {
+  position: fixed;
+  left: 1rem;
+  top: 1rem;
+  z-index: 100;
+  min-height: 44px;
+  padding: 0.65rem 1rem;
+  border-radius: 0.75rem;
+  background: #e0c985;
+  color: #251818;
+  font-weight: 600;
+  transform: translateY(-200%);
+  transition: transform 150ms ease-out;
+}
+
+.admin-skip-link:focus {
+  transform: translateY(0);
 }
 
 /* Readability baseline for Thai copy inside dense cards and tools. */

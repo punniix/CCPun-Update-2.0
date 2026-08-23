@@ -1,9 +1,10 @@
 'use client';
 
 import Image from 'next/image';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { trackEvent } from '@/lib/analytics';
 import { CI_ASSESSMENT_VERSION } from '@/lib/ci/constants';
+import { getConsentData } from '@/lib/cookie-consent';
 
 const storyBeats = [
   {
@@ -27,15 +28,27 @@ const storyBeats = [
 ] as const;
 
 export default function CILandingIntro() {
+  const landingTrackedRef = useRef(false);
+
   useEffect(() => {
-    const trackLanding = () => trackEvent('ci_landing_view', {
-      tool_name: 'ci_planning',
-      cta_location: 'ci_landing',
-      calculator_version: CI_ASSESSMENT_VERSION,
-    });
-    trackLanding();
-    window.addEventListener('ccpun:consent', trackLanding);
-    return () => window.removeEventListener('ccpun:consent', trackLanding);
+    const trackLanding = () => {
+      if (landingTrackedRef.current || !getConsentData()?.analytics) return;
+      if (process.env.NEXT_PUBLIC_SEMANTIC_EVENT_LAYER_ENABLED === 'true' && !document.getElementById('gtm-script')) return;
+      landingTrackedRef.current = true;
+      trackEvent('ci_landing_view', {
+        tool_name: 'ci_planning',
+        cta_location: 'ci_landing',
+        calculator_version: CI_ASSESSMENT_VERSION,
+      });
+    };
+    const queueLanding = () => queueMicrotask(trackLanding);
+    queueLanding();
+    window.addEventListener('ccpun:consent', queueLanding);
+    window.addEventListener('ccpun:gtm-ready', queueLanding);
+    return () => {
+      window.removeEventListener('ccpun:consent', queueLanding);
+      window.removeEventListener('ccpun:gtm-ready', queueLanding);
+    };
   }, []);
 
   return (

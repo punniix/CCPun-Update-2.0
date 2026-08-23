@@ -1,14 +1,25 @@
 import { notFound } from "next/navigation";
-import { NextStudio, metadata, viewport } from "next-sanity/studio";
+import { metadata as studioMetadata, viewport } from "next-sanity/studio";
 import { IS_REVIEW_ENVIRONMENT } from "@/lib/deployment-environment";
-import { sanityStudioConfig } from "../../../sanity.config";
+import { getAdminEnvironment, isStudioDataPlaneAllowed } from "@/lib/admin/environment";
+import { requireAdminPermission } from "@/lib/admin/require-permission";
+import StudioClient from "./studio-client";
 
-export const dynamic = "force-static";
-export { metadata, viewport };
+export const dynamic = "force-dynamic";
+export const metadata = {
+  ...studioMetadata,
+  other: { "darkreader-lock": "true" },
+};
+export { viewport };
 
-export default function StudioPage() {
+export default async function StudioPage() {
+  await requireAdminPermission("draft:apply");
+  const environment = getAdminEnvironment();
+  const projectId = process.env.SANITY_STUDIO_PROJECT_ID ?? process.env.NEXT_PUBLIC_SANITY_PROJECT_ID;
+  const dataset = process.env.SANITY_STUDIO_DATASET ?? process.env.NEXT_PUBLIC_SANITY_DATASET;
   if (!IS_REVIEW_ENVIRONMENT) notFound();
-  if (!sanityStudioConfig) {
+  if (!isStudioDataPlaneAllowed(dataset, environment, undefined, undefined, projectId)) notFound();
+  if (!projectId || !dataset) {
     return (
       <main style={{ minHeight: "100vh", padding: "3rem", fontFamily: "system-ui", background: "#251818", color: "#faf9f9" }}>
         <h1>Sanity Studio is not configured</h1>
@@ -17,5 +28,5 @@ export default function StudioPage() {
     );
   }
 
-  return <NextStudio config={sanityStudioConfig} />;
+  return <StudioClient />;
 }
