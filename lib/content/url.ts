@@ -1,10 +1,13 @@
 import type { Article } from "./types";
 import { LEGACY_CATEGORY_TOPICS, normalizeArticleTaxonomy } from "./taxonomy";
 
+// URL Migration V2: every interim /life-insurance/ article path redirects
+// directly to the final semantic destination. Do not add a hop through any
+// historical path; Google and users should see one permanent redirect only.
 const MOVED_ARTICLE_PATHS: Record<string, string> = {
-  "health-insurance/aia-health-happy-describe": "/blog/life-insurance/aia-health-happy-describe/",
-  "health-insurance/aia-health-ci-hero-guide": "/blog/life-insurance/aia-health-ci-hero-guide/",
-  "critical-illness/critical-illness-insurance": "/blog/life-insurance/critical-illness-insurance/",
+  "life-insurance/aia-health-happy-describe": "/blog/health-insurance/aia-health-happy-describe/",
+  "life-insurance/aia-health-ci-hero-guide": "/blog/health-insurance/aia-health-ci-hero-guide/",
+  "life-insurance/critical-illness-insurance": "/blog/critical-illness/critical-illness-insurance/",
 };
 
 export function getArticleCategorySlug(article: Pick<Article, "category" | "categorySlug">) {
