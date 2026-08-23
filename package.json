@@ -22,6 +22,11 @@
     "cms:remediate:wordpress": "CCPUN_APP_ENV=local-production NEXT_PUBLIC_SANITY_PROJECT_ID=kyfxgjnq NEXT_PUBLIC_SANITY_DATASET=production node --env-file-if-exists=.env.local scripts/remediate-wordpress-mapping.mjs --dry-run",
     "cms:taxonomy:uat:dry-run": "CCPUN_APP_ENV=local-uat SANITY_API_PROJECT_ID=ccb9lnw5 SANITY_API_DATASET=uat tsx scripts/migrate-uat-taxonomy.ts --dry-run",
     "cms:taxonomy:production:self-test": "node scripts/migrate-production-article-taxonomy.mjs --self-test",
+    "cms:taxonomy:v2:self-test": "tsx scripts/migrate-insurance-taxonomy-v2.ts --self-test",
+    "cms:taxonomy:v2:uat:dry-run": "CCPUN_APP_ENV=local-uat SANITY_API_PROJECT_ID=ccb9lnw5 SANITY_API_DATASET=uat tsx scripts/migrate-insurance-taxonomy-v2.ts --target=uat --dry-run",
+    "cms:taxonomy:v2:uat:apply": "CCPUN_APP_ENV=local-uat SANITY_API_PROJECT_ID=ccb9lnw5 SANITY_API_DATASET=uat tsx scripts/migrate-insurance-taxonomy-v2.ts --target=uat --apply",
+    "cms:taxonomy:v2:production:dry-run": "CCPUN_APP_ENV=production-migration SANITY_API_PROJECT_ID=kyfxgjnq SANITY_API_DATASET=production tsx scripts/migrate-insurance-taxonomy-v2.ts --target=production --dry-run",
+    "cms:taxonomy:v2:production:apply": "CCPUN_APP_ENV=production-migration SANITY_API_PROJECT_ID=kyfxgjnq SANITY_API_DATASET=production tsx scripts/migrate-insurance-taxonomy-v2.ts --target=production --apply",
     "guard:admin-lab": "node scripts/guard-admin-lab-deploy.mjs",
     "build:admin-lab": "npm run guard:admin-lab && next build",
     "test:admin": "tsx --test tests/admin/*.test.ts"
