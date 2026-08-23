@@ -4,11 +4,13 @@ import { useEffect, useMemo, useState } from "react";
 import { BookOpen, Search } from "lucide-react";
 import ArticleCard from "./ArticleCard";
 import type { Article } from "@/lib/content/types";
-import { ACTIVE_ARTICLE_CATEGORIES } from "@/lib/content/taxonomy";
+import { ACTIVE_ARTICLE_CATEGORIES, LEGACY_CATEGORY_TOPICS } from "@/lib/content/taxonomy";
 
 const CATEGORIES = [
   { id: "all", label: "ทั้งหมด" },
-  ...ACTIVE_ARTICLE_CATEGORIES.map(({ title }) => ({ id: title, label: title })),
+  ...ACTIVE_ARTICLE_CATEGORIES
+    .filter(({ slug }) => !Object.hasOwn(LEGACY_CATEGORY_TOPICS, slug))
+    .map(({ title }) => ({ id: title, label: title })),
 ];
 const TOPIC_TAGS = ["ประกันสุขภาพ", "ประกันโรคร้ายแรง"];
 

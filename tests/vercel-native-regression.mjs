@@ -160,6 +160,7 @@ assert.match(articleUrl, /getArticleCanonical/);
 assert.match(articleUrl, /isArticleCanonicalAligned/);
 assert.match(articleUrl, /getLegacyCategoryRedirectPath/);
 const articleTaxonomy = read('lib/content/taxonomy.ts');
+const blogArchive = read('components/Blog/BlogArchive.tsx');
 for (const [slug, title] of [
   ['personal-finance', 'การเงินส่วนบุคคล'],
   ['life-insurance', 'ประกันชีวิต'],
@@ -171,6 +172,8 @@ for (const [slug, title] of [
 }
 assert.doesNotMatch(articleTaxonomy, /legacyTopic\s*\?\s*["']life-insurance["']/);
 assert.match(articleTaxonomy, /isReservedArticleSlug/);
+assert.match(blogArchive, /LEGACY_CATEGORY_TOPICS/);
+assert.match(blogArchive, /!Object\.hasOwn\(LEGACY_CATEGORY_TOPICS, slug\)/);
 const legacyArticles = read('lib/content/legacy.ts');
 assert.doesNotMatch(legacyArticles, /category:\s*["']ประกันสุขภาพและโรคร้ายแรง["']/);
 assert.match(legacyArticles, /tags:\s*\[["']ประกันสุขภาพ["'],\s*["']ประกันโรคร้ายแรง["']\]/);
