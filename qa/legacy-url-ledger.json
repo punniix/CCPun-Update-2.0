@@ -13,16 +13,18 @@
     },
     {
       "id": "aia-health-happy",
-      "state": "live",
+      "state": "planned",
       "source": "https://blog.ccpun.com/aia-health-happy-describe/",
+      "currentDestination": "https://ccpun.com/blog/life-insurance/aia-health-happy-describe/",
       "destination": "https://ccpun.com/blog/health-insurance/aia-health-happy-describe/",
       "sourceStatus": 301,
       "destinationStatus": 200
     },
     {
       "id": "aia-health-ci-hero",
-      "state": "live",
+      "state": "planned",
       "source": "https://blog.ccpun.com/aia-health-ci-hero-guide/",
+      "currentDestination": "https://ccpun.com/blog/life-insurance/aia-health-ci-hero-guide/",
       "destination": "https://ccpun.com/blog/health-insurance/aia-health-ci-hero-guide/",
       "sourceStatus": 301,
       "destinationStatus": 200
@@ -45,8 +47,9 @@
     },
     {
       "id": "critical-illness-insurance",
-      "state": "live",
+      "state": "planned",
       "source": "https://blog.ccpun.com/critical-illness-insurance/",
+      "currentDestination": "https://ccpun.com/blog/life-insurance/critical-illness-insurance/",
       "destination": "https://ccpun.com/blog/critical-illness/critical-illness-insurance/",
       "sourceStatus": 301,
       "destinationStatus": 200
