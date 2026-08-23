@@ -3,27 +3,19 @@ import { pathToFileURL } from "node:url";
 import { createClient } from "@sanity/client";
 
 export const INSURANCE_TAXONOMY_V2_TARGETS = [
-  {
-    slug: "aia-health-happy-describe",
-    categorySlug: "health-insurance",
-    categoryTitle: "ประกันสุขภาพ",
-  },
-  {
-    slug: "aia-health-ci-hero-guide",
-    categorySlug: "health-insurance",
-    categoryTitle: "ประกันสุขภาพ",
-  },
-  {
-    slug: "critical-illness-insurance",
-    categorySlug: "critical-illness",
-    categoryTitle: "ประกันโรคร้ายแรง",
-  },
+  { slug: "aia-health-happy-describe", categorySlug: "health-insurance", categoryTitle: "ประกันสุขภาพ" },
+  { slug: "aia-health-ci-hero-guide", categorySlug: "health-insurance", categoryTitle: "ประกันสุขภาพ" },
+  { slug: "critical-illness-insurance", categorySlug: "critical-illness", categoryTitle: "ประกันโรคร้ายแรง" },
 ] as const;
 
 type Target = (typeof INSURANCE_TAXONOMY_V2_TARGETS)[number];
 export type MigrationTarget = "uat" | "production";
 export type MigrationMode = "dry-run" | "apply";
 type Environment = Record<string, string | undefined>;
+
+type ParsedArgs =
+  | { selfTest: true }
+  | { selfTest: false; target: MigrationTarget; mode: MigrationMode };
 
 export type RawArticle = {
   _id: string;
@@ -76,9 +68,7 @@ type Transaction = {
   commit(options: { tag: string }): Promise<unknown>;
 };
 
-export type TransactionClient = {
-  transaction(): Transaction;
-};
+export type TransactionClient = { transaction(): Transaction };
 
 const CONFIG = {
   uat: {
@@ -99,17 +89,11 @@ function cleanDocumentId(id: string) {
 
 function exactEnvironmentValue(environment: Environment, name: string, expected: string) {
   const value = environment[name]?.trim();
-  if (value !== expected) {
-    throw new Error(`Refusing taxonomy V2 migration: ${name} must be exactly ${expected}`);
-  }
+  if (value !== expected) throw new Error(`Refusing taxonomy V2 migration: ${name} must be exactly ${expected}`);
   return value;
 }
 
-export function validateMigrationEnvironment(
-  target: MigrationTarget,
-  mode: MigrationMode,
-  environment: Environment,
-) {
+export function validateMigrationEnvironment(target: MigrationTarget, mode: MigrationMode, environment: Environment) {
   const config = CONFIG[target];
   const appEnvironment = environment.CCPUN_APP_ENV?.trim() ?? "";
   if (!config.allowedAppEnvironments.has(appEnvironment as never)) {
@@ -130,9 +114,7 @@ export function validateMigrationEnvironment(
 
   const readToken = environment.SANITY_API_READ_TOKEN?.trim() || undefined;
   const writeToken = environment.SANITY_API_WRITE_TOKEN?.trim() || undefined;
-  if (mode === "apply" && !writeToken) {
-    throw new Error("Refusing taxonomy V2 migration: write token is required for apply");
-  }
+  if (mode === "apply" && !writeToken) throw new Error("Refusing taxonomy V2 migration: write token is required for apply");
   if (mode === "dry-run" && !readToken && !writeToken) {
     throw new Error("Refusing taxonomy V2 migration: read or write token is required for dry-run");
   }
@@ -154,9 +136,7 @@ function resolveCategorySlug(categoryRef: string | null | undefined, categories:
   const logicalId = cleanDocumentId(categoryRef);
   const variants = categories.filter((category) => cleanDocumentId(category._id) === logicalId);
   const slugs = [...new Set(variants.map((category) => category.slug).filter((value): value is string => Boolean(value)))];
-  if (slugs.length > 1) {
-    throw new Error(`Refusing taxonomy V2 migration: category ${logicalId} has conflicting slugs`);
-  }
+  if (slugs.length > 1) throw new Error(`Refusing taxonomy V2 migration: category ${logicalId} has conflicting slugs`);
   return slugs[0] ?? null;
 }
 
@@ -203,7 +183,6 @@ export function buildInsuranceTaxonomyV2Plan(
 
     const categoryId = targetCategoryId(targetArticle, categories);
     categoryIds[targetArticle.categorySlug] = categoryId;
-
     if (!hasPublishedCategory(categoryId, categories) && !categoriesCreatedById.has(categoryId)) {
       categoriesCreatedById.set(categoryId, {
         _id: categoryId,
@@ -221,7 +200,6 @@ export function buildInsuranceTaxonomyV2Plan(
           `Refusing taxonomy V2 migration: ${article._id} expected life-insurance or ${targetArticle.categorySlug}, found ${currentCategorySlug ?? "none"}`,
         );
       }
-
       if (cleanDocumentId(currentCategoryRef ?? "") === categoryId && currentCategorySlug === targetArticle.categorySlug) continue;
 
       changes.push({
@@ -237,12 +215,7 @@ export function buildInsuranceTaxonomyV2Plan(
     }
   }
 
-  return {
-    target,
-    categoriesCreated: [...categoriesCreatedById.values()],
-    changes,
-    categoryIds,
-  };
+  return { target, categoriesCreated: [...categoriesCreatedById.values()], changes, categoryIds };
 }
 
 function auditLogId(plan: MigrationPlan, backupId?: string) {
@@ -269,9 +242,7 @@ export async function applyInsuranceTaxonomyV2Plan(
 
   const timestamp = options.timestamp ?? new Date().toISOString();
   let transaction = client.transaction();
-  for (const category of plan.categoriesCreated) {
-    transaction = transaction.createIfNotExists(category);
-  }
+  for (const category of plan.categoriesCreated) transaction = transaction.createIfNotExists(category);
   for (const change of plan.changes) {
     transaction = transaction.patch(change.id, (patch) => patch
       .ifRevisionId(change.revision)
@@ -308,32 +279,25 @@ export async function applyInsuranceTaxonomyV2Plan(
   });
 
   await transaction.commit({ tag: `ccpun.${plan.target}.taxonomy-v2` });
-  return {
-    changed: plan.changes.length,
-    categoriesCreated: plan.categoriesCreated.length,
-    auditLogCreated: true,
-  };
+  return { changed: plan.changes.length, categoriesCreated: plan.categoriesCreated.length, auditLogCreated: true };
 }
 
-function parseArgs(args: readonly string[]) {
-  if (args.includes("--self-test")) return { selfTest: true as const };
+function parseArgs(args: readonly string[]): ParsedArgs {
+  if (args.includes("--self-test")) return { selfTest: true };
 
   const targetArg = args.find((arg) => arg.startsWith("--target="));
-  const target = targetArg?.slice("--target=".length);
-  if (target !== "uat" && target !== "production") {
-    throw new Error("Use --target=uat or --target=production");
-  }
+  const targetValue = targetArg?.slice("--target=".length);
+  if (targetValue !== "uat" && targetValue !== "production") throw new Error("Use --target=uat or --target=production");
+  const target: MigrationTarget = targetValue;
+
   const apply = args.includes("--apply");
   const dryRun = args.includes("--dry-run");
   if (apply && dryRun) throw new Error("Choose --apply or --dry-run, not both");
   const known = new Set([targetArg!, "--apply", "--dry-run"]);
   const unknown = args.filter((arg) => !known.has(arg));
   if (unknown.length) throw new Error(`Unknown argument: ${unknown.join(", ")}`);
-  return {
-    selfTest: false as const,
-    target,
-    mode: apply ? "apply" as const : "dry-run" as const,
-  };
+
+  return { selfTest: false, target, mode: apply ? "apply" : "dry-run" };
 }
 
 function selfTest() {
@@ -407,9 +371,7 @@ export async function main(args = process.argv.slice(2), environment: Environmen
     return report;
   }
 
-  const result = await applyInsuranceTaxonomyV2Plan(client as unknown as TransactionClient, plan, {
-    backupId: config.backupId,
-  });
+  const result = await applyInsuranceTaxonomyV2Plan(client as unknown as TransactionClient, plan, { backupId: config.backupId });
   console.log(JSON.stringify({ ...report, result }, null, 2));
   return { ...report, result };
 }
