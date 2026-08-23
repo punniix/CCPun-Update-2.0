@@ -7,6 +7,7 @@ const seenSources = new Set();
 const seenDestinations = new Set();
 let livePassed = 0;
 let candidatesReviewed = 0;
+let plannedReviewed = 0;
 
 function canonical(html) {
   const tag = (html.match(/<link\b[^>]*>/gi) ?? []).find((item) => /\brel=["']canonical["']/i.test(item)) ?? '';
@@ -26,12 +27,12 @@ async function request(url, redirect = 'manual') {
   return fetch(url, {
     redirect,
     signal: AbortSignal.timeout(15000),
-    headers: { 'user-agent': 'CCPun legacy URL regression/1.0' },
+    headers: { 'user-agent': 'CCPun legacy URL regression/2.0' },
   });
 }
 
 for (const mapping of ledger.mappings) {
-  assert.ok(['live', 'candidate'].includes(mapping.state), `${mapping.id}: unsupported ledger state`);
+  assert.ok(['live', 'candidate', 'planned'].includes(mapping.state), `${mapping.id}: unsupported ledger state`);
   assert.equal(seenIds.has(mapping.id), false, `duplicate ledger id: ${mapping.id}`);
   seenIds.add(mapping.id);
   assert.equal(seenSources.has(mapping.source), false, `duplicate legacy source: ${mapping.source}`);
@@ -39,6 +40,26 @@ for (const mapping of ledger.mappings) {
   if (mapping.state === 'live') {
     assert.equal(seenDestinations.has(mapping.destination), false, `duplicate final destination: ${mapping.destination}`);
     seenDestinations.add(mapping.destination);
+  }
+
+  if (mapping.state === 'planned') {
+    assert.ok(mapping.currentDestination, `${mapping.id}: planned mapping requires currentDestination`);
+    assert.notEqual(mapping.currentDestination, mapping.destination, `${mapping.id}: planned final URL must differ from current destination`);
+    const source = await request(mapping.source);
+    assert.equal(source.status, mapping.sourceStatus, `${mapping.id}: current legacy source status drifted before cutover`);
+    const location = source.headers.get('location');
+    assert.ok(location, `${mapping.id}: current legacy redirect location missing before cutover`);
+    assert.equal(new URL(location, mapping.source).href, mapping.currentDestination, `${mapping.id}: current legacy target drifted before cutover`);
+
+    const current = await request(mapping.currentDestination, 'follow');
+    const currentHtml = await current.text();
+    assert.equal(current.status, 200, `${mapping.id}: current canonical is unhealthy before cutover`);
+    assert.equal(canonical(currentHtml), mapping.currentDestination, `${mapping.id}: current canonical drifted before cutover`);
+    assert.equal(language(currentHtml), 'th', `${mapping.id}: current HTML language drifted before cutover`);
+    assert.doesNotMatch(robots(currentHtml), /noindex/i, `${mapping.id}: current URL became noindex before cutover`);
+    console.log(`PLANNED ${mapping.currentDestination} -> ${mapping.destination} (cutover gate not yet released)`);
+    plannedReviewed += 1;
+    continue;
   }
 
   const source = await request(mapping.source);
@@ -89,4 +110,5 @@ for (const mapping of ledger.mappings) {
 }
 
 console.log(`PASS: live legacy mappings ${livePassed}/${ledger.mappings.filter(({ state }) => state === 'live').length}`);
+if (plannedReviewed) console.log(`PLANNED: URL cutovers ${plannedReviewed}`);
 if (candidatesReviewed) console.log(`REVIEW_REQUIRED: candidate mappings ${candidatesReviewed}`);
