@@ -7,9 +7,9 @@ const focusEvidencePath = process.argv[3];
 
 const posts = [
   { wpId: 413, slug: 'aia-vitality', category: 'ประกันชีวิต', tags: ['aia','AIA Vitality','ประกันชีวิต','ประกันสุขภาพ','ประกันโรคร้ายแรง'], publishedAt: '2026-08-04T14:39:00+07:00' },
-  { wpId: 359, slug: 'aia-health-ci-hero-guide', category: 'ประกันสุขภาพและโรคร้ายแรง', tags: ['aia','Health CI Hero','ประกันชีวิต','ประกันสุขภาพ'], publishedAt: '2026-08-03T22:29:00+07:00' },
+  { wpId: 359, slug: 'aia-health-ci-hero-guide', category: 'ประกันสุขภาพและโรคร้ายแรง', tags: ['aia','Health CI Hero','ประกันชีวิต','ประกันสุขภาพ','ประกันโรคร้ายแรง'], publishedAt: '2026-08-03T22:29:00+07:00' },
   { wpId: 233, slug: 'critical-illness-insurance', category: 'ประกันสุขภาพและโรคร้ายแรง', tags: ['ประกันชีวิต','ประกันสุขภาพ','ประกันโรคร้ายแรง'], publishedAt: '2026-05-22T12:27:00+07:00' },
-  { wpId: 196, slug: 'aia-health-happy-describe', category: 'ประกันสุขภาพและโรคร้ายแรง', tags: ['aia','healthhappy'], publishedAt: '2026-04-06T22:12:00+07:00' },
+  { wpId: 196, slug: 'aia-health-happy-describe', category: 'ประกันสุขภาพและโรคร้ายแรง', tags: ['aia','healthhappy','ประกันสุขภาพ'], publishedAt: '2026-04-06T22:12:00+07:00' },
   { wpId: 95, slug: 'financial-pyramid', category: 'การเงินส่วนบุคคล', tags: [], publishedAt: '2026-03-02T15:55:00+07:00' },
 ];
 

@@ -1,8 +1,6 @@
 export const ACTIVE_ARTICLE_CATEGORIES = [
   { slug: "personal-finance", title: "การเงินส่วนบุคคล" },
   { slug: "life-insurance", title: "ประกันชีวิต" },
-  { slug: "health-insurance", title: "ประกันสุขภาพ" },
-  { slug: "critical-illness", title: "ประกันโรคร้ายแรง" },
   { slug: "investment", title: "การลงทุน" },
 ] as const;
 
@@ -29,6 +27,11 @@ export const LEGACY_CATEGORY_TOPICS = {
   "critical-illness": "ประกันโรคร้ายแรง",
 } as const;
 
+const LEGACY_TOPIC_BY_TITLE: Record<string, string> = {
+  "ประกันสุขภาพ": "ประกันสุขภาพ",
+  "ประกันโรคร้ายแรง": "ประกันโรคร้ายแรง",
+};
+
 function normalizeTags(tags: readonly string[]) {
   const seen = new Set<string>();
   const normalized: string[] = [];
@@ -53,13 +56,23 @@ export function normalizeArticleTaxonomy({
   const title = categoryTitle?.trim() ?? "";
   const suppliedSlug = categorySlug?.trim().toLowerCase() ?? "";
   const slug = CATEGORY_SLUG_ALIASES[suppliedSlug] ?? suppliedSlug;
-  const slugCategory = activeSlugs.has(slug) ? slug : null;
-  const titleCategory = title === "ประกันสุขภาพและโรคร้ายแรง" ? null : activeSlugByTitle.get(title) ?? null;
+  const legacySlugTopic = LEGACY_CATEGORY_TOPICS[slug as keyof typeof LEGACY_CATEGORY_TOPICS];
+  const legacyTitleTopic = LEGACY_TOPIC_BY_TITLE[title];
+  const combinedLegacyTitle = title === "ประกันสุขภาพและโรคร้ายแรง";
+  const slugCategory = activeSlugs.has(slug) ? slug : legacySlugTopic ? "life-insurance" : null;
+  const titleCategory = activeSlugByTitle.get(title) ?? (legacyTitleTopic || combinedLegacyTitle ? "life-insurance" : null);
   const categoryConflict = Boolean(slugCategory && titleCategory && slugCategory !== titleCategory);
+  const inheritedTopics = legacySlugTopic
+    ? [legacySlugTopic]
+    : combinedLegacyTitle
+      ? Object.values(LEGACY_CATEGORY_TOPICS)
+      : legacyTitleTopic
+        ? [legacyTitleTopic]
+        : [];
 
   return {
     categorySlug: categoryConflict ? null : slugCategory ?? titleCategory,
-    tags: normalizeTags(tags ?? []),
+    tags: normalizeTags([...(tags ?? []), ...inheritedTopics]),
   };
 }
 

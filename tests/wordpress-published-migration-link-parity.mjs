@@ -109,9 +109,9 @@ try {
   const prepared = JSON.parse(await readFile(output, 'utf8'));
   assert.deepEqual(prepared.mappings.map(({ slug, newUrl }) => [slug, newUrl]), [
     ['aia-vitality', 'https://ccpun.com/blog/life-insurance/aia-vitality/'],
-    ['aia-health-ci-hero-guide', 'https://ccpun.com/blog/health-insurance/aia-health-ci-hero-guide/'],
-    ['critical-illness-insurance', 'https://ccpun.com/blog/critical-illness/critical-illness-insurance/'],
-    ['aia-health-happy-describe', 'https://ccpun.com/blog/health-insurance/aia-health-happy-describe/'],
+    ['aia-health-ci-hero-guide', 'https://ccpun.com/blog/life-insurance/aia-health-ci-hero-guide/'],
+    ['critical-illness-insurance', 'https://ccpun.com/blog/life-insurance/critical-illness-insurance/'],
+    ['aia-health-happy-describe', 'https://ccpun.com/blog/life-insurance/aia-health-happy-describe/'],
     ['financial-pyramid', 'https://ccpun.com/blog/personal-finance/financial-pyramid/'],
   ]);
   const categories = new Map(prepared.documents.filter((document) => document._type === 'category').map((document) => [document._id, document.slug.current]));
@@ -122,7 +122,7 @@ try {
   const vitality = prepared.documents.find((document) => document.slug?.current === 'aia-vitality');
   const hrefs = vitality.body.flatMap((block) => block.markDefs || []).map((mark) => mark.href);
   assert.deepEqual(hrefs, [
-    'https://ccpun.com/blog/critical-illness/critical-illness-insurance/?utm=wp#compare',
+    'https://ccpun.com/blog/life-insurance/critical-illness-insurance/?utm=wp#compare',
     'https://blog.ccpun.com/not-migrated/?x=1#keep',
     'https://example.com/path?x=1#keep',
   ]);

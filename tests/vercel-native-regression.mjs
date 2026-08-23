@@ -20,11 +20,11 @@ assert.equal(packageJson.scripts['qa:legacy-urls'], 'node qa/legacy-url-regressi
 const legacyUrlLedger = JSON.parse(read('qa/legacy-url-ledger.json'));
 assert.deepEqual(legacyUrlLedger.mappings.map(({ id, destination }) => [id, destination]), [
   ['blog-root', 'https://ccpun.com/blog/'],
-  ['aia-health-happy', 'https://ccpun.com/blog/health-insurance/aia-health-happy-describe/'],
-  ['aia-health-ci-hero', 'https://ccpun.com/blog/health-insurance/aia-health-ci-hero-guide/'],
+  ['aia-health-happy', 'https://ccpun.com/blog/life-insurance/aia-health-happy-describe/'],
+  ['aia-health-ci-hero', 'https://ccpun.com/blog/life-insurance/aia-health-ci-hero-guide/'],
   ['financial-pyramid', 'https://ccpun.com/blog/personal-finance/financial-pyramid/'],
   ['aia-vitality', 'https://ccpun.com/blog/life-insurance/aia-vitality/'],
-  ['critical-illness-insurance', 'https://ccpun.com/blog/critical-illness/critical-illness-insurance/'],
+  ['critical-illness-insurance', 'https://ccpun.com/blog/life-insurance/critical-illness-insurance/'],
 ]);
 assert.match(read('qa/legacy-url-regression.mjs'), /redirect target drifted/);
 
@@ -147,6 +147,7 @@ assert.match(publishedWordPressPreparer, /focusKeyword \? \{ focusKeyword \}/);
 assert.match(publishedWordPressPreparer, /rankMathFocusKeyword \? \{ rankMathFocusKeyword \}/);
 assert.match(articlePage, /getArticleCategorySlug/);
 assert.match(articlePage, /permanentRedirect\(getArticlePath\(article\)\)/);
+assert.match(articlePage, /getMovedArticleRedirectPath/);
 
 assert.equal(existsSync(new URL('../app/blog/[slug]/page.tsx', import.meta.url)), false, 'blog first-level dynamic segment must use one name');
 const legacyArticlePage = read('app/blog/[category]/page.tsx');
@@ -164,8 +165,6 @@ const blogArchive = read('components/Blog/BlogArchive.tsx');
 for (const [slug, title] of [
   ['personal-finance', 'การเงินส่วนบุคคล'],
   ['life-insurance', 'ประกันชีวิต'],
-  ['health-insurance', 'ประกันสุขภาพ'],
-  ['critical-illness', 'ประกันโรคร้ายแรง'],
   ['investment', 'การลงทุน'],
 ]) {
   assert.match(articleTaxonomy, new RegExp(`slug: ["']${slug}["'], title: ["']${title}["']`));
@@ -177,12 +176,12 @@ assert.match(blogArchive, /!Object\.hasOwn\(LEGACY_CATEGORY_TOPICS, slug\)/);
 const legacyArticles = read('lib/content/legacy.ts');
 assert.doesNotMatch(legacyArticles, /category:\s*["']ประกันสุขภาพและโรคร้ายแรง["']/);
 assert.match(legacyArticles, /tags:\s*\[["']ประกันสุขภาพ["'],\s*["']ประกันโรคร้ายแรง["']\]/);
-assert.match(legacyArticles, /id: "legacy-wp-aia-health-happy-describe"[\s\S]*?categorySlug: "health-insurance"/);
-assert.match(legacyArticles, /id: "legacy-wp-aia-health-ci-hero-guide"[\s\S]*?categorySlug: "health-insurance"/);
-assert.match(legacyArticles, /id: "legacy-wp-critical-illness-insurance"[\s\S]*?categorySlug: "critical-illness"/);
+assert.match(legacyArticles, /id: "legacy-wp-aia-health-happy-describe"[\s\S]*?categorySlug: "life-insurance"/);
+assert.match(legacyArticles, /id: "legacy-wp-aia-health-ci-hero-guide"[\s\S]*?categorySlug: "life-insurance"/);
+assert.match(legacyArticles, /id: "legacy-wp-critical-illness-insurance"[\s\S]*?categorySlug: "life-insurance"/);
 assert.match(legacyArticles, /id: "legacy-wp-financial-pyramid"[\s\S]*?categorySlug: "personal-finance"/);
-assert.match(publishedWordPressPreparer, /'health-insurance': 'ccpun-category-health-insurance'/);
-assert.match(publishedWordPressPreparer, /'critical-illness': 'ccpun-category-critical-illness'/);
+assert.match(publishedWordPressPreparer, /'life-insurance': 'ccpun-wp-category-4'/);
+assert.doesNotMatch(publishedWordPressPreparer, /ccpun-category-(?:health-insurance|critical-illness)/);
 
 const fhcPage = read('app/tools/financial-health-check/page.tsx');
 const fhcDescription = fhcPage.match(/const FHC_DESCRIPTION = '([^']+)'/)?.[1] ?? '';

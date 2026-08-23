@@ -31,8 +31,6 @@ const activeCategoryBySlug = new Map(ACTIVE_ARTICLE_CATEGORIES.map((category) =>
 const categoryDocumentIds = {
   'personal-finance': 'ccpun-wp-category-1',
   'life-insurance': 'ccpun-wp-category-4',
-  'health-insurance': 'ccpun-category-health-insurance',
-  'critical-illness': 'ccpun-category-critical-illness',
   investment: 'ccpun-category-investment',
 };
 export function normalizeWordPressTaxonomy({ categoryTitle, categorySlug, tags }) {

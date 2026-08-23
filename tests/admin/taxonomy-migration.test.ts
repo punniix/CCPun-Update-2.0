@@ -87,7 +87,7 @@ test("draft and published variants resolve to one logical article and only the D
   assert.equal(plan.changes.length, 1);
   assert.equal(plan.changes[0].id, "drafts.article-1");
   assert.deepEqual(plan.changes[0].set, {
-    category: { _type: "reference", _ref: "ccpun-category-health-insurance" },
+    category: { _type: "reference", _ref: "ccpun-wp-category-4" },
     tags: ["Existing", "ประกันสุขภาพ"],
   });
 });
@@ -112,7 +112,7 @@ test("already-normalized taxonomy is idempotent and published-only articles are 
   assert.equal(plan.draftArticleCount, 1);
   assert.equal(plan.publishedOnlyCount, 1);
   assert.deepEqual(plan.changes, []);
-  assert.equal(plan.categoryCreates.length, 4);
+  assert.equal(plan.categoryCreates.length, 2);
 });
 
 test("an empty UAT taxonomy plans deterministic active categories and normalizes the UAT fixture", () => {
@@ -136,8 +136,6 @@ test("an empty UAT taxonomy plans deterministic active categories and normalizes
   assert.deepEqual(plan.categoryCreates.map(({ _id }) => _id), [
     "ccpun-category-personal-finance",
     "ccpun-category-life-insurance",
-    "ccpun-category-health-insurance",
-    "ccpun-category-critical-illness",
     "ccpun-category-investment",
   ]);
   assert.deepEqual(plan.changes[0].set, {
@@ -156,7 +154,10 @@ test("raw Sanity category references resolve from Draft category documents witho
     lifeCategory,
     { _id: "drafts.legacy-health", _type: "category", title: "ประกันสุขภาพ", slug: "health-insurance" },
   ]);
-  assert.deepEqual(plan.changes, []);
+  assert.deepEqual(plan.changes[0].set, {
+    category: { _type: "reference", _ref: "ccpun-wp-category-4" },
+    tags: ["ประกันสุขภาพ"],
+  });
 });
 
 test("duplicate identity, unknown categories, and ambiguous target references fail closed", () => {
@@ -233,18 +234,19 @@ test("apply uses revision guards and creates exactly one atomic audit without ar
   }], [lifeCategory]);
 
   const result = await applyTaxonomyMigration(client, plan, "2026-08-22T00:00:00.000Z");
-  assert.deepEqual(result, { changed: 1, categoriesCreated: 4, auditLogCreated: true });
+  assert.deepEqual(result, { changed: 1, categoriesCreated: 2, auditLogCreated: true });
   assert.equal(transactionCount, 1);
   assert.equal(commitCount, 1);
   assert.equal(operations.filter((operation) => operation.kind === "patch").length, 1);
-  assert.equal(operations.filter((operation) => operation.kind === "createIfNotExists").length, 5);
+  assert.equal(operations.filter((operation) => operation.kind === "createIfNotExists").length, 3);
   const articlePatch = operations.find((operation) => operation.kind === "patch");
   assert.deepEqual(articlePatch, {
     kind: "patch",
     id: "drafts.article-1",
     revision: "draft-rev-1",
     set: {
-      category: { _type: "reference", _ref: "ccpun-category-health-insurance" },
+      category: { _type: "reference", _ref: "ccpun-wp-category-4" },
+      tags: ["ประกันสุขภาพ"],
     },
   });
   const audit = operations.find(
@@ -275,7 +277,7 @@ test("WordPress preparation and Draft import use the shared taxonomy API and pre
     assert.match(source, /sourceCategories/);
     assert.match(source, /sourceTags/);
   }
-  assert.match(preparer, /'health-insurance': 'ccpun-category-health-insurance'/);
-  assert.match(preparer, /'critical-illness': 'ccpun-category-critical-illness'/);
+  assert.match(preparer, /'life-insurance': 'ccpun-wp-category-4'/);
+  assert.doesNotMatch(preparer, /ccpun-category-(?:health-insurance|critical-illness)/);
   assert.match(importer, /tags: taxonomy\.tags/);
 });

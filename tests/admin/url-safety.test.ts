@@ -4,16 +4,24 @@ import {
   getArticleCanonical,
   getArticlePath,
   getLegacyCategoryRedirectPath,
+  getMovedArticleRedirectPath,
   isArticleCanonicalAligned,
 } from "../../lib/content/url";
 
-test("health and critical-illness categories keep their public URL prefixes", () => {
+test("legacy health and critical-illness categories normalize to life-insurance", () => {
   for (const [category, categorySlug] of [["ประกันสุขภาพ", "health-insurance"], ["ประกันโรคร้ายแรง", "critical-illness"]]) {
     const article = { slug: "example", category, categorySlug };
-    assert.equal(getArticlePath(article), `/blog/${categorySlug}/example/`);
-    assert.equal(getArticleCanonical(article), `https://ccpun.com/blog/${categorySlug}/example/`);
+    assert.equal(getArticlePath(article), "/blog/life-insurance/example/");
+    assert.equal(getArticleCanonical(article), "https://ccpun.com/blog/life-insurance/example/");
     assert.equal(isArticleCanonicalAligned(article), true);
   }
+});
+
+test("the three controlled article moves are locked to their final paths", () => {
+  assert.equal(getMovedArticleRedirectPath("health-insurance", "aia-health-happy-describe"), "/blog/life-insurance/aia-health-happy-describe/");
+  assert.equal(getMovedArticleRedirectPath("health-insurance", "aia-health-ci-hero-guide"), "/blog/life-insurance/aia-health-ci-hero-guide/");
+  assert.equal(getMovedArticleRedirectPath("critical-illness", "critical-illness-insurance"), "/blog/life-insurance/critical-illness-insurance/");
+  assert.equal(getMovedArticleRedirectPath("life-insurance", "aia-vitality"), null);
 });
 
 test("legacy category landing paths redirect to tag filters without colliding with article slugs", () => {

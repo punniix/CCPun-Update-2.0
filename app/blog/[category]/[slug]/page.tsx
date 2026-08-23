@@ -11,7 +11,7 @@ import ArticleFaq from "@/components/Blog/ArticleFaq";
 import { serializeJsonLd } from "@/lib/content/json-ld";
 import { getContentProvider } from "@/lib/content/provider";
 import { buildArticleSchemaGraph } from "@/lib/content/schema";
-import { getArticleCanonical, getArticleCategorySlug, getArticlePath, isArticleCanonicalAligned } from "@/lib/content/url";
+import { getArticleCanonical, getArticleCategorySlug, getArticlePath, getMovedArticleRedirectPath, isArticleCanonicalAligned } from "@/lib/content/url";
 
 const LINE_OA_URL = "https://lin.ee/tqLCs4f";
 const DEFAULT_SOCIAL_IMAGE = "/assets/blog-hub-hero-ccpun-v1.webp";
@@ -62,6 +62,8 @@ export async function generateMetadata({ params }: { params: Promise<{ category:
 
 export default async function ArticlePage({ params }: { params: Promise<{ category: string; slug: string }> }) {
   const { category, slug } = await params;
+  const movedPath = getMovedArticleRedirectPath(category, slug);
+  if (movedPath) permanentRedirect(movedPath);
   const { isEnabled } = await draftMode();
   const article = await getContentProvider().getArticleBySlug(slug, { includeDrafts: isEnabled });
   if (!article) notFound();
