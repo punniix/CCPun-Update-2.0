@@ -111,6 +111,7 @@ async function syncDirectory(token, localDir, driveFolderId) {
   const entries = await readdir(localDir, { withFileTypes: true });
   for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
     const localPath = path.join(localDir, entry.name);
+    if (entry.isSymbolicLink()) throw new Error(`Refusing symlink in mirror: ${localPath}`);
     if (entry.isDirectory()) {
       const childId = await ensureFolder(token, driveFolderId, entry.name);
       folders += 1;
@@ -120,6 +121,8 @@ async function syncDirectory(token, localDir, driveFolderId) {
     } else if (entry.isFile()) {
       await syncFile(token, driveFolderId, localPath, entry.name);
       files += 1;
+    } else {
+      throw new Error(`Unsupported filesystem entry in mirror: ${localPath}`);
     }
   }
   return { files, folders };
