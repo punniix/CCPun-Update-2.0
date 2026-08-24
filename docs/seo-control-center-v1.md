@@ -23,6 +23,10 @@ Editors may update these through the normal article draft workflow:
 
 `Semantic Topic` describes what the article means in the CCPun knowledge graph. It is intentionally separate from the physical category segment used by the canonical URL.
 
+When a valid explicit Semantic Topic is published, the content provider carries it into the existing semantic resolver used by topic hubs, visible breadcrumbs, article cards, JSON-LD and semantic hub sitemap membership. It does not change the article slug, URL category, canonical or redirects.
+
+Protected article-slug semantic overrides take precedence over editable Semantic Topic metadata. This preserves known winner-page semantics such as AIA Health CI Hero even if an incorrect CMS topic is selected.
+
 ## Protected SEO fields
 
 After an article has a `publishedAt` value, these fields are read-only in Sanity Studio:
