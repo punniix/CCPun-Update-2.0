@@ -91,6 +91,10 @@ export default async function ArticlePage({ params }: { params: Promise<{ catego
             <div className="blog-hero__texture absolute inset-0 pointer-events-none" aria-hidden="true" />
             <div className="blog-article-hero__content relative z-10 mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
               <nav aria-label="Breadcrumb" className="mb-4 flex min-w-0 items-center gap-2 text-sm">
+                <Link href="/" className="whitespace-nowrap text-muted-foreground transition-colors hover:text-primary">
+                  หน้าแรก
+                </Link>
+                <span className="text-muted-foreground/50" aria-hidden="true">&gt;</span>
                 <Link href="/blog/" className="whitespace-nowrap text-muted-foreground transition-colors hover:text-primary">
                   บทความ
                 </Link>
