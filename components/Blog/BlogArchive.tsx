@@ -1,10 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { BookOpen, Search } from "lucide-react";
 import ArticleCard from "./ArticleCard";
 import type { Article } from "@/lib/content/types";
-import { ACTIVE_ARTICLE_CATEGORIES, LEGACY_CATEGORY_TOPICS } from "@/lib/content/taxonomy";
+import { ACTIVE_ARTICLE_CATEGORIES, BLOG_TOPIC_HUBS, LEGACY_CATEGORY_TOPICS } from "@/lib/content/taxonomy";
 
 const CATEGORIES = [
   { id: "all", label: "ทั้งหมด" },
@@ -62,6 +63,19 @@ export default function BlogArchive({ articles, showDraft }: { articles: Article
 
   return (
     <>
+      <nav className="border-b border-border/30 py-5" aria-label="หัวข้อบทความหลัก">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <p className="mb-3 text-sm font-medium text-muted-foreground">เลือกหัวข้อที่ต้องการอ่าน</p>
+          <div className="hide-scrollbar flex flex-nowrap gap-2 overflow-x-auto pb-1 lg:flex-wrap lg:overflow-visible">
+            {BLOG_TOPIC_HUBS.map((hub) => (
+              <Link key={hub.slug} href={`/blog/${hub.slug}/`} className="blog-cat-pill whitespace-nowrap">
+                {hub.title}
+              </Link>
+            ))}
+          </div>
+        </div>
+      </nav>
+
       <section className="py-6 sm:py-8" aria-label="ตัวกรองบทความ">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
@@ -83,7 +97,7 @@ export default function BlogArchive({ articles, showDraft }: { articles: Article
               })}
             </div>
 
-            <div className="flex flex-wrap gap-2" aria-label="แท็กหัวข้อย่อย">
+            <div className="flex flex-wrap gap-2" aria-label="ตัวกรองหัวข้อย่อย">
               {TOPIC_TAGS.map((tag) => (
                 <button
                   key={tag}
@@ -92,7 +106,7 @@ export default function BlogArchive({ articles, showDraft }: { articles: Article
                   className={`blog-cat-pill whitespace-nowrap${filters.tag === tag ? " blog-cat-pill--active" : ""}`}
                   onClick={() => updateFilters(filters.category, filters.tag === tag ? "all" : tag, filters.query)}
                 >
-                  {tag}
+                  กรอง: {tag}
                 </button>
               ))}
             </div>
