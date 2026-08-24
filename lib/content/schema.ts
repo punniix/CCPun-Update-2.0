@@ -8,6 +8,7 @@ const SITE_URL = "https://ccpun.com";
 function semanticTopicFor(article: Article) {
   return getArticleSemanticTopic({
     articleSlug: article.slug,
+    semanticTopic: article.semanticTopic,
     categoryTitle: article.category,
     categorySlug: article.categorySlug,
     tags: article.tags,

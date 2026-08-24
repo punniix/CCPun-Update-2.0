@@ -3,6 +3,8 @@ import { readFile } from 'node:fs/promises';
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8');
 const taxonomy = await read('lib/content/taxonomy.ts');
+const types = await read('lib/content/types.ts');
+const sanity = await read('lib/content/sanity.ts');
 const urls = await read('lib/content/url.ts');
 const schema = await read('lib/content/schema.ts');
 const blogPage = await read('app/blog/page.tsx');
@@ -24,6 +26,19 @@ assert.match(taxonomy, /"aia-vitality": "life-insurance"/);
 // Phase 1 canonical category contract remains the current three-category model.
 assert.match(taxonomy, /ACTIVE_ARTICLE_CATEGORIES = \[[\s\S]*personal-finance[\s\S]*life-insurance[\s\S]*investment[\s\S]*\] as const/);
 assert.doesNotMatch(taxonomy.match(/ACTIVE_ARTICLE_CATEGORIES = \[[\s\S]*?\] as const/)?.[0] ?? '', /health-insurance|critical-illness/);
+
+// Explicit Semantic Topic is carried from Sanity into the public semantic layer, but protected
+// slug overrides must win so winner-page semantics cannot be changed accidentally in the CMS.
+assert.match(types, /semanticTopic\?: string/);
+assert.match(sanity, /semanticTopic: z\.string\(\)\.min\(1\)\.nullish\(\)/);
+assert.match(sanity, /semanticTopic: raw\.seo\?\.semanticTopic \?\? undefined/);
+assert.match(taxonomy, /semanticTopic\?: string \| null/);
+const overrideResolution = taxonomy.indexOf('const override = articleSlug');
+const explicitResolution = taxonomy.indexOf('const explicitTopic = semanticTopic');
+assert.ok(overrideResolution >= 0 && explicitResolution > overrideResolution, 'protected slug semantic overrides must precede editable CMS Semantic Topic');
+for (const surface of [blogPage, categoryPage, articlePage, card, schema, sitemap]) {
+  assert.match(surface, /semanticTopic: article\.semanticTopic/);
+}
 
 // Exact existing moved-article redirects must keep old -> current direction.
 assert.match(urls, /"health-insurance\/aia-health-happy-describe": "\/blog\/life-insurance\/aia-health-happy-describe\/"/);

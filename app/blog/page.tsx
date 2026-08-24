@@ -26,6 +26,7 @@ export default async function BlogPage() {
   const navigableHubs = BLOG_TOPIC_HUBS.filter(
     (hub) => hub.indexable && publishedIndexableArticles.some((article) => isArticleInSemanticTopic({
       articleSlug: article.slug,
+      semanticTopic: article.semanticTopic,
       categoryTitle: article.category,
       categorySlug: article.categorySlug,
       tags: article.tags,
