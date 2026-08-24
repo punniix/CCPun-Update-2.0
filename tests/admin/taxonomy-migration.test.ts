@@ -1,216 +1,195 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
-import path from "node:path";
 import test from "node:test";
-import { fileURLToPath } from "node:url";
 import {
-  applyTaxonomyMigration,
-  buildTaxonomyMigrationPlan,
-  logicalArticleId,
-  validateUatTaxonomyEnvironment,
+  applyInsuranceTaxonomyV2Plan,
+  buildInsuranceTaxonomyV2Plan,
+  validateMigrationEnvironment,
   type RawArticle,
   type RawCategory,
   type TransactionClient,
-} from "../../scripts/migrate-uat-taxonomy";
+} from "../../scripts/migrate-insurance-taxonomy-v2";
 
-const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const lifeCategory: RawCategory = {
-  _id: "ccpun-wp-category-4",
+  _id: "life-category",
   _type: "category",
   title: "ประกันชีวิต",
   slug: "life-insurance",
 };
 
-const uatEnvironment = {
-  CCPUN_APP_ENV: "local-uat",
-  SANITY_API_PROJECT_ID: "ccb9lnw5",
-  SANITY_API_DATASET: "uat",
-};
-
-test("taxonomy migration accepts only the explicit isolated UAT data plane", () => {
-  assert.deepEqual(validateUatTaxonomyEnvironment(uatEnvironment), {
-    appEnvironment: "local-uat",
-    projectId: "ccb9lnw5",
-    dataset: "uat",
-    readToken: undefined,
-    writeToken: undefined,
-  });
-  for (const appEnvironment of ["development", "lab", "uat"]) {
-    assert.equal(validateUatTaxonomyEnvironment({ ...uatEnvironment, CCPUN_APP_ENV: appEnvironment }).appEnvironment, appEnvironment);
-  }
-
-  for (const environment of [
-    { ...uatEnvironment, CCPUN_APP_ENV: undefined },
-    { ...uatEnvironment, CCPUN_APP_ENV: "production" },
-    { ...uatEnvironment, SANITY_API_PROJECT_ID: undefined },
-    { ...uatEnvironment, SANITY_API_PROJECT_ID: "kyfxgjnq" },
-    { ...uatEnvironment, SANITY_API_DATASET: undefined },
-    { ...uatEnvironment, SANITY_API_DATASET: "production" },
-    { ...uatEnvironment, NEXT_PUBLIC_SANITY_PROJECT_ID: "kyfxgjnq" },
-    { ...uatEnvironment, NEXT_PUBLIC_SANITY_DATASET: "production" },
-  ]) {
-    assert.throws(() => validateUatTaxonomyEnvironment(environment), /Refusing taxonomy migration/);
-  }
-});
-
-test("draft and published variants resolve to one logical article and only the Draft changes", () => {
-  const articles: RawArticle[] = [
+function requiredArticles(categoryRef = "life-category"): RawArticle[] {
+  return [
     {
-      _id: "drafts.article-1",
-      _rev: "draft-rev-1",
+      _id: "health-happy",
+      _rev: "r1",
       _type: "article",
-      category: {
-        _ref: "legacy-health",
-        title: "ประกันสุขภาพและโรคร้ายแรง",
-        slug: "health-insurance",
-      },
-      tags: [" Existing ", "existing", "ประกันสุขภาพ"],
+      slug: "aia-health-happy-describe",
+      categoryRef,
     },
     {
-      _id: "article-1",
-      _rev: "published-rev-1",
+      _id: "drafts.health-happy",
+      _rev: "r2",
       _type: "article",
-      category: {
-        _ref: "legacy-health",
-        title: "ประกันสุขภาพและโรคร้ายแรง",
-        slug: "health-insurance",
-      },
-      tags: [],
+      slug: "aia-health-happy-describe",
+      categoryRef,
+    },
+    {
+      _id: "health-ci",
+      _rev: "r3",
+      _type: "article",
+      slug: "aia-health-ci-hero-guide",
+      categoryRef,
+    },
+    {
+      _id: "critical",
+      _rev: "r4",
+      _type: "article",
+      slug: "critical-illness-insurance",
+      categoryRef,
+    },
+  ];
+}
+
+test("UAT environment is pinned to the isolated non-production project", () => {
+  const config = validateMigrationEnvironment("uat", "dry-run", {
+    CCPUN_APP_ENV: "local-uat",
+    SANITY_API_PROJECT_ID: "ccb9lnw5",
+    SANITY_API_DATASET: "uat",
+    SANITY_API_READ_TOKEN: "read",
+  });
+  assert.equal(config.projectId, "ccb9lnw5");
+  assert.equal(config.dataset, "uat");
+  assert.equal(config.backupId, undefined);
+
+  assert.throws(() => validateMigrationEnvironment("uat", "dry-run", {
+    CCPUN_APP_ENV: "local-uat",
+    SANITY_API_PROJECT_ID: "kyfxgjnq",
+    SANITY_API_DATASET: "uat",
+    SANITY_API_READ_TOKEN: "read",
+  }), /SANITY_API_PROJECT_ID/);
+});
+
+test("Production apply requires the dedicated migration lane, approval flag, backup ID and write token", () => {
+  const base = {
+    CCPUN_APP_ENV: "production-migration",
+    SANITY_API_PROJECT_ID: "kyfxgjnq",
+    SANITY_API_DATASET: "production",
+    SANITY_API_WRITE_TOKEN: "write",
+  };
+
+  assert.throws(() => validateMigrationEnvironment("production", "apply", base), /approval flag/);
+  assert.throws(() => validateMigrationEnvironment("production", "apply", {
+    ...base,
+    CCPUN_TAXONOMY_V2_APPROVED: "1",
+  }), /backup ID/);
+
+  const config = validateMigrationEnvironment("production", "apply", {
+    ...base,
+    CCPUN_TAXONOMY_V2_APPROVED: "1",
+    CCPUN_TAXONOMY_V2_BACKUP_ID: "pre-seo-v2-20260824",
+  });
+  assert.equal(config.backupId, "pre-seo-v2-20260824");
+
+  assert.throws(() => validateMigrationEnvironment("production", "apply", {
+    ...base,
+    CCPUN_APP_ENV: "production",
+    CCPUN_TAXONOMY_V2_APPROVED: "1",
+    CCPUN_TAXONOMY_V2_BACKUP_ID: "backup",
+  }), /CCPUN_APP_ENV/);
+});
+
+test("plan reuses an existing health category identity and creates missing published category counterparts", () => {
+  const categories: RawCategory[] = [
+    lifeCategory,
+    {
+      _id: "drafts.existing-health",
+      _type: "category",
+      title: "ประกันสุขภาพ",
+      slug: "health-insurance",
     },
   ];
 
-  const plan = buildTaxonomyMigrationPlan(articles, [lifeCategory]);
-  assert.equal(logicalArticleId("drafts.article-1"), "article-1");
-  assert.equal(plan.logicalArticleCount, 1);
-  assert.equal(plan.draftArticleCount, 1);
-  assert.equal(plan.publishedOnlyCount, 0);
-  assert.equal(plan.changes.length, 1);
-  assert.equal(plan.changes[0].id, "drafts.article-1");
-  assert.deepEqual(plan.changes[0].set, {
-    category: { _type: "reference", _ref: "ccpun-wp-category-4" },
-    tags: ["Existing", "ประกันสุขภาพ"],
-  });
-});
-
-test("already-normalized taxonomy is idempotent and published-only articles are preserved", () => {
-  const normalizedDraft: RawArticle = {
-    _id: "drafts.article-1",
-    _rev: "draft-rev-2",
-    _type: "article",
-    category: { _ref: "ccpun-wp-category-4", title: "ประกันชีวิต", slug: "life-insurance" },
-    tags: ["Existing", "ประกันสุขภาพ", "ประกันโรคร้ายแรง"],
-  };
-  const publishedOnly: RawArticle = {
-    _id: "article-2",
-    _rev: "published-rev-2",
-    _type: "article",
-    category: { _ref: "ccpun-wp-category-4", title: "ประกันชีวิต", slug: "life-insurance" },
-    tags: [],
-  };
-  const plan = buildTaxonomyMigrationPlan([normalizedDraft, publishedOnly], [lifeCategory]);
-  assert.equal(plan.logicalArticleCount, 2);
-  assert.equal(plan.draftArticleCount, 1);
-  assert.equal(plan.publishedOnlyCount, 1);
-  assert.deepEqual(plan.changes, []);
-  assert.equal(plan.categoryCreates.length, 2);
-});
-
-test("an empty UAT taxonomy plans deterministic active categories and normalizes the UAT fixture", () => {
-  const plan = buildTaxonomyMigrationPlan([{
-    _id: "drafts.uat-article",
-    _rev: "uat-rev",
-    _type: "article",
-    category: {
-      _ref: "uat-category-personal-finance",
-      title: "การเงินส่วนบุคคล UAT",
-      slug: "personal-finance-uat",
-    },
-    tags: ["UAT"],
-  }], [{
-    _id: "uat-category-personal-finance",
-    _type: "category",
-    title: "การเงินส่วนบุคคล UAT",
-    slug: "personal-finance-uat",
-  }]);
-
-  assert.deepEqual(plan.categoryCreates.map(({ _id }) => _id), [
-    "ccpun-category-personal-finance",
-    "ccpun-category-life-insurance",
-    "ccpun-category-investment",
+  const plan = buildInsuranceTaxonomyV2Plan("uat", requiredArticles(), categories);
+  assert.equal(plan.categoryIds["health-insurance"], "existing-health");
+  assert.equal(plan.categoryIds["critical-illness"], "ccpun-category-critical-illness");
+  assert.deepEqual(plan.categoriesCreated.map((item) => [item._id, item.slug.current]), [
+    ["existing-health", "health-insurance"],
+    ["ccpun-category-critical-illness", "critical-illness"],
   ]);
-  assert.deepEqual(plan.changes[0].set, {
-    category: { _type: "reference", _ref: "ccpun-category-personal-finance" },
-  });
+  assert.equal(plan.changes.length, 4);
+  assert.equal(plan.changes.filter((change) => change.afterCategorySlug === "health-insurance").length, 3);
+  assert.equal(plan.changes.filter((change) => change.afterCategorySlug === "critical-illness").length, 1);
 });
 
-test("raw Sanity category references resolve from Draft category documents without dereference fallback", () => {
-  const plan = buildTaxonomyMigrationPlan([{
-    _id: "drafts.article-raw-reference",
-    _rev: "draft-rev-raw",
-    _type: "article",
-    category: { _ref: "legacy-health" },
-    tags: [],
-  }], [
+test("already-final article variants are idempotent", () => {
+  const categories: RawCategory[] = [
     lifeCategory,
-    { _id: "drafts.legacy-health", _type: "category", title: "ประกันสุขภาพ", slug: "health-insurance" },
-  ]);
-  assert.deepEqual(plan.changes[0].set, {
-    category: { _type: "reference", _ref: "ccpun-wp-category-4" },
-    tags: ["ประกันสุขภาพ"],
-  });
+    { _id: "health", _type: "category", title: "ประกันสุขภาพ", slug: "health-insurance" },
+    { _id: "critical", _type: "category", title: "ประกันโรคร้ายแรง", slug: "critical-illness" },
+  ];
+  const articles = requiredArticles().map((article) => ({
+    ...article,
+    categoryRef: article.slug === "critical-illness-insurance" ? "critical" : "health",
+  }));
+  const plan = buildInsuranceTaxonomyV2Plan("production", articles, categories);
+  assert.deepEqual(plan.categoriesCreated, []);
+  assert.deepEqual(plan.changes, []);
 });
 
-test("duplicate identity, unknown categories, and ambiguous target references fail closed", () => {
-  const draft: RawArticle = {
-    _id: "drafts.article-1",
-    _rev: "draft-rev-1",
-    _type: "article",
-    category: { _ref: "legacy", title: "ประกันสุขภาพ", slug: "health-insurance" },
-    tags: [],
+test("unexpected category state and duplicate logical slugs fail closed", () => {
+  const unknownCategory: RawCategory = {
+    _id: "unknown",
+    _type: "category",
+    title: "Unknown",
+    slug: "unknown",
   };
-  assert.throws(() => buildTaxonomyMigrationPlan([draft, draft], [lifeCategory]), /duplicate article document identity/);
   assert.throws(
-    () => buildTaxonomyMigrationPlan([{ ...draft, category: { _ref: "unknown", title: "Unknown", slug: "unknown" } }], [lifeCategory]),
-    /unknown category/,
+    () => buildInsuranceTaxonomyV2Plan("uat", requiredArticles("unknown"), [unknownCategory]),
+    /expected life-insurance or/,
   );
-  assert.equal(buildTaxonomyMigrationPlan([draft], []).lifeInsuranceCategoryId, "ccpun-category-life-insurance");
+
   assert.throws(
-    () => buildTaxonomyMigrationPlan([draft], [lifeCategory, { ...lifeCategory, _id: "another-life-category" }]),
-    /multiple life-insurance category references/,
+    () => buildInsuranceTaxonomyV2Plan("uat", [
+      ...requiredArticles(),
+      {
+        _id: "another-health-happy",
+        _rev: "r5",
+        _type: "article",
+        slug: "aia-health-happy-describe",
+        categoryRef: "life-category",
+      },
+    ], [lifeCategory]),
+    /duplicate logical article/,
   );
+
   assert.throws(
-    () => buildTaxonomyMigrationPlan([draft], [{
-      _id: "ccpun-category-personal-finance",
-      _type: "article",
-    }]),
-    /belongs to another document type/,
+    () => buildInsuranceTaxonomyV2Plan("uat", requiredArticles().filter((article) => article.slug !== "critical-illness-insurance"), [lifeCategory]),
+    /required article slug critical-illness-insurance is missing/,
   );
 });
 
-test("apply uses revision guards and creates exactly one atomic audit without article creation", async () => {
+test("apply changes only category references with revision guards and one atomic audit", async () => {
   const operations: Array<Record<string, unknown>> = [];
-  let transactionCount = 0;
   let commitCount = 0;
   const transaction = {
+    createIfNotExists(document: Record<string, unknown>) {
+      operations.push({ kind: "createIfNotExists", document });
+      return transaction;
+    },
     patch(id: string, factory: (patch: { ifRevisionId(revision: string): unknown }) => unknown) {
-      const patchState: Record<string, unknown> = { kind: "patch", id };
+      const state: Record<string, unknown> = { kind: "patch", id };
       const builder = {
         ifRevisionId(revision: string) {
-          patchState.revision = revision;
+          state.revision = revision;
           return {
             set(fields: Record<string, unknown>) {
-              patchState.set = fields;
+              state.set = fields;
               return builder;
             },
           };
         },
       };
       factory(builder);
-      operations.push(patchState);
-      return transaction;
-    },
-    createIfNotExists(document: Record<string, unknown>) {
-      operations.push({ kind: "createIfNotExists", document });
+      operations.push(state);
       return transaction;
     },
     async commit(options: { tag: string }) {
@@ -219,65 +198,22 @@ test("apply uses revision guards and creates exactly one atomic audit without ar
       return {};
     },
   };
-  const client = {
-    transaction() {
-      transactionCount += 1;
-      return transaction;
-    },
-  } as unknown as TransactionClient;
-  const plan = buildTaxonomyMigrationPlan([{
-    _id: "drafts.article-1",
-    _rev: "draft-rev-1",
-    _type: "article",
-    category: { _ref: "legacy-health", title: "ประกันสุขภาพ", slug: "health-insurance" },
-    tags: [],
-  }], [lifeCategory]);
+  const client = { transaction: () => transaction } as unknown as TransactionClient;
+  const plan = buildInsuranceTaxonomyV2Plan("uat", requiredArticles(), [lifeCategory]);
 
-  const result = await applyTaxonomyMigration(client, plan, "2026-08-22T00:00:00.000Z");
-  assert.deepEqual(result, { changed: 1, categoriesCreated: 2, auditLogCreated: true });
-  assert.equal(transactionCount, 1);
-  assert.equal(commitCount, 1);
-  assert.equal(operations.filter((operation) => operation.kind === "patch").length, 1);
-  assert.equal(operations.filter((operation) => operation.kind === "createIfNotExists").length, 3);
-  const articlePatch = operations.find((operation) => operation.kind === "patch");
-  assert.deepEqual(articlePatch, {
-    kind: "patch",
-    id: "drafts.article-1",
-    revision: "draft-rev-1",
-    set: {
-      category: { _type: "reference", _ref: "ccpun-wp-category-4" },
-      tags: ["ประกันสุขภาพ"],
-    },
+  const result = await applyInsuranceTaxonomyV2Plan(client, plan, {
+    timestamp: "2026-08-24T00:00:00.000Z",
+    backupId: "uat-fixture",
   });
-  const audit = operations.find(
-    (operation) => operation.kind === "createIfNotExists" && (operation.document as Record<string, unknown> | undefined)?._type === "auditLog",
-  )?.document as Record<string, unknown>;
-  assert.equal(audit._type, "auditLog");
-  assert.equal(audit.action, "uat-taxonomy:normalize-drafts");
-  assert.doesNotMatch(JSON.stringify(operations), /body|publishedAt|delete|createOrReplace/);
-});
 
-test("package dry-run is explicit and never loads an env file", async () => {
-  const packageJson = JSON.parse(await readFile(path.join(root, "package.json"), "utf8"));
-  const command = packageJson.scripts["cms:taxonomy:uat:dry-run"];
-  assert.match(command, /CCPUN_APP_ENV=local-uat/);
-  assert.match(command, /SANITY_API_PROJECT_ID=ccb9lnw5/);
-  assert.match(command, /SANITY_API_DATASET=uat/);
-  assert.match(command, /migrate-uat-taxonomy\.ts --dry-run/);
-  assert.doesNotMatch(command, /env-file|kyfxgjnq|production/);
-});
-
-test("WordPress preparation and Draft import use the shared taxonomy API and preserve source provenance", async () => {
-  const [preparer, importer] = await Promise.all([
-    readFile(path.join(root, "scripts/prepare-wordpress-published-migration.mjs"), "utf8"),
-    readFile(path.join(root, "scripts/import-wordpress-drafts-to-sanity.mjs"), "utf8"),
-  ]);
-  for (const source of [preparer, importer]) {
-    assert.match(source, /normalizeArticleTaxonomy/);
-    assert.match(source, /sourceCategories/);
-    assert.match(source, /sourceTags/);
+  assert.equal(result.changed, 4);
+  assert.equal(commitCount, 1);
+  const patchOperations = operations.filter((operation) => operation.kind === "patch");
+  assert.equal(patchOperations.length, 4);
+  for (const operation of patchOperations) {
+    assert.deepEqual(Object.keys(operation.set as Record<string, unknown>), ["category"]);
+    assert.ok(operation.revision);
+    assert.doesNotMatch(JSON.stringify(operation), /body|title|seo|tags|publishedAt|delete|createOrReplace/);
   }
-  assert.match(preparer, /'life-insurance': 'ccpun-wp-category-4'/);
-  assert.doesNotMatch(preparer, /ccpun-category-(?:health-insurance|critical-illness)/);
-  assert.match(importer, /tags: taxonomy\.tags/);
+  assert.match(JSON.stringify(operations), /uat-taxonomy:v2-health-critical/);
 });
