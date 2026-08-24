@@ -41,6 +41,13 @@ for (const [before, after] of replacements) {
   source = source.replace(before, after);
 }
 
+const blogHub = await readFile(new URL('../app/blog/page.tsx', import.meta.url), 'utf8');
+assert.match(blogHub, /const BLOG_URL = "https:\/\/ccpun\.com\/blog\/"/);
+assert.match(blogHub, /openGraph:\s*\{[\s\S]*url:\s*BLOG_URL/);
+assert.match(blogHub, /twitter:\s*\{[\s\S]*title:\s*BLOG_TITLE/);
+assert.match(blogHub, /คลังความรู้สำหรับวางแผนการเงินให้เชื่อมกันทั้งความเสี่ยง การลงทุน และเป้าหมายชีวิต/);
+assert.doesNotMatch(blogHub, /openGraph:\s*\{[\s\S]*url:\s*["']https:\/\/ccpun\.com\/["']/);
+
 // The published WordPress preparer is a historical migration artifact. It must
 // continue to fail closed for categories that were not part of its original
 // category-ID map rather than being silently repurposed for a new Production
