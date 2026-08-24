@@ -16,7 +16,7 @@ concurrency:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -45,8 +45,41 @@ jobs:
       - name: Existing legacy URL ledger
         run: npm run qa:legacy-urls
 
-      - name: SEO topic hub contract
+      - name: SEO topic hub static contract
         run: node tests/seo-topic-hubs-regression.mjs
+
+      - name: SEO HTTP contract on read-only Production content
+        shell: bash
+        run: |
+          npm run local:production:read > /tmp/ccpun-seo-http.log 2>&1 &
+          SERVER_PID=$!
+          cleanup() {
+            kill "$SERVER_PID" 2>/dev/null || true
+            wait "$SERVER_PID" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+
+          READY=0
+          for attempt in $(seq 1 90); do
+            if curl --fail --silent --show-error http://127.0.0.1:3000/blog/ >/dev/null 2>&1; then
+              READY=1
+              break
+            fi
+            if ! kill -0 "$SERVER_PID" 2>/dev/null; then
+              echo 'Local read-only Production server exited before becoming ready.'
+              cat /tmp/ccpun-seo-http.log
+              exit 1
+            fi
+            sleep 1
+          done
+
+          if [ "$READY" -ne 1 ]; then
+            echo 'Timed out waiting for local read-only Production server.'
+            cat /tmp/ccpun-seo-http.log
+            exit 1
+          fi
+
+          node qa/seo-topic-hubs-http-regression.mjs
 
       - name: Production-parity build on non-production content lane
         run: npm run build
