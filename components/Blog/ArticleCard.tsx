@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { BookOpen, CalendarDays } from "lucide-react";
 import type { Article } from "@/lib/content/types";
+import { getArticleSemanticTopic } from "@/lib/content/taxonomy";
 import { getArticlePath } from "@/lib/content/url";
 
 function formatDate(value: string) {
@@ -10,6 +11,13 @@ function formatDate(value: string) {
 
 export default function ArticleCard({ article, showDraft = false }: { article: Article; showDraft?: boolean }) {
   const href = getArticlePath(article);
+  const semanticTopic = getArticleSemanticTopic({
+    articleSlug: article.slug,
+    categoryTitle: article.category,
+    categorySlug: article.categorySlug,
+    tags: article.tags,
+  });
+  const topicName = semanticTopic?.title ?? article.category;
 
   return (
     <article data-article-slug={article.slug}>
@@ -40,7 +48,7 @@ export default function ArticleCard({ article, showDraft = false }: { article: A
           <div className="blog-card-content p-6">
             <div className="mb-3 flex flex-wrap items-center gap-2">
               <span className="blog-card__category inline-flex rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
-                {article.category}
+                {topicName}
               </span>
               {showDraft && article.status === "draft" && (
                 <span className="inline-flex rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium text-muted-foreground">
