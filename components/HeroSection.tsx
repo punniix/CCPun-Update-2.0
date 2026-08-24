@@ -1,8 +1,18 @@
-import Image from "next/image";
+import Image, { getImageProps } from "next/image";
 import Link from "next/link";
 import { ArrowUpRight, MessageCircle } from "lucide-react";
 
 const LINE_OA_URL = "https://lin.ee/tqLCs4f";
+
+const { props: desktopHeroImageProps } = getImageProps({
+  src: "/assets/hero-pun-laptop-v3.png",
+  alt: "",
+  fill: true,
+  fetchPriority: "high",
+  loading: "eager",
+  quality: 90,
+  sizes: "100vw",
+});
 
 const HeroSection = () => {
   return (
@@ -13,15 +23,34 @@ const HeroSection = () => {
       data-uat-section="hero"
     >
       <div className="absolute inset-0 section-bg-dark" aria-hidden="true" />
-      <div className="absolute inset-0 hidden md:block" data-uat-role="hero-portrait" aria-hidden="true">
-        <Image
-          src="/assets/hero-pun-laptop-v3.png"
-          alt=""
-          fill
-          fetchPriority="high"
-          quality={90}
-          sizes="100vw"
-          className="absolute inset-0 h-full w-full object-cover object-[62%_center]"
+      <div
+        className="absolute inset-x-0 top-20 aspect-[4/3] overflow-hidden md:inset-0 md:aspect-auto"
+        data-uat-role="hero-portrait"
+        aria-hidden="true"
+      >
+        <picture>
+          <source
+            media="(min-width: 768px)"
+            srcSet={desktopHeroImageProps.srcSet}
+            sizes={desktopHeroImageProps.sizes}
+          />
+          <Image
+            src="/assets/hero-pun-laptop-mobile-v5.webp"
+            alt=""
+            fill
+            fetchPriority="high"
+            loading="eager"
+            quality={75}
+            sizes="100vw"
+            className="absolute inset-0 h-full w-full object-cover object-center md:object-[62%_center]"
+          />
+        </picture>
+        <div
+          className="pointer-events-none absolute inset-0 md:hidden"
+          style={{
+            background:
+              "linear-gradient(180deg, hsl(0 24% 10% / .78) 0%, hsl(0 24% 10% / .58) 26%, hsl(0 24% 10% / .18) 35%, transparent 44%)",
+          }}
         />
       </div>
       <div
@@ -37,25 +66,6 @@ const HeroSection = () => {
         <div className="pb-8 md:flex md:min-h-[650px] md:items-center md:pb-12 md:pt-10 lg:min-h-[690px]">
           <div className="relative z-20 w-full md:max-w-[52%] xl:max-w-[56%]" data-uat-role="hero-copy">
             <div className="relative -mx-4 aspect-[4/3] overflow-hidden sm:-mx-6 md:mx-0 md:aspect-auto md:overflow-visible">
-              <div className="absolute inset-0 md:hidden" data-uat-role="hero-portrait" aria-hidden="true">
-                <Image
-                  src="/assets/hero-pun-laptop-mobile-v5.webp"
-                  alt=""
-                  fill
-                  fetchPriority="high"
-                  quality={75}
-                  sizes="100vw"
-                  className="object-cover object-center"
-                />
-                <div
-                  className="pointer-events-none absolute inset-0"
-                  style={{
-                    background:
-                      "linear-gradient(180deg, hsl(0 24% 10% / .78) 0%, hsl(0 24% 10% / .58) 26%, hsl(0 24% 10% / .18) 35%, transparent 44%)",
-                  }}
-                />
-              </div>
-
               <h1
                 aria-label="ปิดความเสี่ยงการเงินของคุณ เปิดความมั่งคั่งผ่านแผนการลงทุน"
                 className="absolute left-1/2 top-2 z-10 w-[calc(100%_-_2rem)] max-w-[22rem] -translate-x-1/2 text-center text-[1.25rem] font-semibold leading-[1.12] tracking-[-0.02em] text-foreground min-[360px]:top-3 min-[360px]:text-[1.375rem] min-[400px]:text-[1.4375rem] md:static md:left-auto md:block md:w-auto md:max-w-[21ch] md:translate-x-0 md:text-left md:text-[3rem] md:leading-[1.18] md:tracking-[-0.025em] xl:text-[3.35rem]"
