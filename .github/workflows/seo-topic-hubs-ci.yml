@@ -1,16 +1,17 @@
-name: CCPun SEO Topic Hubs CI
+name: CCPun Foundation CI
 
 on:
   push:
-    branches: [seo/category-hubs-20260824]
+    branches: [v4-production]
   pull_request:
     branches: [v4-production]
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: ccpun-seo-topic-hubs-${{ github.ref }}
+  group: ccpun-foundation-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -30,19 +31,10 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Lint
-        run: npm run lint
+      - name: Foundation code, SEO, analytics and admin contracts
+        run: npm run check:foundation
 
-      - name: TypeScript
-        run: npx tsc --noEmit --incremental false
-
-      - name: Existing Vercel and analytics regression
-        run: npm run test:vercel
-
-      - name: Admin and content regression
-        run: npm run test:admin
-
-      - name: Existing legacy URL ledger
+      - name: Live legacy URL ledger against Production
         run: npm run qa:legacy-urls
 
       - name: SEO topic hub static contract
