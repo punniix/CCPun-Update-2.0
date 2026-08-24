@@ -1,8 +1,14 @@
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
-const ALLOWED_PROJECTS = new Set(["ccpun-web-lab", "ccpun-web-v4-1-uat"]);
-const BLOCKED_PROJECT = "ccpun-web-v4-prod";
+const ALLOWED_PROJECT_IDS = new Set([
+  "prj_438M14AAob2nbf20q7Xa5L7A7aMo",
+  "prj_OR7AlGsE8spGahQegDvd0JudaiEg",
+]);
+const BLOCKED_PROJECT_IDS = new Set([
+  "prj_dxwjITkd0av5QiJQv2snUlIASUWu",
+  "prj_6tuUxJxYbQ4mpF7sMgNWx2p2jowN",
+]);
 const projectFile = resolve(process.cwd(), ".vercel/project.json");
 
 let project;
@@ -13,14 +19,21 @@ try {
   process.exit(1);
 }
 
-if (project.projectName === BLOCKED_PROJECT) {
-  console.error("Admin Lab guard: blocked because this checkout is linked to Production.");
+const projectId = typeof project.projectId === "string" ? project.projectId.trim() : "";
+
+if (!projectId) {
+  console.error("Admin Preview guard: missing Vercel project ID.");
   process.exit(1);
 }
 
-if (!ALLOWED_PROJECTS.has(project.projectName)) {
-  console.error(`Admin Preview guard: expected Lab or UAT, got ${project.projectName ?? "unknown"}.`);
+if (BLOCKED_PROJECT_IDS.has(projectId)) {
+  console.error("Admin Lab guard: blocked because this checkout is linked to a Production project.");
   process.exit(1);
 }
 
-console.log(`Admin Preview guard: PASS (${project.projectName})`);
+if (!ALLOWED_PROJECT_IDS.has(projectId)) {
+  console.error(`Admin Preview guard: unapproved Vercel project ID ${projectId}.`);
+  process.exit(1);
+}
+
+console.log(`Admin Preview guard: PASS (${projectId})`);
