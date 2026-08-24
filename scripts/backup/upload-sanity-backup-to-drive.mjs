@@ -24,6 +24,23 @@ async function sha256(filePath) {
   return { buffer, digest: createHash('sha256').update(buffer).digest('hex') };
 }
 
+async function loadStats(filePath, projectId, dataset) {
+  let parsed;
+  try {
+    parsed = JSON.parse(await readFile(filePath, 'utf8'));
+  } catch {
+    throw new Error('Backup stats file is missing or invalid');
+  }
+  if (parsed?.projectId !== projectId || parsed?.dataset !== dataset) throw new Error('Backup stats source mismatch');
+  for (const key of ['totalNonSystem', 'drafts', 'nonDrafts', 'imageAssets', 'fileAssets']) {
+    if (!Number.isInteger(parsed?.[key]) || parsed[key] < 0) throw new Error(`Backup stats field is invalid: ${key}`);
+  }
+  if (!parsed?.typeCounts || typeof parsed.typeCounts !== 'object' || Array.isArray(parsed.typeCounts)) {
+    throw new Error('Backup stats typeCounts are invalid');
+  }
+  return parsed;
+}
+
 async function uploadMultipart({ token, folderId, filePath, fileName, mimeType }) {
   const { buffer } = await sha256(filePath);
   const boundary = `ccpun-backup-${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -76,6 +93,7 @@ async function writeGithubOutput(name, value) {
 
 async function main() {
   const archivePath = path.resolve(required('BACKUP_FILE'));
+  const statsPath = path.resolve(required('BACKUP_STATS_FILE'));
   const folderId = required('GOOGLE_DRIVE_BACKUP_FOLDER_ID');
   const spreadsheetId = required('GOOGLE_BACKUP_REGISTRY_SHEET_ID');
   const projectId = required('SANITY_PROJECT_ID');
@@ -94,9 +112,10 @@ async function main() {
   const archiveInfo = await stat(archivePath);
   if (!archiveInfo.isFile() || archiveInfo.size <= 0) throw new Error('Sanity export archive is empty or missing');
   const archiveHash = await sha256(archivePath);
+  const stats = await loadStats(statsPath, projectId, dataset);
   const manifestPath = `${archivePath}.manifest.json`;
   const manifest = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     snapshotId,
     createdAt,
     type: backupType,
@@ -112,6 +131,7 @@ async function main() {
       bytes: archiveInfo.size,
       sha256: archiveHash.digest,
     },
+    stats,
     restoreStatus: 'NOT_TESTED',
   };
   await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, { mode: 0o600 });
@@ -142,8 +162,8 @@ async function main() {
       '',
       projectId,
       dataset,
-      'Full dataset incl. drafts',
-      'Included + strict asset verification',
+      `Full dataset incl. drafts (${stats.totalNonSystem} non-system docs; ${stats.drafts} drafts)`,
+      `Included + strict asset verification (${stats.imageAssets} image; ${stats.fileAssets} file assets)`,
       `Drive archive ${archiveUpload.id}; manifest ${manifestUpload.id}`,
       'PENDING RESTORE TEST',
     ],

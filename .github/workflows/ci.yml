@@ -54,6 +54,9 @@ jobs:
       - name: Content and media mirror regression
         run: node tests/content-media-mirror-regression.mjs
 
+      - name: Recovery drill regression
+        run: node tests/recovery-drill-regression.mjs
+
       - name: Production-parity build on non-production data plane
         run: npm run build
         env:

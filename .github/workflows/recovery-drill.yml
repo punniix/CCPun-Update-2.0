@@ -1,0 +1,121 @@
+name: CCPun Sanity Recovery Drill
+
+on:
+  workflow_dispatch:
+    inputs:
+      backup_drive_file_id:
+        description: Google Drive file ID of a verified CCPun Production .tar.gz backup
+        required: true
+        type: string
+      confirmation:
+        description: Type RESET-CCPUN-RECOVERY to approve resetting only ccb9lnw5/recovery
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ccpun-sanity-recovery-drill
+  cancel-in-progress: false
+
+jobs:
+  restore-and-verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      RECOVERY_PROJECT_ID: ccb9lnw5
+      RECOVERY_DATASET: recovery
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate explicit recovery approval and credentials
+        env:
+          CONFIRMATION: ${{ inputs.confirmation }}
+          GOOGLE_BACKUP_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_BACKUP_SERVICE_ACCOUNT_JSON }}
+          SANITY_AUTH_TOKEN: ${{ secrets.SANITY_RECOVERY_ADMIN_TOKEN }}
+        run: |
+          test "$CONFIRMATION" = 'RESET-CCPUN-RECOVERY' || { echo 'Recovery reset confirmation mismatch'; exit 1; }
+          test -n "$GOOGLE_BACKUP_SERVICE_ACCOUNT_JSON" || { echo 'Missing GOOGLE_BACKUP_SERVICE_ACCOUNT_JSON'; exit 1; }
+          test -n "$SANITY_AUTH_TOKEN" || { echo 'Missing SANITY_RECOVERY_ADMIN_TOKEN'; exit 1; }
+
+      - name: Define recovery paths
+        id: paths
+        shell: bash
+        run: |
+          BACKUP_FILE="${RUNNER_TEMP}/ccpun-recovery-source.tar.gz"
+          RECOVERY_REPORT_FILE="${RUNNER_TEMP}/ccpun-recovery-report.json"
+          echo "backup_file=${BACKUP_FILE}" >> "$GITHUB_OUTPUT"
+          echo "recovery_report_file=${RECOVERY_REPORT_FILE}" >> "$GITHUB_OUTPUT"
+
+      - name: Download and verify selected CCPun Production backup
+        id: backup
+        env:
+          GOOGLE_BACKUP_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_BACKUP_SERVICE_ACCOUNT_JSON }}
+          BACKUP_DRIVE_FILE_ID: ${{ inputs.backup_drive_file_id }}
+          BACKUP_FILE: ${{ steps.paths.outputs.backup_file }}
+        run: node scripts/backup/download-verified-drive-backup.mjs
+
+      - name: Reset isolated private recovery dataset only
+        env:
+          SANITY_AUTH_TOKEN: ${{ secrets.SANITY_RECOVERY_ADMIN_TOKEN }}
+        run: |
+          test "$RECOVERY_PROJECT_ID" = 'ccb9lnw5'
+          test "$RECOVERY_DATASET" = 'recovery'
+          npx sanity datasets delete recovery --project-id ccb9lnw5 --force
+          npx sanity datasets create recovery --project-id ccb9lnw5 --visibility private
+
+      - name: Import verified snapshot into recovery dataset
+        env:
+          SANITY_AUTH_TOKEN: ${{ secrets.SANITY_RECOVERY_ADMIN_TOKEN }}
+        run: |
+          npx sanity datasets import "${{ steps.paths.outputs.backup_file }}" recovery \
+            --project-id ccb9lnw5 \
+            --replace \
+            --allow-assets-in-different-dataset
+
+      - name: Verify recovery dataset against snapshot manifest
+        env:
+          SANITY_AUTH_TOKEN: ${{ secrets.SANITY_RECOVERY_ADMIN_TOKEN }}
+          SANITY_PROJECT_ID: ccb9lnw5
+          SANITY_DATASET: recovery
+          BACKUP_MANIFEST_FILE: ${{ steps.backup.outputs.manifest_file }}
+          RECOVERY_REPORT_FILE: ${{ steps.paths.outputs.recovery_report_file }}
+        run: node scripts/backup/verify-recovery-dataset.mjs
+
+      - name: Record PASS evidence in CCPun Backup Registry
+        env:
+          GOOGLE_BACKUP_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_BACKUP_SERVICE_ACCOUNT_JSON }}
+          RECOVERY_REPORT_FILE: ${{ steps.paths.outputs.recovery_report_file }}
+        run: node scripts/backup/record-recovery-check.mjs
+
+      - name: Keep short-lived recovery report
+        uses: actions/upload-artifact@v4
+        with:
+          name: recovery-${{ steps.backup.outputs.snapshot_id }}
+          path: ${{ steps.paths.outputs.recovery_report_file }}
+          retention-days: 30
+          if-no-files-found: error
+
+      - name: Recovery summary
+        if: always()
+        run: |
+          {
+            echo '### CCPun Sanity Recovery Drill'
+            echo ''
+            echo "- Snapshot: ${{ steps.backup.outputs.snapshot_id }}"
+            echo '- Source: verified archive under CCPun Drive / 04 — Sanity Exports / Production'
+            echo '- Target: ccb9lnw5/recovery (private)'
+            echo '- Production and UAT are never restore targets in this workflow'
+            echo '- PASS requires snapshot manifest counts/types/drafts/assets to match restored recovery data'
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -51,8 +51,16 @@ jobs:
           SHORT_SHA="${GITHUB_SHA::12}"
           SNAPSHOT_ID="sanity-prod-${STAMP}-${SHORT_SHA}"
           BACKUP_FILE="${RUNNER_TEMP}/ccpun-production-${SNAPSHOT_ID}.tar.gz"
+          BACKUP_STATS_FILE="${RUNNER_TEMP}/ccpun-production-${SNAPSHOT_ID}.stats.json"
           echo "snapshot_id=${SNAPSHOT_ID}" >> "$GITHUB_OUTPUT"
           echo "backup_file=${BACKUP_FILE}" >> "$GITHUB_OUTPUT"
+          echo "backup_stats_file=${BACKUP_STATS_FILE}" >> "$GITHUB_OUTPUT"
+
+      - name: Capture source counts for restore verification
+        env:
+          SANITY_AUTH_TOKEN: ${{ secrets.SANITY_BACKUP_READ_TOKEN }}
+          BACKUP_STATS_FILE: ${{ steps.identity.outputs.backup_stats_file }}
+        run: node scripts/backup/collect-sanity-backup-stats.mjs
 
       - name: Export Sanity production with drafts and assets
         env:
@@ -68,6 +76,7 @@ jobs:
         env:
           GOOGLE_BACKUP_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_BACKUP_SERVICE_ACCOUNT_JSON }}
           BACKUP_FILE: ${{ steps.identity.outputs.backup_file }}
+          BACKUP_STATS_FILE: ${{ steps.identity.outputs.backup_stats_file }}
           BACKUP_SNAPSHOT_ID: ${{ steps.identity.outputs.snapshot_id }}
           BACKUP_GIT_SHA: ${{ github.sha }}
           BACKUP_TYPE: Full Sanity production dataset export
@@ -80,6 +89,7 @@ jobs:
           path: |
             ${{ steps.identity.outputs.backup_file }}
             ${{ steps.identity.outputs.backup_file }}.manifest.json
+            ${{ steps.identity.outputs.backup_stats_file }}
           retention-days: 7
           if-no-files-found: error
 
@@ -93,5 +103,6 @@ jobs:
             echo "- Drive archive: ${{ steps.upload.outputs.drive_archive_id }}"
             echo "- Drive manifest: ${{ steps.upload.outputs.drive_manifest_id }}"
             echo "- SHA-256: ${{ steps.upload.outputs.archive_sha256 }}"
+            echo '- Manifest: includes source document/draft/asset counts for restore verification'
             echo '- Restore status: PENDING RESTORE TEST'
           } >> "$GITHUB_STEP_SUMMARY"
