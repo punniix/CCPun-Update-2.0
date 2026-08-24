@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test, { afterEach } from "node:test";
+import { CCPUN_VERCEL_PROJECT_IDS } from "../../lib/admin/environment";
 import { getAdminRoleForEmail, hasAdminPermission } from "../../lib/admin/rbac";
 import { ADMIN_ACTIONS, evaluateAdminAction } from "../../lib/admin/policy";
 
@@ -59,8 +60,8 @@ test("system actors cannot approve, apply, or publish", () => {
 });
 
 test("human owner may apply approved work only in a dedicated Admin lane", () => {
-  process.env.VERCEL_PROJECT_ID = "prj_ccpun_admin_prod";
-  process.env.CCPUN_PRODUCTION_ADMIN_VERCEL_PROJECT_ID = "prj_ccpun_admin_prod";
+  process.env.VERCEL_PROJECT_ID = CCPUN_VERCEL_PROJECT_IDS.adminProduction;
+  process.env.CCPUN_PRODUCTION_ADMIN_VERCEL_PROJECT_ID = CCPUN_VERCEL_PROJECT_IDS.adminProduction;
 
   assert.equal(
     evaluateAdminAction({
@@ -72,6 +73,7 @@ test("human owner may apply approved work only in a dedicated Admin lane", () =>
     true,
   );
 
+  delete process.env.VERCEL_PROJECT_ID;
   assert.equal(
     evaluateAdminAction({
       actorType: "human",
@@ -82,6 +84,7 @@ test("human owner may apply approved work only in a dedicated Admin lane", () =>
     true,
   );
 
+  process.env.VERCEL_PROJECT_ID = CCPUN_VERCEL_PROJECT_IDS.legacyAdminLab;
   assert.equal(
     evaluateAdminAction({
       actorType: "human",
@@ -92,6 +95,7 @@ test("human owner may apply approved work only in a dedicated Admin lane", () =>
     true,
   );
 
+  process.env.VERCEL_PROJECT_ID = CCPUN_VERCEL_PROJECT_IDS.web;
   assert.equal(
     evaluateAdminAction({
       actorType: "human",
@@ -124,8 +128,8 @@ test("Local Production Draft mode permits only the human owner Draft workflow", 
 });
 
 test("high-risk actions are hard denied even for a human owner", () => {
-  process.env.VERCEL_PROJECT_ID = "prj_ccpun_admin_prod";
-  process.env.CCPUN_PRODUCTION_ADMIN_VERCEL_PROJECT_ID = "prj_ccpun_admin_prod";
+  process.env.VERCEL_PROJECT_ID = CCPUN_VERCEL_PROJECT_IDS.adminProduction;
+  process.env.CCPUN_PRODUCTION_ADMIN_VERCEL_PROJECT_ID = CCPUN_VERCEL_PROJECT_IDS.adminProduction;
 
   const actions = [
     "content:publish",

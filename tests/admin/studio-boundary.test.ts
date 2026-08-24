@@ -9,8 +9,11 @@ import {
   getStudioPublishingOptions,
   protectLocalProductionDestructiveActions,
 } from "../../cms/sanity/studio-policy";
+import { CCPUN_VERCEL_PROJECT_IDS } from "../../lib/admin/environment";
 
-const PRODUCTION_ADMIN_PROJECT_ID = "prj_ccpun_admin_prod";
+const PRODUCTION_ADMIN_PROJECT_ID = CCPUN_VERCEL_PROJECT_IDS.adminProduction;
+const ADMIN_LAB_PROJECT_ID = CCPUN_VERCEL_PROJECT_IDS.legacyAdminLab;
+const WEB_PROJECT_ID = CCPUN_VERCEL_PROJECT_IDS.web;
 const UAT_SANITY_PROJECT_ID = "ccb9lnw5";
 const PRODUCTION_SANITY_PROJECT_ID = "kyfxgjnq";
 const originalProjectId = process.env.VERCEL_PROJECT_ID;
@@ -39,8 +42,17 @@ function useProductionAdminProject() {
   process.env.CCPUN_PRODUCTION_ADMIN_VERCEL_PROJECT_ID = PRODUCTION_ADMIN_PROJECT_ID;
 }
 
+function useLabProject() {
+  process.env.VERCEL_PROJECT_ID = ADMIN_LAB_PROJECT_ID;
+  delete process.env.CCPUN_PRODUCTION_ADMIN_VERCEL_PROJECT_ID;
+}
+
+function useLocalProject() {
+  delete process.env.VERCEL_PROJECT_ID;
+  delete process.env.CCPUN_PRODUCTION_ADMIN_VERCEL_PROJECT_ID;
+}
+
 test("Studio actions follow the application lane and dataset together", () => {
-  useProductionAdminProject();
   const actions = [
     { action: "publish" },
     { action: "unpublish" },
@@ -50,29 +62,50 @@ test("Studio actions follow the application lane and dataset together", () => {
     { action: undefined },
   ];
 
+  useLabProject();
   assert.deepEqual(filterStudioDocumentActions(actions, "uat", "lab", undefined, UAT_SANITY_PROJECT_ID), [actions[4], actions[5]]);
+
+  useLocalProject();
   assert.deepEqual(filterStudioDocumentActions(actions, "uat", "local-uat", undefined, UAT_SANITY_PROJECT_ID), [actions[4], actions[5]]);
+
+  useProductionAdminProject();
   assert.deepEqual(filterStudioDocumentActions(actions, "production", "production-admin", undefined, PRODUCTION_SANITY_PROJECT_ID), [
     actions[0],
     actions[4],
     actions[5],
   ]);
+
+  useLabProject();
   assert.deepEqual(filterStudioDocumentActions(actions, "uat", "lab", "seoSuggestion", UAT_SANITY_PROJECT_ID), []);
   assert.deepEqual(filterStudioDocumentActions(actions, "uat", "lab", "researchSnapshot", UAT_SANITY_PROJECT_ID), []);
+
+  useProductionAdminProject();
   assert.deepEqual(filterStudioDocumentActions(actions, "production", "production-admin", "auditLog", PRODUCTION_SANITY_PROJECT_ID), []);
+
+  useLabProject();
   assert.deepEqual(filterStudioDocumentActions(actions, "production", "lab", undefined, UAT_SANITY_PROJECT_ID), []);
+
+  process.env.VERCEL_PROJECT_ID = WEB_PROJECT_ID;
   assert.deepEqual(filterStudioDocumentActions(actions, "production", "production", undefined, PRODUCTION_SANITY_PROJECT_ID), []);
   assert.deepEqual(filterStudioDocumentActions(actions, "uat", "unknown"), []);
 });
 
 test("UAT Studio uses Google auth and cannot schedule publishing", () => {
-  useProductionAdminProject();
   const providers = [{ name: "vercel" }, { name: "google" }, { name: "github" }];
 
+  useLabProject();
   assert.deepEqual(filterStudioAuthProviders(providers, "uat", "lab", UAT_SANITY_PROJECT_ID), [{ name: "google" }]);
+
+  useLocalProject();
   assert.deepEqual(filterStudioAuthProviders(providers, "uat", "local-uat", UAT_SANITY_PROJECT_ID), [{ name: "google" }]);
+
+  useProductionAdminProject();
   assert.deepEqual(filterStudioAuthProviders(providers, "production", "production-admin", PRODUCTION_SANITY_PROJECT_ID), providers);
+
+  useLabProject();
   assert.deepEqual(filterStudioAuthProviders(providers, "production", "lab", UAT_SANITY_PROJECT_ID), []);
+
+  useLocalProject();
   assert.deepEqual(getStudioPublishingOptions("uat", "local-uat", UAT_SANITY_PROJECT_ID), {
     releases: { enabled: false },
     scheduledDrafts: { enabled: false },
@@ -81,6 +114,7 @@ test("UAT Studio uses Google auth and cannot schedule publishing", () => {
 });
 
 test("Local Production Studio is off in read mode and enables the owner article workflow in Draft mode", () => {
+  useLocalProject();
   const providers = [{ name: "vercel" }, { name: "google" }];
   const actions = [
     { action: "publish" },
@@ -126,6 +160,7 @@ test("Local Production hides permanent delete until the published article is unp
 });
 
 test("Studio keeps identified owner content and hides system/category management", () => {
+  useLocalProject();
   const structureItems = [
     { getId: () => "article" },
     { getId: () => "category" },

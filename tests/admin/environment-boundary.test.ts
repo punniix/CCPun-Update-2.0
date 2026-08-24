@@ -2,9 +2,11 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import {
+  CCPUN_VERCEL_PROJECT_IDS,
   isAdminDataPlaneAllowed,
   isAdminReadDataPlaneAllowed,
   isAdminMutationEnvironment,
+  isAdminSurfaceAllowed,
   isDeploymentProjectAllowed,
   isSanityProjectAllowed,
   isSanityLaneAllowed,
@@ -15,7 +17,10 @@ import {
 } from "../../lib/admin/environment";
 import { shouldEnforceHttps } from "../../lib/security-policy";
 
-const PRODUCTION_ADMIN_PROJECT_ID = "prj_ccpun_admin_prod";
+const WEB_PROJECT_ID = CCPUN_VERCEL_PROJECT_IDS.web;
+const PRODUCTION_ADMIN_PROJECT_ID = CCPUN_VERCEL_PROJECT_IDS.adminProduction;
+const LAB_PROJECT_ID = CCPUN_VERCEL_PROJECT_IDS.legacyAdminLab;
+const UAT_PROJECT_ID = CCPUN_VERCEL_PROJECT_IDS.legacyAdminUat;
 const UAT_SANITY_PROJECT_ID = "ccb9lnw5";
 const PRODUCTION_SANITY_PROJECT_ID = "kyfxgjnq";
 
@@ -23,24 +28,31 @@ const retiredPublisher = readFileSync(new URL("../../scripts/publish-wordpress-m
 const publishedDraftImporter = readFileSync(new URL("../../scripts/import-wordpress-published-to-sanity.mjs", import.meta.url), "utf8");
 const draftImporter = readFileSync(new URL("../../scripts/import-wordpress-drafts-to-sanity.mjs", import.meta.url), "utf8");
 const draftSeeder = readFileSync(new URL("../../scripts/create-sanity-uat-draft.mjs", import.meta.url), "utf8");
+const adminLabGuard = readFileSync(new URL("../../scripts/guard-admin-lab-deploy.mjs", import.meta.url), "utf8");
+const proxySource = readFileSync(new URL("../../proxy.ts", import.meta.url), "utf8");
 const studioConfig = readFileSync(new URL("../../sanity.config.ts", import.meta.url), "utf8");
 const studioCli = readFileSync(new URL("../../sanity.cli.ts", import.meta.url), "utf8");
 const packageJson = JSON.parse(readFileSync(new URL("../../package.json", import.meta.url), "utf8"));
 
-test("lab and UAT admin clients accept only the uat dataset", () => {
+test("lab and UAT admin clients accept only the uat dataset in their exact projects", () => {
   assert.equal(isAdminDataPlaneAllowed("uat", "development", undefined, undefined, UAT_SANITY_PROJECT_ID), true);
-  assert.equal(isAdminDataPlaneAllowed("uat", "lab", undefined, undefined, UAT_SANITY_PROJECT_ID), true);
-  assert.equal(isAdminDataPlaneAllowed("uat", "uat", undefined, undefined, UAT_SANITY_PROJECT_ID), true);
-  assert.equal(isAdminDataPlaneAllowed("production", "lab", undefined, undefined, UAT_SANITY_PROJECT_ID), false);
-  assert.equal(isAdminDataPlaneAllowed("production", "uat", undefined, undefined, UAT_SANITY_PROJECT_ID), false);
-  assert.equal(isAdminDataPlaneAllowed(undefined, "lab", undefined, undefined, UAT_SANITY_PROJECT_ID), false);
-  assert.equal(isAdminDataPlaneAllowed("UAT", "lab", undefined, undefined, UAT_SANITY_PROJECT_ID), false);
+  assert.equal(isAdminDataPlaneAllowed("uat", "lab", LAB_PROJECT_ID, undefined, UAT_SANITY_PROJECT_ID), true);
+  assert.equal(isAdminDataPlaneAllowed("uat", "uat", UAT_PROJECT_ID, undefined, UAT_SANITY_PROJECT_ID), true);
+  assert.equal(isAdminDataPlaneAllowed("production", "lab", LAB_PROJECT_ID, undefined, UAT_SANITY_PROJECT_ID), false);
+  assert.equal(isAdminDataPlaneAllowed("production", "uat", UAT_PROJECT_ID, undefined, UAT_SANITY_PROJECT_ID), false);
+  assert.equal(isAdminDataPlaneAllowed(undefined, "lab", LAB_PROJECT_ID, undefined, UAT_SANITY_PROJECT_ID), false);
+  assert.equal(isAdminDataPlaneAllowed("UAT", "lab", LAB_PROJECT_ID, undefined, UAT_SANITY_PROJECT_ID), false);
+  assert.equal(isAdminDataPlaneAllowed("uat", "lab", UAT_PROJECT_ID, undefined, UAT_SANITY_PROJECT_ID), false);
+  assert.equal(isAdminDataPlaneAllowed("uat", "uat", LAB_PROJECT_ID, undefined, UAT_SANITY_PROJECT_ID), false);
 });
 
-test("each application lane accepts only its exact dataset", () => {
+test("each deployed application lane accepts only its approved Vercel project and Sanity lane", () => {
   assert.equal(isSanityLaneAllowed("uat", "development", undefined, undefined, UAT_SANITY_PROJECT_ID), true);
-  assert.equal(isSanityLaneAllowed("uat", "lab", undefined, undefined, UAT_SANITY_PROJECT_ID), true);
-  assert.equal(isSanityLaneAllowed("uat", "uat", undefined, undefined, UAT_SANITY_PROJECT_ID), true);
+  assert.equal(isSanityLaneAllowed("uat", "development", WEB_PROJECT_ID, undefined, UAT_SANITY_PROJECT_ID), true);
+  assert.equal(isSanityLaneAllowed("uat", "web-uat", WEB_PROJECT_ID, undefined, UAT_SANITY_PROJECT_ID), true);
+  assert.equal(isSanityLaneAllowed("uat", "web-uat", LAB_PROJECT_ID, undefined, UAT_SANITY_PROJECT_ID), false);
+  assert.equal(isSanityLaneAllowed("uat", "lab", LAB_PROJECT_ID, undefined, UAT_SANITY_PROJECT_ID), true);
+  assert.equal(isSanityLaneAllowed("uat", "uat", UAT_PROJECT_ID, undefined, UAT_SANITY_PROJECT_ID), true);
   assert.equal(
     isSanityLaneAllowed(
       "production",
@@ -51,20 +63,40 @@ test("each application lane accepts only its exact dataset", () => {
     ),
     true,
   );
-  assert.equal(isSanityLaneAllowed("production", "production", undefined, undefined, PRODUCTION_SANITY_PROJECT_ID), true);
-  assert.equal(isSanityLaneAllowed("production", "lab", undefined, undefined, UAT_SANITY_PROJECT_ID), false);
   assert.equal(
-    isSanityLaneAllowed("uat", "production-admin", PRODUCTION_ADMIN_PROJECT_ID, PRODUCTION_ADMIN_PROJECT_ID, PRODUCTION_SANITY_PROJECT_ID),
+    isSanityLaneAllowed("production", "production", WEB_PROJECT_ID, undefined, PRODUCTION_SANITY_PROJECT_ID),
+    true,
+  );
+  assert.equal(isSanityLaneAllowed("production", "lab", LAB_PROJECT_ID, undefined, UAT_SANITY_PROJECT_ID), false);
+  assert.equal(
+    isSanityLaneAllowed(
+      "uat",
+      "production-admin",
+      PRODUCTION_ADMIN_PROJECT_ID,
+      PRODUCTION_ADMIN_PROJECT_ID,
+      PRODUCTION_SANITY_PROJECT_ID,
+    ),
     false,
   );
-  assert.equal(isSanityLaneAllowed("uat", "production", undefined, undefined, PRODUCTION_SANITY_PROJECT_ID), false);
+  assert.equal(isSanityLaneAllowed("uat", "production", WEB_PROJECT_ID, undefined, PRODUCTION_SANITY_PROJECT_ID), false);
   assert.equal(isSanityLaneAllowed(undefined, "unknown"), false);
 });
 
-test("public production cannot mount admin clients or Studio", () => {
-  assert.equal(isAdminDataPlaneAllowed("uat", "production"), false);
-  assert.equal(isAdminDataPlaneAllowed("production", "production"), false);
-  assert.equal(isStudioDataPlaneAllowed("production", "production"), false);
+test("public Web Preview, Web UAT and Production cannot mount Admin clients or Studio", () => {
+  assert.equal(isAdminSurfaceAllowed("development", WEB_PROJECT_ID), false);
+  assert.equal(isSanityLaneAllowed("uat", "development", WEB_PROJECT_ID, undefined, UAT_SANITY_PROJECT_ID), true);
+  assert.equal(isAdminReadDataPlaneAllowed("uat", "development", WEB_PROJECT_ID, undefined, UAT_SANITY_PROJECT_ID), false);
+
+  assert.equal(isAdminSurfaceAllowed("web-uat", WEB_PROJECT_ID), false);
+  assert.equal(isSanityLaneAllowed("uat", "web-uat", WEB_PROJECT_ID, undefined, UAT_SANITY_PROJECT_ID), true);
+  assert.equal(isAdminReadDataPlaneAllowed("uat", "web-uat", WEB_PROJECT_ID, undefined, UAT_SANITY_PROJECT_ID), false);
+  assert.equal(isAdminDataPlaneAllowed("uat", "web-uat", WEB_PROJECT_ID, undefined, UAT_SANITY_PROJECT_ID), false);
+  assert.equal(isStudioDataPlaneAllowed("uat", "web-uat", WEB_PROJECT_ID, undefined, UAT_SANITY_PROJECT_ID), false);
+
+  assert.equal(isAdminSurfaceAllowed("production", WEB_PROJECT_ID), false);
+  assert.equal(isAdminDataPlaneAllowed("production", "production", WEB_PROJECT_ID, undefined, PRODUCTION_SANITY_PROJECT_ID), false);
+  assert.equal(isStudioDataPlaneAllowed("production", "production", WEB_PROJECT_ID, undefined, PRODUCTION_SANITY_PROJECT_ID), false);
+
   assert.equal(
     isAdminDataPlaneAllowed(
       "production",
@@ -86,8 +118,35 @@ test("public production cannot mount admin clients or Studio", () => {
     true,
   );
   assert.equal(isAdminDataPlaneAllowed("uat", "unknown"), false);
-  assert.equal(isAdminMutationEnvironment("production"), false);
+  assert.equal(isAdminMutationEnvironment("production", WEB_PROJECT_ID), false);
   assert.equal(isAdminMutationEnvironment("unknown"), false);
+});
+
+test("deployed lane identity fails closed on cross-project or missing-project mismatches", () => {
+  assert.equal(isDeploymentProjectAllowed("production", WEB_PROJECT_ID), true);
+  assert.equal(isDeploymentProjectAllowed("production", PRODUCTION_ADMIN_PROJECT_ID), false);
+  assert.equal(isDeploymentProjectAllowed("production", undefined), false);
+
+  assert.equal(isDeploymentProjectAllowed("web-uat", WEB_PROJECT_ID), true);
+  assert.equal(isDeploymentProjectAllowed("web-uat", UAT_PROJECT_ID), false);
+  assert.equal(isDeploymentProjectAllowed("web-uat", undefined), false);
+
+  assert.equal(isDeploymentProjectAllowed("lab", LAB_PROJECT_ID), true);
+  assert.equal(isDeploymentProjectAllowed("lab", UAT_PROJECT_ID), false);
+  assert.equal(isDeploymentProjectAllowed("uat", UAT_PROJECT_ID), true);
+  assert.equal(isDeploymentProjectAllowed("uat", LAB_PROJECT_ID), false);
+
+  assert.equal(isDeploymentProjectAllowed("development", undefined), true);
+  assert.equal(isDeploymentProjectAllowed("development", WEB_PROJECT_ID), true);
+  assert.equal(isDeploymentProjectAllowed("development", LAB_PROJECT_ID), true);
+  assert.equal(isDeploymentProjectAllowed("development", UAT_PROJECT_ID), true);
+  assert.equal(isDeploymentProjectAllowed("development", PRODUCTION_ADMIN_PROJECT_ID), false);
+  assert.equal(isDeploymentProjectAllowed("development", "prj_unapproved"), false);
+
+  assert.equal(isDeploymentProjectAllowed("local-uat", undefined), true);
+  assert.equal(isDeploymentProjectAllowed("local-uat", WEB_PROJECT_ID), false);
+  assert.equal(isDeploymentProjectAllowed("local-production", undefined), true);
+  assert.equal(isDeploymentProjectAllowed("local-production", PRODUCTION_ADMIN_PROJECT_ID), false);
 });
 
 test("Local Production reads only the exact Production lane and writes fail closed by default", () => {
@@ -111,24 +170,38 @@ test("Local Production Draft mode requires one explicit exact flag", () => {
   delete process.env.CCPUN_LOCAL_PRODUCTION_DRAFT_WRITES;
 });
 
-test("production-admin fails closed outside its dedicated Vercel project", () => {
-  assert.equal(isDeploymentProjectAllowed("production-admin", undefined, undefined), false);
+test("production-admin requires both the immutable Admin project ID and the configured expected ID", () => {
+  assert.equal(isDeploymentProjectAllowed("production-admin", undefined, PRODUCTION_ADMIN_PROJECT_ID), false);
   assert.equal(
-    isDeploymentProjectAllowed("production-admin", "prj_public_production", PRODUCTION_ADMIN_PROJECT_ID),
+    isDeploymentProjectAllowed("production-admin", WEB_PROJECT_ID, PRODUCTION_ADMIN_PROJECT_ID),
     false,
+  );
+  assert.equal(
+    isDeploymentProjectAllowed("production-admin", PRODUCTION_ADMIN_PROJECT_ID, "prj_wrong_expected_admin"),
+    false,
+  );
+  assert.equal(
+    isDeploymentProjectAllowed("production-admin", PRODUCTION_ADMIN_PROJECT_ID, PRODUCTION_ADMIN_PROJECT_ID),
+    true,
   );
   assert.equal(
     isAdminDataPlaneAllowed(
       "production",
       "production-admin",
-      "prj_public_production",
+      WEB_PROJECT_ID,
       PRODUCTION_ADMIN_PROJECT_ID,
       PRODUCTION_SANITY_PROJECT_ID,
     ),
     false,
   );
   assert.equal(
-    isStudioDataPlaneAllowed("production", "production-admin", undefined, PRODUCTION_ADMIN_PROJECT_ID, PRODUCTION_SANITY_PROJECT_ID),
+    isStudioDataPlaneAllowed(
+      "production",
+      "production-admin",
+      PRODUCTION_ADMIN_PROJECT_ID,
+      "prj_wrong_expected_admin",
+      PRODUCTION_SANITY_PROJECT_ID,
+    ),
     false,
   );
   assert.equal(
@@ -136,7 +209,7 @@ test("production-admin fails closed outside its dedicated Vercel project", () =>
     true,
   );
   assert.equal(
-    isAdminMutationEnvironment("production-admin", "prj_public_production", PRODUCTION_ADMIN_PROJECT_ID),
+    isAdminMutationEnvironment("production-admin", WEB_PROJECT_ID, PRODUCTION_ADMIN_PROJECT_ID),
     false,
   );
 });
@@ -146,18 +219,21 @@ test("missing and unrecognized application lanes fail closed", () => {
   assert.equal(parseAdminEnvironment(""), "unknown");
   assert.equal(parseAdminEnvironment("staging"), "unknown");
   assert.equal(parseAdminEnvironment("LAB"), "lab");
+  assert.equal(parseAdminEnvironment("WEB-UAT"), "web-uat");
   assert.equal(parseAdminEnvironment("LOCAL-UAT"), "local-uat");
   assert.equal(parseAdminEnvironment("LOCAL-PRODUCTION"), "local-production");
 });
 
 test("Sanity projects are pinned to their environment lane", () => {
   assert.equal(isSanityProjectAllowed(UAT_SANITY_PROJECT_ID, "development"), true);
+  assert.equal(isSanityProjectAllowed(UAT_SANITY_PROJECT_ID, "web-uat"), true);
   assert.equal(isSanityProjectAllowed(UAT_SANITY_PROJECT_ID, "lab"), true);
   assert.equal(isSanityProjectAllowed(UAT_SANITY_PROJECT_ID, "uat"), true);
   assert.equal(isSanityProjectAllowed(UAT_SANITY_PROJECT_ID, "local-uat"), true);
   assert.equal(isSanityProjectAllowed(PRODUCTION_SANITY_PROJECT_ID, "production-admin"), true);
   assert.equal(isSanityProjectAllowed(PRODUCTION_SANITY_PROJECT_ID, "local-production"), true);
   assert.equal(isSanityProjectAllowed(PRODUCTION_SANITY_PROJECT_ID, "production"), true);
+  assert.equal(isSanityProjectAllowed(PRODUCTION_SANITY_PROJECT_ID, "web-uat"), false);
   assert.equal(isSanityProjectAllowed(PRODUCTION_SANITY_PROJECT_ID, "local-uat"), false);
   assert.equal(isSanityProjectAllowed(UAT_SANITY_PROJECT_ID, "production-admin"), false);
   assert.equal(isSanityProjectAllowed(undefined, "local-uat"), false);
@@ -166,10 +242,26 @@ test("Sanity projects are pinned to their environment lane", () => {
 test("Local UAT keeps HTTP on loopback while deployed lanes enforce HTTPS", () => {
   assert.equal(shouldEnforceHttps("local-uat"), false);
   assert.equal(shouldEnforceHttps("local-production"), false);
+  assert.equal(shouldEnforceHttps("web-uat"), true);
   assert.equal(shouldEnforceHttps("lab"), true);
   assert.equal(shouldEnforceHttps("uat"), true);
   assert.equal(shouldEnforceHttps("production-admin"), true);
   assert.equal(shouldEnforceHttps(undefined), true);
+});
+
+test("Admin proxy uses the project-aware surface guard", () => {
+  assert.match(proxySource, /isAdminSurfaceAllowed/);
+  assert.match(proxySource, /if \(!adminSurfaceAllowed\)/);
+  assert.match(proxySource, /status: 404/);
+});
+
+test("Admin Lab deploy guard uses immutable project IDs rather than mutable project names", () => {
+  assert.match(adminLabGuard, /project\.projectId/);
+  assert.match(adminLabGuard, new RegExp(LAB_PROJECT_ID));
+  assert.match(adminLabGuard, new RegExp(UAT_PROJECT_ID));
+  assert.match(adminLabGuard, new RegExp(WEB_PROJECT_ID));
+  assert.match(adminLabGuard, new RegExp(PRODUCTION_ADMIN_PROJECT_ID));
+  assert.doesNotMatch(adminLabGuard, /project\.projectName/);
 });
 
 test("Local Production launch scripts pin the exact project, dataset, host, and Draft switch", () => {
@@ -202,6 +294,7 @@ test("server-side Studio config rejects missing or conflicting public lanes", ()
   assert.equal(resolveSanityConfigEnvironment(undefined, "lab", true), "lab");
   assert.equal(resolveSanityConfigEnvironment("production-admin", "lab", true), "unknown");
   assert.equal(resolveSanityConfigEnvironment("production-admin", undefined, true), "unknown");
+  assert.equal(resolveSanityConfigEnvironment("web-uat", "web-uat", true), "web-uat");
   assert.equal(resolveSanityConfigEnvironment("lab", undefined, false), "lab");
   assert.equal(resolveSanityConfigEnvironment(undefined, "lab", false), "unknown");
   assert.match(studioConfig, /isStudioDataPlaneAllowed\(dataset, environment, undefined, undefined, projectId\)/);
