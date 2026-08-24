@@ -112,6 +112,8 @@ export default async function BlogCategoryHub({ params }: { params: Promise<{ ca
         <section className="border-b border-border/30 px-4 py-12 sm:px-6 md:py-16 lg:px-8">
           <div className="mx-auto max-w-4xl">
             <nav aria-label="Breadcrumb" className="mb-5 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+              <Link href="/" className="transition-colors hover:text-primary">หน้าแรก</Link>
+              <span aria-hidden="true">&gt;</span>
               <Link href="/blog/" className="transition-colors hover:text-primary">บทความ</Link>
               <span aria-hidden="true">&gt;</span>
               <span className="font-medium text-foreground">{hub.title}</span>
@@ -128,7 +130,7 @@ export default async function BlogCategoryHub({ params }: { params: Promise<{ ca
 
             {!shouldIndexHub && (
               <p className="mt-6 inline-flex rounded-full border border-border/50 bg-secondary/40 px-4 py-2 text-sm text-muted-foreground">
-                หน้านี้ยังไม่ถูกส่งให้ Search Engine จัดทำดัชนีจนกว่าเนื้อหาจะพร้อม
+                กำลังทยอยจัดทำบทความสำหรับหัวข้อนี้ เพื่อให้กลับมาอ่านต่อได้เป็นหมวดเดียวกันในอนาคต
               </p>
             )}
           </div>
