@@ -15,10 +15,10 @@ function escapeDriveQuery(value) {
 function mimeTypeFor(fileName) {
   const extension = path.extname(fileName).toLowerCase();
   return new Map([
-    ['.md', 'text/markdown; charset=utf-8'],
-    ['.json', 'application/json; charset=utf-8'],
-    ['.txt', 'text/plain; charset=utf-8'],
-    ['.html', 'text/html; charset=utf-8'],
+    ['.md', 'text/markdown'],
+    ['.json', 'application/json'],
+    ['.txt', 'text/plain'],
+    ['.html', 'text/html'],
     ['.webp', 'image/webp'],
     ['.png', 'image/png'],
     ['.jpg', 'image/jpeg'],
@@ -48,9 +48,10 @@ async function googleRequest(url, token, options = {}) {
   return body;
 }
 
-async function findExactChildren(token, parentId, name, mimeType) {
+async function findExactChildren(token, parentId, name, mimeType = null) {
+  const mimeFilter = mimeType ? ` and mimeType='${escapeDriveQuery(mimeType)}'` : '';
   const params = new URLSearchParams({
-    q: `'${escapeDriveQuery(parentId)}' in parents and name='${escapeDriveQuery(name)}' and mimeType='${escapeDriveQuery(mimeType)}' and trashed=false`,
+    q: `'${escapeDriveQuery(parentId)}' in parents and name='${escapeDriveQuery(name)}'${mimeFilter} and trashed=false`,
     fields: 'files(id,name,mimeType,size,modifiedTime)',
     pageSize: '100',
     supportsAllDrives: 'true',
@@ -61,14 +62,17 @@ async function findExactChildren(token, parentId, name, mimeType) {
 }
 
 async function ensureFolder(token, parentId, name) {
-  const mimeType = 'application/vnd.google-apps.folder';
-  const matches = await findExactChildren(token, parentId, name, mimeType);
-  if (matches.length > 1) throw new Error(`Ambiguous duplicate Drive folder: ${name}`);
-  if (matches.length === 1) return { id: matches[0].id, created: false };
+  const folderMime = 'application/vnd.google-apps.folder';
+  const matches = await findExactChildren(token, parentId, name);
+  const folders = matches.filter((item) => item.mimeType === folderMime);
+  const nonFolders = matches.filter((item) => item.mimeType !== folderMime);
+  if (nonFolders.length) throw new Error(`Drive name collision: ${name} already exists as a file`);
+  if (folders.length > 1) throw new Error(`Ambiguous duplicate Drive folder: ${name}`);
+  if (folders.length === 1) return { id: folders[0].id, created: false };
   const body = await googleRequest('https://www.googleapis.com/drive/v3/files?supportsAllDrives=true&fields=id,name,mimeType', token, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ name, mimeType, parents: [parentId] }),
+    body: JSON.stringify({ name, mimeType: folderMime, parents: [parentId] }),
   });
   if (!body?.id) throw new Error(`Drive folder create returned no id: ${name}`);
   return { id: body.id, created: true };
@@ -76,13 +80,16 @@ async function ensureFolder(token, parentId, name) {
 
 async function uploadFile(token, parentId, localPath, fileName) {
   const mimeType = mimeTypeFor(fileName);
-  const matches = await findExactChildren(token, parentId, fileName, mimeType);
+  const matches = await findExactChildren(token, parentId, fileName);
+  if (matches.some((item) => item.mimeType === 'application/vnd.google-apps.folder')) {
+    throw new Error(`Drive name collision: ${fileName} already exists as a folder`);
+  }
   if (matches.length > 1) throw new Error(`Ambiguous duplicate Drive file: ${fileName}`);
   const buffer = await readFile(localPath);
   if (!buffer.length) throw new Error(`Refusing to sync empty file: ${localPath}`);
   const boundary = `ccpun-mirror-${Date.now()}-${Math.random().toString(16).slice(2)}`;
   const existing = matches[0] ?? null;
-  const metadata = existing ? { name: fileName } : { name: fileName, parents: [parentId] };
+  const metadata = existing ? { name: fileName, mimeType } : { name: fileName, mimeType, parents: [parentId] };
   const body = Buffer.concat([
     Buffer.from(`--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(metadata)}\r\n`),
     Buffer.from(`--${boundary}\r\nContent-Type: ${mimeType}\r\n\r\n`),
