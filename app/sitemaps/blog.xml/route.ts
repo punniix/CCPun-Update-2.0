@@ -9,8 +9,9 @@ function latestUpdatedAt(values: string[]) {
 
 export async function GET() {
   const articles = await getContentProvider().listArticles({ includeDrafts: false });
-  const indexableArticles = articles.filter(
-    (article) => article.status === "published" && article.noindex !== true && isArticleCanonicalAligned(article),
+  const canonicalArticles = articles.filter(isArticleCanonicalAligned);
+  const indexableArticles = canonicalArticles.filter(
+    (article) => article.status === "published" && article.noindex !== true,
   );
   const articleEntries = indexableArticles.map((article) => ({
     loc: getArticleCanonical(article),
