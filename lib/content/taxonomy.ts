@@ -93,7 +93,7 @@ type NormalizedArticleTaxonomy = {
 
 const activeSlugByTitle = new Map<string, string>(ACTIVE_ARTICLE_CATEGORIES.map(({ title, slug }) => [title, slug]));
 const activeSlugs = new Set<string>(ACTIVE_ARTICLE_CATEGORIES.map(({ slug }) => slug));
-const hubBySlug = new Map<string, BlogTopicHub>(BLOG_TOPIC_HUBS.map((hub) => [hub.slug, hub]));
+const hubBySlug = new Map<string, BlogTopicHub>(BLOG_TOPIC_HUBS.map((hub) => [hub.slug, hub] as const));
 
 const CATEGORY_SLUG_ALIASES: Record<string, string> = {
   "personal-finance-uat": "personal-finance",
@@ -169,7 +169,7 @@ export function normalizeArticleTaxonomy({
   };
 }
 
-export function getBlogTopicHub(slug?: string | null) {
+export function getBlogTopicHub(slug?: string | null): BlogTopicHub | null {
   if (!slug) return null;
   return hubBySlug.get(slug) ?? null;
 }
@@ -179,9 +179,9 @@ export function getArticleSemanticTopic({
   categoryTitle,
   categorySlug,
   tags,
-}: ArticleSemanticTopicInput): BlogTopicHub {
+}: ArticleSemanticTopicInput): BlogTopicHub | null {
   const override = articleSlug ? ARTICLE_SEMANTIC_TOPIC_OVERRIDES[articleSlug] : undefined;
-  if (override) return hubBySlug.get(override)!;
+  if (override) return hubBySlug.get(override) ?? null;
 
   const normalized = normalizeArticleTaxonomy({ categoryTitle, categorySlug, tags });
   const primarySlug = normalized.categorySlug as BlogTopicSlug | null;
@@ -195,18 +195,14 @@ export function getArticleSemanticTopic({
     const topic = TOPIC_SLUG_BY_TAG[tag];
     if (topic && topic !== primarySlug) inferred.add(topic);
   }
-  if (inferred.size === 1) return hubBySlug.get([...inferred][0])!;
+  if (inferred.size === 1) return hubBySlug.get([...inferred][0]) ?? null;
 
-  if (primarySlug) {
-    const primaryHub = hubBySlug.get(primarySlug);
-    if (primaryHub) return primaryHub;
-  }
-
-  return hubBySlug.get("personal-finance")!;
+  if (primarySlug) return hubBySlug.get(primarySlug) ?? null;
+  return null;
 }
 
 export function isArticleInSemanticTopic(input: ArticleSemanticTopicInput, topicSlug: BlogTopicSlug) {
-  return getArticleSemanticTopic(input).slug === topicSlug;
+  return getArticleSemanticTopic(input)?.slug === topicSlug;
 }
 
 export function isReservedArticleSlug(slug?: string | null) {
