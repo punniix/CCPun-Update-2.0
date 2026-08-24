@@ -6,7 +6,7 @@ import { listAdminArticles } from "@/lib/admin/sanity-control";
 import { isStudioDataPlaneAllowed } from "@/lib/admin/environment";
 import { SEO_AUDIT_VERSION } from "@/lib/admin/seo-heuristics";
 
-export const metadata: Metadata = { title: "ตรวจ SEO" };
+export const metadata: Metadata = { title: "SEO Control Center" };
 
 function scoreTone(score: number | null | undefined) {
   if (score == null) return "text-white/60";
@@ -32,10 +32,10 @@ export default async function AdminSeoPage() {
     <div>
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <p className="text-xs font-semibold tracking-[0.12em] text-[#e0c985]">ตรวจด้วยกฎที่อธิบายได้</p>
-          <h1 className="mt-2 text-3xl font-semibold">ตรวจ SEO</h1>
+          <p className="text-xs font-semibold tracking-[0.12em] text-[#e0c985]">SEO CONTROL CENTER</p>
+          <h1 className="mt-2 text-3xl font-semibold">SEO Control Center</h1>
           <p className="mt-3 max-w-3xl text-sm leading-6 text-white/70">
-            คะแนนนี้มาจากกฎตรวจของ CCPun ไม่ใช่คะแนนจาก Google ผลตรวจช่วยบอกจุดที่ควรดู ส่วนข้อเสนอทุกชิ้นต้องรอให้คุณตรวจและอนุมัติ
+            รวมผลตรวจ SEO กับกติกาการแก้ไขที่ปลอดภัยในที่เดียว คะแนนมาจากกฎของ CCPun ไม่ใช่คะแนนจาก Google และการเปลี่ยน URL/indexability ของหน้าที่เผยแพร่แล้วต้องผ่าน migration workflow แยกต่างหาก
           </p>
         </div>
         <div className="flex gap-2">
@@ -49,6 +49,19 @@ export default async function AdminSeoPage() {
         <article className="rounded-2xl border border-white/10 bg-white/[0.035] p-4"><div className="text-sm text-white/60">บทความทั้งหมด</div><div className="mt-2 text-lg font-semibold">{result.rows.length}</div></article>
         <article className="rounded-2xl border border-white/10 bg-white/[0.035] p-4"><div className="text-sm text-white/60">มีผลตรวจที่บันทึก</div><div className="mt-2 text-lg font-semibold">{audited.length}</div></article>
         <article className="rounded-2xl border border-white/10 bg-white/[0.035] p-4"><div className="text-sm text-white/60">เฉลี่ยจากผลที่บันทึก</div><div className={`mt-2 text-lg font-semibold ${scoreTone(average)}`}>{average == null ? "—" : `${average}/100`}</div></article>
+      </section>
+
+      <section className="mt-6 grid gap-3 lg:grid-cols-2">
+        <article className="rounded-3xl border border-emerald-200/15 bg-emerald-200/[0.04] p-5">
+          <h2 className="font-semibold text-emerald-100">แก้ผ่าน Draft ได้ตามปกติ</h2>
+          <p className="mt-2 text-sm leading-6 text-white/65">SEO Title · Meta Description · Keyword · Search Intent · Semantic Topic · รูปภาพ · Author · Sources</p>
+          <p className="mt-2 text-xs leading-5 text-white/50">Semantic Topic ใช้จัดความหมาย/Knowledge Graph และไม่ใช่คำสั่งย้าย URL</p>
+        </article>
+        <article className="rounded-3xl border border-amber-200/20 bg-amber-200/[0.05] p-5">
+          <h2 className="font-semibold text-amber-100">Protected หลังบทความเคยเผยแพร่</h2>
+          <p className="mt-2 text-sm leading-6 text-white/65">URL Slug · หมวดที่กำหนด URL path · Canonical override · Noindex</p>
+          <p className="mt-2 text-xs leading-5 text-white/50">หากต้องเปลี่ยน ให้ทำ SEO Migration Workflow ที่ประสาน redirect + canonical + sitemap + internal links + schema + regression พร้อมกัน</p>
+        </article>
       </section>
 
       {result.error ? <section role="alert" className="mt-6 rounded-3xl border border-amber-200/20 bg-amber-200/10 p-5 text-sm text-amber-50">ยังอ่านข้อมูลบทความเพื่อตรวจ SEO ไม่ได้ ระบบหยุดไว้โดยไม่สลับ project หรือชุดข้อมูล</section> : null}
