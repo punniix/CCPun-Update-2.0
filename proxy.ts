@@ -8,6 +8,7 @@ import {
 import {
   getAdminEnvironment,
   isAdminSurfaceAllowed,
+  isProductionEnvironment,
 } from "@/lib/admin/environment";
 
 export default auth((request) => {
@@ -63,7 +64,9 @@ export default auth((request) => {
   }
 
   if (!isAdminPage && !isAdminApi && !isStudioPage && !isPreviewApi) return NextResponse.next();
-  if (!adminSurfaceAllowed) return new NextResponse("Not Found", { status: 404 });
+  if (isProductionEnvironment() || !adminSurfaceAllowed) {
+    return new NextResponse("Not Found", { status: 404 });
+  }
 
   if (isInvalidAdminMutation) {
     return NextResponse.json({ error: "invalid-origin" }, { status: 403 });
