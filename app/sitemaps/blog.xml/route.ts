@@ -9,14 +9,17 @@ function latestUpdatedAt(values: string[]) {
 
 export async function GET() {
   const articles = await getContentProvider().listArticles({ includeDrafts: false });
-  const articleEntries = articles.filter(isArticleCanonicalAligned).map((article) => ({
+  const indexableArticles = articles.filter(
+    (article) => article.status === "published" && article.noindex !== true && isArticleCanonicalAligned(article),
+  );
+  const articleEntries = indexableArticles.map((article) => ({
     loc: getArticleCanonical(article),
     lastmod: article.updatedAt,
   }));
 
   const hubEntries = BLOG_TOPIC_HUBS.flatMap((hub) => {
     if (!hub.indexable) return [];
-    const relevant = articles.filter((article) =>
+    const relevant = indexableArticles.filter((article) =>
       isArticleInSemanticTopic(
         {
           articleSlug: article.slug,
