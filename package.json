@@ -11,6 +11,8 @@
     "start": "next start",
     "lint": "eslint",
     "test:vercel": "node tests/vercel-native-regression.mjs && tsx tests/analytics-regression.ts",
+    "test:foundation-contracts": "node tests/foundation-safety-regression.mjs",
+    "check:foundation": "npm run lint && npx tsc --noEmit --incremental false && npm run test:foundation-contracts && npm run test:vercel && npm run test:admin",
     "qa:legacy-urls": "node qa/legacy-url-regression.mjs",
     "qa:site": "node qa/uat-text-responsive-check.mjs",
     "qa:blog": "CCPUN_UAT_MODE=1 node --env-file-if-exists=.env.local qa/blog-uat-regression.mjs",

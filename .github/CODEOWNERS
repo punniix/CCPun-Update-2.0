@@ -1,0 +1,28 @@
+# Human review stays attached to CCPun's protected contracts.
+
+AGENTS.md @punniix
+.github/workflows/ @punniix
+.github/pull_request_template.md @punniix
+
+# SEO / URL ownership
+lib/content/url.ts @punniix
+lib/content/taxonomy.ts @punniix
+qa/legacy-url-ledger.json @punniix
+app/robots.ts @punniix
+app/sitemap.xml/ @punniix
+app/sitemaps/ @punniix
+cms/sanity/migration-contract.md @punniix
+
+# Analytics / consent ownership
+lib/analytics.ts @punniix
+lib/cookie-consent.ts @punniix
+components/GoogleAnalytics.tsx @punniix
+components/GoogleTagManager.tsx @punniix
+components/MetaPixel.tsx @punniix
+components/CookieConsent.tsx @punniix
+qa/tracking-consent-regression.mjs @punniix
+tests/analytics-regression.ts @punniix
+
+# Sanity environment / publishing safety
+cms/sanity/studio-policy.ts @punniix
+lib/admin/environment.ts @punniix
