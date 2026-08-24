@@ -5,6 +5,8 @@ import test from "node:test";
 test("SEO Control Center keeps semantic topic separate from protected published URL fields", () => {
   const schema = readFileSync("cms/sanity/schema.ts", "utf8");
   const input = readFileSync("cms/sanity/components/SeoScoreInput.tsx", "utf8");
+  const adminPage = readFileSync("app/snt-admin/(protected)/seo/page.tsx", "utf8");
+  const detailPage = readFileSync("app/snt-admin/(protected)/seo/[id]/page.tsx", "utf8");
   const contract = readFileSync("docs/seo-control-center-v1.md", "utf8");
 
   assert.match(schema, /BLOG_TOPIC_HUBS/);
@@ -19,12 +21,19 @@ test("SEO Control Center keeps semantic topic separate from protected published 
   const publishedLocks = schema.match(/readOnly: \(\{ document \}\) => Boolean\(document\?\.publishedAt\)/g) ?? [];
   assert.ok(publishedLocks.length >= 4, "slug, category, canonical and noindex must be protected after publication");
 
-  assert.match(input, /Google Preview/);
-  assert.match(input, /สถานะ SEO ที่ควรตรวจ/);
-  assert.match(input, /Protected SEO fields/);
+  assert.match(input, /SEO Control Center/);
+  assert.match(input, /ผลตรวจ SEO ล่าสุดที่บันทึก/);
+  assert.match(input, /ไม่คำนวณผลตรวจซ้ำใน Studio/);
   assert.match(input, /Semantic Topic แยกจาก URL จริง/);
-  assert.match(input, /Indexability/);
+  assert.doesNotMatch(input, /Google Preview|สถานะ SEO ที่ควรตรวจ|useFormValue|const checks/);
+
+  assert.match(adminPage, /SEO Control Center/);
+  assert.match(adminPage, /ฟิลด์แก้ปกติ/);
+  assert.match(adminPage, /ฟิลด์ Protected/);
+  assert.match(detailPage, /คะแนนคำนวณสดจากฉบับปัจจุบัน/);
+  assert.match(detailPage, /ความพร้อมก่อนทำงานจริง/);
 
   assert.match(contract, /Redirect ownership remains in code\/URL migration contracts/);
+  assert.match(contract, /Control Plane เป็นแหล่งเดียวสำหรับการคำนวณ audit และ readiness/);
   assert.match(contract, /AIA Health CI Hero remains semantically Health insurance/);
 });
