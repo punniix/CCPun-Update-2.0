@@ -5,6 +5,7 @@ const read = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8');
 const taxonomy = await read('lib/content/taxonomy.ts');
 const urls = await read('lib/content/url.ts');
 const schema = await read('lib/content/schema.ts');
+const blogPage = await read('app/blog/page.tsx');
 const categoryPage = await read('app/blog/[category]/page.tsx');
 const articlePage = await read('app/blog/[category]/[slug]/page.tsx');
 const sitemap = await read('app/sitemaps/blog.xml/route.ts');
@@ -34,9 +35,9 @@ assert.doesNotMatch(urls, /"life-insurance\/critical-illness-insurance":/);
 // Hub routing happens before the legacy one-segment redirect fallback.
 assert.match(categoryPage, /const hub = getBlogTopicHub\(slug\);[\s\S]*if \(!hub\) \{[\s\S]*getLegacyCategoryRedirectPath/);
 assert.match(categoryPage, /alternates: \{ canonical \}/);
-assert.match(categoryPage, /hub\.indexable && relevant\.length > 0/);
-assert.match(categoryPage, /robots: indexable \? \{ index: true, follow: true \} : \{ index: false, follow: true \}/);
-assert.match(categoryPage, /buildBlogTopicHubSchema\(hub, publishedArticles\)/);
+assert.match(categoryPage, /const shouldIndexHub = hub\.indexable && relevantIndexableArticles\.length > 0/);
+assert.match(categoryPage, /!isEnabled && shouldIndexHub \? \{ index: true, follow: true \} : \{ index: false, follow: true \}/);
+assert.match(categoryPage, /const schema = shouldIndexHub \? buildBlogTopicHubSchema\(hub, relevantIndexableArticles\) : null/);
 assert.match(categoryPage, /hub\.featuredLink\.href/);
 
 // Article routing/canonical functions stay intact while visible topic navigation is semantic.
@@ -62,8 +63,15 @@ assert.match(sitemap, /if \(!relevant\.length\) return \[\]/);
 assert.match(sitemap, /https:\/\/ccpun\.com\/blog\/\$\{hub\.slug\}\//);
 assert.doesNotMatch(sitemap, /\?category=|\?tag=/);
 
-// Blog archive links to real hubs while filter state remains a UI convenience only.
-assert.match(archive, /href=\{`\/blog\/\$\{hub\.slug\}\/`\}/);
+// Main Blog page exposes indexable topic hubs as server-rendered internal links.
+assert.match(blogPage, /const navigableHubs = BLOG_TOPIC_HUBS\.filter/);
+assert.match(blogPage, /isArticleCanonicalAligned\(article\)/);
+assert.match(blogPage, /href=\{`\/blog\/\$\{hub\.slug\}\/`\}/);
+assert.match(blogPage, /navigableHubs\.map/);
+
+// Query-string filters remain a client-side UX convenience, not an SEO breadcrumb node.
 assert.match(archive, /window\.history/);
+assert.match(archive, /params\.set\("category"/);
+assert.match(archive, /params\.set\("tag"/);
 
 console.log('PASS: SEO topic hub routing regression');
