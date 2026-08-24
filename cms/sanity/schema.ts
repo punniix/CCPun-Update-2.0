@@ -1,9 +1,10 @@
 import { defineArrayMember, defineField, defineType } from "sanity";
-import { ACTIVE_ARTICLE_CATEGORIES, isReservedArticleSlug } from "../../lib/content/taxonomy";
+import { ACTIVE_ARTICLE_CATEGORIES, BLOG_TOPIC_HUBS, isReservedArticleSlug } from "../../lib/content/taxonomy";
 import SeoScoreInput from "./components/SeoScoreInput";
 import { adminSchemaTypes } from "./adminTypes";
 
 const activeArticleCategorySlugs = ACTIVE_ARTICLE_CATEGORIES.map(({ slug }) => slug);
+const semanticTopicOptions = BLOG_TOPIC_HUBS.map(({ slug, title }) => ({ title, value: slug }));
 
 const reviewStatuses = [
   { title: "กำลังเขียน", value: "drafting" },
@@ -86,7 +87,7 @@ const migrationSource = defineType({
 
 const seoMetadata = defineType({
   name: "seoMetadata",
-  title: "SEO metadata",
+  title: "SEO Control Center",
   type: "object",
   fields: [
     defineField({
@@ -131,6 +132,13 @@ const seoMetadata = defineType({
       },
     }),
     defineField({
+      name: "semanticTopic",
+      title: "หัวข้อเชิงความหมาย (Semantic Topic)",
+      description: "ใช้จัด Knowledge Graph และ breadcrumb/schema ในอนาคต แยกจากหมวดที่อยู่ใน URL การเปลี่ยนช่องนี้ไม่ใช่การย้าย URL",
+      type: "string",
+      options: { list: semanticTopicOptions },
+    }),
+    defineField({
       name: "auditSnapshot",
       title: "Latest SEO audit",
       type: "seoAuditSnapshot",
@@ -138,16 +146,19 @@ const seoMetadata = defineType({
     }),
     defineField({
       name: "canonical",
-      title: "Canonical override",
-      description: "Leave blank to use https://ccpun.com/blog/{category-slug}/{slug}/",
+      title: "Canonical override (Protected)",
+      description: "เว้นว่างเพื่อใช้ canonical จาก route ปัจจุบัน บทความที่เคยเผยแพร่แล้วต้องเปลี่ยนผ่าน SEO Migration Workflow เท่านั้น",
       type: "url",
+      readOnly: ({ document }) => Boolean(document?.publishedAt),
       validation: (Rule) => Rule.uri({ scheme: ["http", "https"] }),
     }),
     defineField({
       name: "noindex",
-      title: "Keep published page out of search",
+      title: "Noindex (Protected)",
+      description: "ใช้เฉพาะก่อนเผยแพร่หรือใน workflow ที่อนุมัติแล้ว เพื่อป้องกันหน้าที่เผยแพร่แล้วหลุดจาก Google โดยไม่ตั้งใจ",
       type: "boolean",
       initialValue: false,
+      readOnly: ({ document }) => Boolean(document?.publishedAt),
     }),
   ],
 });
@@ -398,11 +409,12 @@ const article = defineType({
     defineField({ name: "title", title: "ชื่อบทความ", type: "string", group: "content", validation: (Rule) => Rule.required() }),
     defineField({
       name: "slug",
-      title: "URL Slug",
+      title: "URL Slug (Protected หลังเผยแพร่)",
       type: "slug",
       group: "content",
-      description: "กด Generate เพื่อสร้าง URL จากชื่อบทความ แล้วควรหลีกเลี่ยงการเปลี่ยนหลัง Publish",
+      description: "กด Generate ก่อนเผยแพร่ เมื่อบทความมีวันเผยแพร่แล้ว URL Slug จะถูกล็อกและต้องใช้ SEO Migration Workflow หากต้องการย้าย URL",
       options: { source: "title", maxLength: 96 },
+      readOnly: ({ document }) => Boolean(document?.publishedAt),
       validation: (Rule) =>
         Rule.required().custom((value) =>
           isReservedArticleSlug((value as { current?: string } | undefined)?.current)
@@ -421,11 +433,12 @@ const article = defineType({
     }),
     defineField({
       name: "category",
-      title: "หมวดหมู่หลัก",
-      description: "เลือก 1 หมวดหลักเพื่อกำหนดโครงสร้างและ URL ของบทความ ส่วนหัวข้อย่อยให้ใส่เป็นแท็ก",
+      title: "หมวดหมู่หลัก (Protected หลังเผยแพร่)",
+      description: "หมวดหมู่นี้กำหนด path ของ URL จึงถูกล็อกหลังบทความมีวันเผยแพร่ ใช้ Semantic Topic สำหรับจัดความหมายโดยไม่ย้าย URL",
       type: "reference",
       to: [{ type: "category" }],
       group: "content",
+      readOnly: ({ document }) => Boolean(document?.publishedAt),
       options: {
         disableNew: true,
         filter: "slug.current in $activeSlugs",
@@ -449,7 +462,7 @@ const article = defineType({
     defineField({ name: "faq", title: "FAQ ที่แสดงในบทความ", type: "array", of: [defineArrayMember({ type: "faqItem" })], group: "content" }),
     defineField({ name: "sources", title: "แหล่งอ้างอิง", type: "array", of: [defineArrayMember({ type: "sourceReference" })], group: "review" }),
     defineField({ name: "review", title: "ขั้นตรวจเนื้อหา", type: "reviewMetadata", group: "publication", validation: (Rule) => Rule.required() }),
-    defineField({ name: "seo", title: "SEO หลัก + Score", type: "seoMetadata", group: "seoGeo", components: { input: SeoScoreInput }, validation: (Rule) => Rule.required() }),
+    defineField({ name: "seo", title: "SEO Control Center", type: "seoMetadata", group: "seoGeo", components: { input: SeoScoreInput }, validation: (Rule) => Rule.required() }),
     defineField({ name: "geo", title: "GEO / AI Search", type: "geoMetadata", group: "seoGeo" }),
     defineField({ name: "migration", title: "Migration source", type: "migrationSource", readOnly: true, hidden: true }),
     defineField({
