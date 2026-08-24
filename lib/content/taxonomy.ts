@@ -84,6 +84,7 @@ type ArticleTaxonomyInput = {
 
 type ArticleSemanticTopicInput = ArticleTaxonomyInput & {
   articleSlug?: string | null;
+  semanticTopic?: string | null;
 };
 
 type NormalizedArticleTaxonomy = {
@@ -117,7 +118,8 @@ const TOPIC_SLUG_BY_TAG: Record<string, BlogTopicSlug> = {
 
 // Phase 1 keeps article canonical URLs untouched. These overrides define only
 // semantic navigation/schema identity while the canonical category remains the
-// currently published Sanity category.
+// currently published Sanity category. They intentionally take precedence over
+// editable CMS semantic-topic metadata for protected winner-page semantics.
 const ARTICLE_SEMANTIC_TOPIC_OVERRIDES: Record<string, BlogTopicSlug> = {
   "aia-health-happy-describe": "health-insurance",
   "aia-health-ci-hero-guide": "health-insurance",
@@ -176,12 +178,19 @@ export function getBlogTopicHub(slug?: string | null): BlogTopicHub | null {
 
 export function getArticleSemanticTopic({
   articleSlug,
+  semanticTopic,
   categoryTitle,
   categorySlug,
   tags,
 }: ArticleSemanticTopicInput): BlogTopicHub | null {
   const override = articleSlug ? ARTICLE_SEMANTIC_TOPIC_OVERRIDES[articleSlug] : undefined;
   if (override) return hubBySlug.get(override) ?? null;
+
+  const explicitTopic = semanticTopic?.trim().toLowerCase();
+  if (explicitTopic) {
+    const explicitHub = hubBySlug.get(explicitTopic);
+    if (explicitHub) return explicitHub;
+  }
 
   const normalized = normalizeArticleTaxonomy({ categoryTitle, categorySlug, tags });
   const primarySlug = normalized.categorySlug as BlogTopicSlug | null;
