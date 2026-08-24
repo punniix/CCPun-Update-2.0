@@ -9,19 +9,32 @@ import ArticleCard from "@/components/Blog/ArticleCard";
 import { getContentProvider } from "@/lib/content/provider";
 import { serializeJsonLd } from "@/lib/content/json-ld";
 import { buildBlogTopicHubSchema } from "@/lib/content/schema";
+import type { Article } from "@/lib/content/types";
 import {
   BLOG_TOPIC_HUBS,
   getBlogTopicHub,
   isArticleInSemanticTopic,
   type BlogTopicHub,
 } from "@/lib/content/taxonomy";
-import { getArticlePath, getLegacyCategoryRedirectPath } from "@/lib/content/url";
+import { getArticlePath, getLegacyCategoryRedirectPath, isArticleCanonicalAligned } from "@/lib/content/url";
 
 const SITE_URL = "https://ccpun.com";
 const DEFAULT_SOCIAL_IMAGE = `${SITE_URL}/assets/blog-hub-hero-ccpun-v1.webp`;
 
-function articleBelongsToHub(article: Parameters<typeof isArticleInSemanticTopic>[0], hub: BlogTopicHub) {
-  return isArticleInSemanticTopic(article, hub.slug);
+function articleBelongsToHub(article: Article, hub: BlogTopicHub) {
+  return isArticleInSemanticTopic(
+    {
+      articleSlug: article.slug,
+      categoryTitle: article.category,
+      categorySlug: article.categorySlug,
+      tags: article.tags,
+    },
+    hub.slug,
+  );
+}
+
+function isPublicIndexableArticle(article: Article) {
+  return article.status === "published" && article.noindex !== true && isArticleCanonicalAligned(article);
 }
 
 function hasFeaturedLink(hub: BlogTopicHub): hub is BlogTopicHub & {
@@ -37,25 +50,17 @@ export async function generateMetadata({ params }: { params: Promise<{ category:
 
   const { isEnabled } = await draftMode();
   const articles = await getContentProvider().listArticles({ includeDrafts: false });
-  const relevant = articles.filter((article) =>
-    articleBelongsToHub(
-      {
-        articleSlug: article.slug,
-        categoryTitle: article.category,
-        categorySlug: article.categorySlug,
-        tags: article.tags,
-      },
-      hub,
-    ),
+  const relevantIndexableArticles = articles.filter(
+    (article) => articleBelongsToHub(article, hub) && isPublicIndexableArticle(article),
   );
-  const indexable = !isEnabled && hub.indexable && relevant.length > 0;
+  const shouldIndexHub = hub.indexable && relevantIndexableArticles.length > 0;
   const canonical = `${SITE_URL}/blog/${hub.slug}/`;
 
   return {
     title: hub.seoTitle,
     description: hub.description,
     alternates: { canonical },
-    robots: indexable ? { index: true, follow: true } : { index: false, follow: true },
+    robots: !isEnabled && shouldIndexHub ? { index: true, follow: true } : { index: false, follow: true },
     openGraph: {
       type: "website",
       locale: "th_TH",
@@ -89,24 +94,19 @@ export default async function BlogCategoryHub({ params }: { params: Promise<{ ca
 
   const { isEnabled } = await draftMode();
   const articles = await getContentProvider().listArticles({ includeDrafts: isEnabled });
-  const relevantArticles = articles.filter((article) =>
-    articleBelongsToHub(
-      {
-        articleSlug: article.slug,
-        categoryTitle: article.category,
-        categorySlug: article.categorySlug,
-        tags: article.tags,
-      },
-      hub,
-    ),
+  const relevantArticles = articles.filter((article) => articleBelongsToHub(article, hub));
+  const relevantIndexableArticles = relevantArticles.filter(isPublicIndexableArticle);
+  const shouldIndexHub = hub.indexable && relevantIndexableArticles.length > 0;
+  const schema = shouldIndexHub ? buildBlogTopicHubSchema(hub, relevantIndexableArticles) : null;
+  const navigableHubs = BLOG_TOPIC_HUBS.filter(
+    (item) => item.slug !== hub.slug
+      && item.indexable
+      && articles.some((article) => articleBelongsToHub(article, item) && isPublicIndexableArticle(article)),
   );
-  const publishedArticles = relevantArticles.filter((article) => article.status === "published");
-  const indexable = !isEnabled && hub.indexable && publishedArticles.length > 0;
-  const schema = buildBlogTopicHubSchema(hub, publishedArticles);
 
   return (
     <>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(schema) }} />
+      {schema && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(schema) }} />}
       <Navbar isToolPage />
       <main id="main-content" className="min-h-screen bg-background pt-20">
         <section className="border-b border-border/30 px-4 py-12 sm:px-6 md:py-16 lg:px-8">
@@ -126,7 +126,7 @@ export default async function BlogCategoryHub({ params }: { params: Promise<{ ca
               {hub.intro.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
             </div>
 
-            {!indexable && (
+            {!shouldIndexHub && (
               <p className="mt-6 inline-flex rounded-full border border-border/50 bg-secondary/40 px-4 py-2 text-sm text-muted-foreground">
                 หน้านี้ยังไม่ถูกส่งให้ Search Engine จัดทำดัชนีจนกว่าเนื้อหาจะพร้อม
               </p>
@@ -173,18 +173,20 @@ export default async function BlogCategoryHub({ params }: { params: Promise<{ ca
           </section>
         )}
 
-        <section className="border-t border-border/30 px-4 py-10 sm:px-6 lg:px-8" aria-labelledby="topic-navigation-title">
-          <div className="mx-auto max-w-7xl">
-            <h2 id="topic-navigation-title" className="text-lg font-semibold text-foreground">สำรวจหัวข้ออื่น</h2>
-            <div className="mt-4 flex flex-wrap gap-2">
-              {BLOG_TOPIC_HUBS.filter((item) => item.slug !== hub.slug).map((item) => (
-                <Link key={item.slug} href={`/blog/${item.slug}/`} className="blog-cat-pill whitespace-nowrap">
-                  {item.title}
-                </Link>
-              ))}
+        {navigableHubs.length > 0 && (
+          <section className="border-t border-border/30 px-4 py-10 sm:px-6 lg:px-8" aria-labelledby="topic-navigation-title">
+            <div className="mx-auto max-w-7xl">
+              <h2 id="topic-navigation-title" className="text-lg font-semibold text-foreground">สำรวจหัวข้ออื่น</h2>
+              <div className="mt-4 flex flex-wrap gap-2">
+                {navigableHubs.map((item) => (
+                  <Link key={item.slug} href={`/blog/${item.slug}/`} className="blog-cat-pill whitespace-nowrap">
+                    {item.title}
+                  </Link>
+                ))}
+              </div>
             </div>
-          </div>
-        </section>
+          </section>
+        )}
       </main>
       <Footer />
     </>
