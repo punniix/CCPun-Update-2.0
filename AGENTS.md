@@ -7,3 +7,105 @@ This version has breaking changes — APIs, conventions, and file structure may 
 This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
 <!-- END:nextjs-agent-rules -->
+
+# CCPun Engineering Constitution
+
+This repository powers `ccpun.com`. Treat SEO continuity, consent, analytics continuity, and production content as protected contracts rather than ordinary implementation details.
+
+Read `docs/engineering-workflow-v1.md` before making repository-wide, SEO, analytics, Sanity, routing, or deployment changes.
+
+## 1. Delivery workflow
+
+- Production branch: `v4-production`.
+- Never edit `v4-production` directly. Work on a feature/fix/refactor branch.
+- Normal path: branch -> implementation -> tests -> Pull Request -> CI -> Vercel Preview -> human review -> merge.
+- Do not merge a PR or trigger a Production deployment unless the user explicitly asks for that action in the current task.
+- Vercel Preview is the validation target for branch work. `ccpun.com` is not a test environment.
+- Keep changes surgical. Do not mix unrelated URL, content, analytics, and visual changes in one experiment when the effects need to be measured separately.
+
+## 2. Environment and Sanity safety
+
+- Production Sanity is read-only by default for agent work.
+- Use Sanity UAT for drafts, schema experiments, and content experiments unless Production write/publish is explicitly approved.
+- Importing or staging content is not publication.
+- Never publish, unpublish, delete, bulk-migrate, or rewrite Production content unless the user explicitly asks for that exact Production action.
+- Preserve the existing environment boundaries in `lib/admin/environment.ts`, `cms/sanity/studio-policy.ts`, and their tests.
+- Never commit tokens, API keys, OAuth secrets, Vercel secrets, Sanity tokens, or private credentials.
+
+## 3. SEO and URL safety
+
+The current physical URL structure is a stability layer. Semantic topic classification is a separate knowledge-graph layer.
+
+- Do not assume a semantic topic must equal the physical category segment in the canonical URL.
+- Do not change a published slug, canonical, redirect, category path, sitemap ownership, or indexability merely to make the URL look semantically cleaner.
+- Any URL migration requires explicit approval and a coordinated release covering redirect, canonical, sitemap, internal links, schema, and regression tests.
+- Check `qa/legacy-url-ledger.json`, `lib/content/url.ts`, `lib/content/taxonomy.ts`, and `cms/sanity/migration-contract.md` before touching URL ownership.
+- Avoid redirect chains. Historical URLs must resolve directly to the final approved canonical destination.
+- One Search Intent = One Owner. Do not create a new indexable URL when an existing owner can satisfy the same intent.
+- Protect winner pages from destructive rewrites while migration signals are consolidating.
+- AIA Health CI Hero is health/medical-expense insurance with critical-illness conditions/triggers. It is NOT critical-illness lump-sum insurance and must not be routed to `/ci-planning/` as a lump-sum product.
+- Existing canonical-path exceptions may remain under `/blog/life-insurance/...` while their semantic topic is `health-insurance`. Do not automatically "fix" those exceptions.
+
+Protected SEO surfaces include, at minimum:
+
+- `lib/content/url.ts`
+- `lib/content/taxonomy.ts`
+- `qa/legacy-url-ledger.json`
+- `app/robots.ts`
+- `app/sitemap.xml/`
+- `app/sitemaps/`
+- article metadata/canonical generation
+- Sanity SEO canonical/noindex controls
+
+## 4. Analytics and consent safety
+
+The existing application event layer and consent behavior are historical-data contracts.
+
+- Application components should emit semantic business events through the existing analytics layer rather than calling GA4, Meta, or future ad providers directly.
+- Preserve `lib/analytics.ts` as the central event/mapping boundary unless an explicitly approved migration replaces it.
+- Do not bypass `trackEvent()` by adding ad-hoc `gtag`, `fbq`, or provider calls inside feature components.
+- Do not disable, remove, or delay GA4/GTM/Meta/Consent functionality just to improve performance scores without explicit approval and tracking evidence.
+- Consent must remain authoritative. Never emit analytics or social events that violate the stored consent state.
+- Never send calculator answers, financial values, health details, names, emails, phone numbers, or other personal/sensitive data to analytics unless an explicitly reviewed data contract allows it.
+- Do not silently rename existing production events. Historical continuity matters.
+- Preserve the tracking/consent regression contracts in `tests/analytics-regression.ts` and `qa/tracking-consent-regression.mjs`.
+
+Protected tracking surfaces include, at minimum:
+
+- `lib/analytics.ts`
+- `lib/cookie-consent.ts`
+- `components/GoogleAnalytics.tsx`
+- `components/GoogleTagManager.tsx`
+- `components/MetaPixel.tsx`
+- `components/CookieConsent.tsx`
+- `qa/tracking-consent-regression.mjs`
+- `tests/analytics-regression.ts`
+
+## 5. Required checks
+
+Before opening or updating a PR, run the repository checks that are available in the execution environment.
+
+Baseline:
+
+```bash
+npm run check:foundation
+```
+
+For URL/SEO routing changes, also run the relevant URL/topic regression suite. Live Production HTTP checks must be read-only.
+
+For analytics/consent changes, run the analytics regression suite and, when the browser/CDP test environment and required public IDs are available, `npm run qa:tracking`.
+
+Never make a failing test pass by deleting the assertion, weakening a safety contract, disabling consent, or excluding the affected route unless the underlying contract was explicitly changed and approved.
+
+## 6. Agent completion report
+
+Every substantial task should report:
+
+1. What changed and why.
+2. Files/surfaces affected.
+3. Tests run and their results.
+4. Vercel Preview status when applicable.
+5. Whether SEO URLs, Sanity Production, analytics, or consent changed.
+6. Known risks and rollback path.
+
+If a requested change conflicts with these rules, stop the risky part, explain the conflict, and propose the safest implementation that preserves the user's intended outcome.
