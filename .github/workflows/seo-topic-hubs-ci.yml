@@ -1,0 +1,57 @@
+name: CCPun SEO Topic Hubs CI
+
+on:
+  push:
+    branches: [seo/category-hubs-20260824]
+  pull_request:
+    branches: [v4-production]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ccpun-seo-topic-hubs-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: TypeScript
+        run: npx tsc --noEmit --incremental false
+
+      - name: Existing Vercel and analytics regression
+        run: npm run test:vercel
+
+      - name: Admin and content regression
+        run: npm run test:admin
+
+      - name: Existing legacy URL ledger
+        run: npm run qa:legacy-urls
+
+      - name: SEO topic hub contract
+        run: node tests/seo-topic-hubs-regression.mjs
+
+      - name: Production-parity build on non-production content lane
+        run: npm run build
+        env:
+          CCPUN_APP_ENV: development
+          NEXT_PUBLIC_CCPUN_APP_ENV: development
+          NEXT_PUBLIC_SANITY_PROJECT_ID: ccb9lnw5
+          NEXT_PUBLIC_SANITY_DATASET: uat
