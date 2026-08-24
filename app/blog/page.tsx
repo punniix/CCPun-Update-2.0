@@ -1,11 +1,14 @@
 import type { Metadata } from "next";
 import Image from "next/image";
+import Link from "next/link";
 import { BookOpen } from "lucide-react";
 import { draftMode } from "next/headers";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import BlogArchive from "@/components/Blog/BlogArchive";
 import { getContentProvider } from "@/lib/content/provider";
+import { BLOG_TOPIC_HUBS, isArticleInSemanticTopic } from "@/lib/content/taxonomy";
+import { isArticleCanonicalAligned } from "@/lib/content/url";
 
 export const metadata: Metadata = {
   title: "บทความการเงิน การลงทุน และการวางแผนอนาคต | CCPun",
@@ -17,6 +20,17 @@ export default async function BlogPage() {
   const { isEnabled } = await draftMode();
   const cmsArticles = await getContentProvider().listArticles({ includeDrafts: isEnabled });
   const articles = cmsArticles;
+  const publishedIndexableArticles = articles.filter(
+    (article) => article.status === "published" && article.noindex !== true && isArticleCanonicalAligned(article),
+  );
+  const navigableHubs = BLOG_TOPIC_HUBS.filter(
+    (hub) => hub.indexable && publishedIndexableArticles.some((article) => isArticleInSemanticTopic({
+      articleSlug: article.slug,
+      categoryTitle: article.category,
+      categorySlug: article.categorySlug,
+      tags: article.tags,
+    }, hub.slug)),
+  );
 
   return (
     <>
@@ -54,6 +68,21 @@ export default async function BlogPage() {
             )}
           </div>
         </section>
+
+        {navigableHubs.length > 0 && (
+          <nav className="border-b border-border/30 py-5" aria-label="หัวข้อบทความหลัก">
+            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+              <p className="mb-3 text-sm font-medium text-muted-foreground">เลือกหัวข้อที่ต้องการอ่าน</p>
+              <div className="hide-scrollbar flex flex-nowrap gap-2 overflow-x-auto pb-1 lg:flex-wrap lg:overflow-visible">
+                {navigableHubs.map((hub) => (
+                  <Link key={hub.slug} href={`/blog/${hub.slug}/`} className="blog-cat-pill whitespace-nowrap">
+                    {hub.title}
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </nav>
+        )}
 
         <BlogArchive articles={articles} showDraft={isEnabled} />
       </main>
