@@ -1,0 +1,63 @@
+name: CCPun Performance Archive
+
+on:
+  schedule:
+    # 04:00 Asia/Bangkok every day. GA4/GSC archive uses a 3-day lag for more stable finalized data.
+    - cron: '0 21 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ccpun-performance-archive
+  cancel-in-progress: false
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GOOGLE_BACKUP_REGISTRY_SHEET_ID: 12hwLk83xxergE9pmf_5JJICmTuti3FhWiHlPA3ebvpU
+      GSC_SITE_URL: sc-domain:ccpun.com
+      GA4_PROPERTY_ID: ${{ vars.CCPUN_GA4_PROPERTY_ID }}
+      META_AD_ACCOUNT_ID: ${{ vars.CCPUN_META_AD_ACCOUNT_ID }}
+      META_GRAPH_API_VERSION: ${{ vars.CCPUN_META_GRAPH_API_VERSION }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Resolve archive dates
+        id: dates
+        shell: bash
+        run: |
+          echo "stable_date=$(TZ=Asia/Bangkok date -d '3 days ago' +'%Y-%m-%d')" >> "$GITHUB_OUTPUT"
+          echo "meta_date=$(TZ=Asia/Bangkok date -d '1 day ago' +'%Y-%m-%d')" >> "$GITHUB_OUTPUT"
+
+      - name: Archive GA4, GSC and Meta performance
+        env:
+          GOOGLE_BACKUP_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_BACKUP_SERVICE_ACCOUNT_JSON }}
+          META_MARKETING_API_TOKEN: ${{ secrets.CCPUN_META_MARKETING_API_TOKEN }}
+          REPORT_DATE: ${{ steps.dates.outputs.stable_date }}
+          META_REPORT_DATE: ${{ steps.dates.outputs.meta_date }}
+        run: node scripts/analytics/archive-performance-to-sheets.mjs
+
+      - name: Archive policy summary
+        run: |
+          {
+            echo '### CCPun Performance Archive'
+            echo ''
+            echo "- GA4/GSC stable date: ${{ steps.dates.outputs.stable_date }}"
+            echo "- Meta date: ${{ steps.dates.outputs.meta_date }}"
+            echo '- Destination: CCPun Backup Registry'
+            echo '- PII policy: aggregate performance only; no customer name, email, phone, health or calculator inputs'
+          } >> "$GITHUB_STEP_SUMMARY"
