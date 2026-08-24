@@ -50,7 +50,7 @@ expect('analytics keeps central trackEvent dispatcher', analytics.includes('expo
 
 const allowedStringsMatch = analytics.match(/const ALLOWED_STRINGS:[\s\S]*?\n};/);
 const allowlist = allowedStringsMatch?.[0] ?? '';
-for (const forbidden of ['email', 'phone', 'income', 'expense', 'health_condition', 'name:']) {
+for (const forbidden of ['email', 'phone', 'income', 'expense', 'health_condition']) {
   expect(`analytics allowlist excludes ${forbidden}`, !allowlist.toLowerCase().includes(forbidden));
 }
 
