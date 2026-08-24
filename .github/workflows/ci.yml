@@ -51,6 +51,9 @@ jobs:
       - name: Analytics archive regression
         run: node tests/analytics-archive-regression.mjs
 
+      - name: Content and media mirror regression
+        run: node tests/content-media-mirror-regression.mjs
+
       - name: Production-parity build on non-production data plane
         run: npm run build
         env:
