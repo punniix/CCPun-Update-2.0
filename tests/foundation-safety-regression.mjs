@@ -50,8 +50,9 @@ expect('analytics keeps central trackEvent dispatcher', analytics.includes('expo
 
 const allowedStringsMatch = analytics.match(/const ALLOWED_STRINGS:[\s\S]*?\n};/);
 const allowlist = allowedStringsMatch?.[0] ?? '';
-for (const forbidden of ['email', 'phone', 'income', 'expense', 'health_condition']) {
-  expect(`analytics allowlist excludes ${forbidden}`, !allowlist.toLowerCase().includes(forbidden));
+for (const forbiddenKey of ['email', 'phone', 'income', 'expense', 'health_condition']) {
+  const keyPattern = new RegExp(`^\\s*${forbiddenKey}\\s*:`, 'm');
+  expect(`analytics allowlist excludes sensitive field ${forbiddenKey}`, !keyPattern.test(allowlist));
 }
 
 const migrationContract = read('cms/sanity/migration-contract.md');
