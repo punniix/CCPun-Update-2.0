@@ -20,13 +20,27 @@ test("health and critical categories keep their own semantic canonical paths", (
   }
 });
 
-test("the three controlled interim life-insurance paths redirect directly to final semantic URLs", () => {
-  assert.equal(getMovedArticleRedirectPath("life-insurance", "aia-health-happy-describe"), "/blog/health-insurance/aia-health-happy-describe/");
-  assert.equal(getMovedArticleRedirectPath("life-insurance", "aia-health-ci-hero-guide"), "/blog/health-insurance/aia-health-ci-hero-guide/");
-  assert.equal(getMovedArticleRedirectPath("life-insurance", "critical-illness-insurance"), "/blog/critical-illness/critical-illness-insurance/");
-  assert.equal(getMovedArticleRedirectPath("health-insurance", "aia-health-happy-describe"), null);
-  assert.equal(getMovedArticleRedirectPath("critical-illness", "critical-illness-insurance"), null);
-  assert.equal(getMovedArticleRedirectPath("life-insurance", "aia-vitality"), null);
+test("interim life-insurance redirects stay disabled before the data cutover", () => {
+  assert.equal(getMovedArticleRedirectPath("life-insurance", "aia-health-happy-describe"), null);
+  assert.equal(getMovedArticleRedirectPath("life-insurance", "aia-health-ci-hero-guide"), null);
+  assert.equal(getMovedArticleRedirectPath("life-insurance", "critical-illness-insurance"), null);
+});
+
+test("the V2 redirect manifest still maps each interim path directly to its final URL", () => {
+  assert.equal(getMovedArticleRedirectPath("life-insurance", "aia-health-happy-describe", true), "/blog/health-insurance/aia-health-happy-describe/");
+  assert.equal(getMovedArticleRedirectPath("life-insurance", "aia-health-ci-hero-guide", true), "/blog/health-insurance/aia-health-ci-hero-guide/");
+  assert.equal(getMovedArticleRedirectPath("life-insurance", "critical-illness-insurance", true), "/blog/critical-illness/critical-illness-insurance/");
+  assert.equal(getMovedArticleRedirectPath("health-insurance", "aia-health-happy-describe", true), null);
+  assert.equal(getMovedArticleRedirectPath("critical-illness", "critical-illness-insurance", true), null);
+  assert.equal(getMovedArticleRedirectPath("life-insurance", "aia-vitality", true), null);
+});
+
+test("post-fetch category state provides a direct transition with no redirect loop", () => {
+  const before = { slug: "aia-health-happy-describe", category: "ประกันชีวิต", categorySlug: "life-insurance" };
+  const after = { slug: "aia-health-happy-describe", category: "ประกันสุขภาพ", categorySlug: "health-insurance" };
+  assert.equal(getArticlePath(before), "/blog/life-insurance/aia-health-happy-describe/");
+  assert.equal(getArticlePath(after), "/blog/health-insurance/aia-health-happy-describe/");
+  assert.notEqual(getArticlePath(before), getArticlePath(after));
 });
 
 test("historical category landing paths still resolve to archive topic filters", () => {
