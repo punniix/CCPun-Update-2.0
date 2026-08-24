@@ -24,7 +24,7 @@ assert.match(workflow, /Download and verify selected CCPun Production backup[\s\
 assert.match(downloader, /PRODUCTION_BACKUP_FOLDER_ID = '17OTY--nrou3JjcKeDjl2OLg95n1CpdA2'/);
 assert.match(downloader, /SOURCE_PROJECT_ID = 'kyfxgjnq'/);
 assert.match(downloader, /SOURCE_DATASET = 'production'/);
-assert.match(downloader, /archive\.sha256/);
+assert.match(downloader, /manifest\?\.archive\?\.sha256/);
 assert.match(downloader, /Downloaded backup SHA-256 does not match manifest/);
 assert.match(downloader, /schemaVersion !== 2/);
 assert.match(downloader, /outside the approved CCPun Production backup folder/);
