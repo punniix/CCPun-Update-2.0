@@ -7,12 +7,13 @@ import {
 } from "@/lib/admin/auth-config";
 import {
   getAdminEnvironment,
-  isProductionEnvironment,
+  isAdminSurfaceAllowed,
 } from "@/lib/admin/environment";
 
 export default auth((request) => {
   const { pathname } = request.nextUrl;
   const environment = getAdminEnvironment();
+  const adminSurfaceAllowed = isAdminSurfaceAllowed(environment);
   const isProductionAdmin = environment === "production-admin";
   const isLocalUat = environment === "local-uat";
   const isLocalProduction = environment === "local-production";
@@ -34,6 +35,10 @@ export default auth((request) => {
     !isSameOriginAdminMutation(request.url, request.headers.get("origin"));
 
   if (isProductionAdmin || isLocalUat || isLocalProduction) {
+    if (!adminSurfaceAllowed) {
+      return new NextResponse("Not Found", { status: 404 });
+    }
+
     const originAllowed = isLocalUat || isLocalProduction
       ? isLocalAdminHost(request.headers.get("host"), environment)
       : isConfiguredAdminOrigin(request.url, process.env.AUTH_URL);
@@ -58,7 +63,7 @@ export default auth((request) => {
   }
 
   if (!isAdminPage && !isAdminApi && !isStudioPage && !isPreviewApi) return NextResponse.next();
-  if (isProductionEnvironment()) return new NextResponse("Not Found", { status: 404 });
+  if (!adminSurfaceAllowed) return new NextResponse("Not Found", { status: 404 });
 
   if (isInvalidAdminMutation) {
     return NextResponse.json({ error: "invalid-origin" }, { status: 403 });
