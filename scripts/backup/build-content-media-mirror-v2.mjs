@@ -155,7 +155,7 @@ async function mirrorMedia({ article, articleDir, key, role, media }) {
   }
   const outputDir = path.join(mediaRoot, status, slug);
   await mkdir(outputDir, { recursive: true });
-  const outputPath = path.join(outputDir, `${safeSegment(role)}-${originalName}`);
+  const outputPath = path.join(outputDir, `${safeSegment(role)}-${safeSegment(key || 'asset')}-${originalName}`);
   let buffer;
   if (String(media.url).startsWith('/')) {
     const source = path.resolve('public', String(media.url).replace(/^\/+/, ''));
@@ -189,10 +189,14 @@ for (const article of articles) {
   const articleDir = path.join(contentRoot, status, slug);
   await mkdir(articleDir, { recursive: true });
   const mediaPathByKey = new Map();
+  let featuredImagePath = '';
 
   if (article.featuredImage) {
     const mirrored = await mirrorMedia({ article, articleDir, key: 'featured', role: 'featured', media: article.featuredImage });
-    if (mirrored) manifest.media.push({ articleId: article._id, role: 'featured', rootRelativePath: mirrored.rootRelativePath, bytes: mirrored.bytes, sha256: mirrored.sha256, source: mirrored.source, assetId: mirrored.assetId });
+    if (mirrored) {
+      featuredImagePath = mirrored.markdownPath;
+      manifest.media.push({ articleId: article._id, role: 'featured', rootRelativePath: mirrored.rootRelativePath, bytes: mirrored.bytes, sha256: mirrored.sha256, source: mirrored.source, assetId: mirrored.assetId });
+    }
   }
   for (const block of article.body ?? []) {
     if (block.media) {
@@ -227,6 +231,7 @@ for (const article of articles) {
     `- Meta description: ${article.seo?.description ?? ''}`,
     `- Focus keyword: ${article.seo?.focusKeyword ?? ''}`,
     `- Search intent: ${article.seo?.searchIntent ?? ''}`,
+    `- Featured image: ${featuredImagePath}`,
     '',
     article.excerpt ? `> ${clean(article.excerpt)}` : '',
     '',
