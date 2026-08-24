@@ -1,5 +1,6 @@
 export const ADMIN_ENVIRONMENTS = [
   "development",
+  "web-uat",
   "local-uat",
   "local-production",
   "lab",
@@ -11,8 +12,16 @@ export const ADMIN_ENVIRONMENTS = [
 
 export type AdminEnvironment = (typeof ADMIN_ENVIRONMENTS)[number];
 
+export const CCPUN_VERCEL_PROJECT_IDS = {
+  web: "prj_dxwjITkd0av5QiJQv2snUlIASUWu",
+  adminProduction: "prj_6tuUxJxYbQ4mpF7sMgNWx2p2jowN",
+  legacyAdminLab: "prj_438M14AAob2nbf20q7Xa5L7A7aMo",
+  legacyAdminUat: "prj_OR7AlGsE8spGahQegDvd0JudaiEg",
+} as const;
+
 const EXPLICIT_ENVIRONMENTS = new Set<AdminEnvironment>([
   "development",
+  "web-uat",
   "local-uat",
   "local-production",
   "lab",
@@ -23,6 +32,7 @@ const EXPLICIT_ENVIRONMENTS = new Set<AdminEnvironment>([
 
 const SANITY_DATASET_BY_ENVIRONMENT: Partial<Record<AdminEnvironment, "uat" | "production">> = {
   development: "uat",
+  "web-uat": "uat",
   "local-uat": "uat",
   "local-production": "production",
   lab: "uat",
@@ -33,6 +43,7 @@ const SANITY_DATASET_BY_ENVIRONMENT: Partial<Record<AdminEnvironment, "uat" | "p
 
 const SANITY_PROJECT_BY_ENVIRONMENT: Partial<Record<AdminEnvironment, string>> = {
   development: "ccb9lnw5",
+  "web-uat": "ccb9lnw5",
   "local-uat": "ccb9lnw5",
   "local-production": "kyfxgjnq",
   lab: "ccb9lnw5",
@@ -40,6 +51,11 @@ const SANITY_PROJECT_BY_ENVIRONMENT: Partial<Record<AdminEnvironment, string>> =
   "production-admin": "kyfxgjnq",
   production: "kyfxgjnq",
 };
+
+const TRANSITIONAL_ADMIN_NONPROD_PROJECT_IDS = new Set<string>([
+  CCPUN_VERCEL_PROJECT_IDS.legacyAdminLab,
+  CCPUN_VERCEL_PROJECT_IDS.legacyAdminUat,
+]);
 
 function getDeploymentProjectId() {
   return (
@@ -95,6 +111,58 @@ export function resolveSanityConfigEnvironment(
   return serverEnvironment;
 }
 
+export function isDeploymentProjectAllowed(
+  environment: AdminEnvironment,
+  deploymentProjectId = getDeploymentProjectId(),
+  productionAdminProjectId = getProductionAdminProjectId(),
+): boolean {
+  switch (environment) {
+    case "development":
+      return (
+        !deploymentProjectId ||
+        deploymentProjectId === CCPUN_VERCEL_PROJECT_IDS.web ||
+        TRANSITIONAL_ADMIN_NONPROD_PROJECT_IDS.has(deploymentProjectId)
+      );
+    case "web-uat":
+      return deploymentProjectId === CCPUN_VERCEL_PROJECT_IDS.web;
+    case "local-uat":
+    case "local-production":
+      return !deploymentProjectId;
+    case "lab":
+      return deploymentProjectId === CCPUN_VERCEL_PROJECT_IDS.legacyAdminLab;
+    case "uat":
+      return deploymentProjectId === CCPUN_VERCEL_PROJECT_IDS.legacyAdminUat;
+    case "production-admin":
+      return Boolean(
+        deploymentProjectId === CCPUN_VERCEL_PROJECT_IDS.adminProduction &&
+        productionAdminProjectId === CCPUN_VERCEL_PROJECT_IDS.adminProduction,
+      );
+    case "production":
+      return deploymentProjectId === CCPUN_VERCEL_PROJECT_IDS.web;
+    default:
+      return false;
+  }
+}
+
+export function isAdminSurfaceAllowed(
+  environment = getAdminEnvironment(),
+  deploymentProjectId = getDeploymentProjectId(),
+  productionAdminProjectId = getProductionAdminProjectId(),
+): boolean {
+  switch (environment) {
+    case "development":
+      return !deploymentProjectId || TRANSITIONAL_ADMIN_NONPROD_PROJECT_IDS.has(deploymentProjectId);
+    case "local-uat":
+    case "local-production":
+    case "lab":
+    case "uat":
+    case "production-admin":
+      return isDeploymentProjectAllowed(environment, deploymentProjectId, productionAdminProjectId);
+    default:
+      return false;
+  }
+}
+
 export function isSanityLaneAllowed(
   dataset: string | undefined,
   environment = getAdminEnvironment(),
@@ -112,32 +180,20 @@ export function isSanityLaneAllowed(
   );
 }
 
-export function isDeploymentProjectAllowed(
-  environment: AdminEnvironment,
-  deploymentProjectId = getDeploymentProjectId(),
-  productionAdminProjectId = getProductionAdminProjectId(),
-): boolean {
-  if (environment !== "production-admin") return true;
-  return Boolean(
-    deploymentProjectId &&
-    productionAdminProjectId &&
-    deploymentProjectId === productionAdminProjectId,
-  );
-}
-
 export function isAdminMutationEnvironment(
   environment = getAdminEnvironment(),
   deploymentProjectId = getDeploymentProjectId(),
   productionAdminProjectId = getProductionAdminProjectId(),
 ): boolean {
+  if (!isAdminSurfaceAllowed(environment, deploymentProjectId, productionAdminProjectId)) return false;
+
   return (
     environment === "development" ||
     environment === "local-uat" ||
     environment === "lab" ||
     environment === "uat" ||
     (environment === "local-production" && isLocalProductionDraftWriteEnabled(environment)) ||
-    (environment === "production-admin" &&
-      isDeploymentProjectAllowed(environment, deploymentProjectId, productionAdminProjectId))
+    environment === "production-admin"
   );
 }
 
@@ -158,7 +214,7 @@ export function isAdminReadDataPlaneAllowed(
   sanityProjectId = getSanityProjectId(),
 ): boolean {
   return (
-    environment !== "production" &&
+    isAdminSurfaceAllowed(environment, deploymentProjectId, productionAdminProjectId) &&
     isSanityLaneAllowed(dataset, environment, deploymentProjectId, productionAdminProjectId, sanityProjectId)
   );
 }
@@ -185,7 +241,7 @@ export function isStudioDataPlaneAllowed(
 ): boolean {
   if (environment === "local-production" && !isLocalProductionDraftWriteEnabled(environment)) return false;
   return (
-    environment !== "production" &&
+    isAdminSurfaceAllowed(environment, deploymentProjectId, productionAdminProjectId) &&
     isSanityLaneAllowed(dataset, environment, deploymentProjectId, productionAdminProjectId, sanityProjectId)
   );
 }
@@ -198,6 +254,8 @@ export function getEnvironmentLabel(environment = getAdminEnvironment()): string
   switch (environment) {
     case "development":
       return "LOCAL DEVELOPMENT";
+    case "web-uat":
+      return "WEB UAT";
     case "local-uat":
       return "LOCAL UAT";
     case "local-production":
