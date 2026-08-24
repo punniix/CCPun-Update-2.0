@@ -141,8 +141,10 @@ test("Blog sitemap and navigation expose only useful indexable hub nodes", () =>
   const blogArchive = source("components/Blog/BlogArchive.tsx");
   const articleCard = source("components/Blog/ArticleCard.tsx");
 
+  assert.match(sitemap, /articles\.filter\(isArticleCanonicalAligned\)/);
+  assert.match(sitemap, /canonicalArticles\.filter/);
+  assert.match(sitemap, /article\.status === "published"/);
   assert.match(sitemap, /article\.noindex !== true/);
-  assert.match(sitemap, /isArticleCanonicalAligned\(article\)/);
   assert.match(sitemap, /if \(!hub\.indexable\) return \[\]/);
   assert.doesNotMatch(sitemap, /\?category=|\?tag=/);
 
