@@ -28,8 +28,8 @@ test("SEO Control Center keeps semantic topic separate from protected published 
   assert.doesNotMatch(input, /Google Preview|สถานะ SEO ที่ควรตรวจ|useFormValue|const checks/);
 
   assert.match(adminPage, /SEO Control Center/);
-  assert.match(adminPage, /ฟิลด์แก้ปกติ/);
-  assert.match(adminPage, /ฟิลด์ Protected/);
+  assert.match(adminPage, /แก้ผ่าน Draft ได้ตามปกติ/);
+  assert.match(adminPage, /Protected หลังบทความเคยเผยแพร่/);
   assert.match(detailPage, /คะแนนคำนวณสดจากฉบับปัจจุบัน/);
   assert.match(detailPage, /ความพร้อมก่อนทำงานจริง/);
 
