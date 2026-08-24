@@ -34,13 +34,16 @@ jobs:
       - name: Foundation code, SEO, analytics and admin contracts
         run: npm run check:foundation
 
+      - name: Homepage LCP loading contract
+        run: node tests/home-lcp-regression.mjs
+
       - name: Live legacy URL ledger against Production
         run: npm run qa:legacy-urls
 
       - name: SEO topic hub static contract
         run: node tests/seo-topic-hubs-regression.mjs
 
-      - name: SEO HTTP contract on read-only Production content
+      - name: SEO and homepage HTTP contracts on read-only Production content
         shell: bash
         run: |
           npm run local:production:read > /tmp/ccpun-seo-http.log 2>&1 &
@@ -72,6 +75,7 @@ jobs:
           fi
 
           node qa/seo-topic-hubs-http-regression.mjs
+          node qa/home-lcp-http-regression.mjs
 
       - name: Production-parity build on non-production content lane
         run: npm run build
