@@ -48,6 +48,9 @@ jobs:
       - name: Backup automation regression
         run: node tests/backup-regression.mjs
 
+      - name: Analytics archive regression
+        run: node tests/analytics-archive-regression.mjs
+
       - name: Production-parity build on non-production data plane
         run: npm run build
         env:
