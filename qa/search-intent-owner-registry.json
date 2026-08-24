@@ -1,0 +1,78 @@
+{
+  "version": 1,
+  "updatedAt": "2026-08-24",
+  "policy": "1 Search Intent = 1 Owner",
+  "owners": [
+    {
+      "intentId": "financial-pyramid-definition",
+      "primaryQuery": "พีระมิดทางการเงิน คืออะไร",
+      "queryVariants": [
+        "พีระมิดทางการเงิน",
+        "financial pyramid คืออะไร"
+      ],
+      "searchIntent": "informational",
+      "ownerUrl": "https://ccpun.com/blog/personal-finance/financial-pyramid/",
+      "semanticTopic": "personal-finance",
+      "ownerState": "published",
+      "ownershipBasis": "existing-published-page",
+      "legacyMappingId": "financial-pyramid"
+    },
+    {
+      "intentId": "aia-health-happy-definition",
+      "primaryQuery": "AIA Health Happy คืออะไร",
+      "queryVariants": [
+        "aia health happy",
+        "ประกันสุขภาพ aia health happy"
+      ],
+      "searchIntent": "informational",
+      "ownerUrl": "https://ccpun.com/blog/life-insurance/aia-health-happy-describe/",
+      "semanticTopic": "health-insurance",
+      "ownerState": "published",
+      "ownershipBasis": "existing-published-page",
+      "legacyMappingId": "aia-health-happy"
+    },
+    {
+      "intentId": "aia-health-ci-hero-definition",
+      "primaryQuery": "AIA Health CI Hero คืออะไร",
+      "queryVariants": [
+        "aia health ci hero",
+        "ประกันสุขภาพ aia health ci hero"
+      ],
+      "searchIntent": "informational",
+      "ownerUrl": "https://ccpun.com/blog/life-insurance/aia-health-ci-hero-guide/",
+      "semanticTopic": "health-insurance",
+      "ownerState": "published",
+      "ownershipBasis": "existing-published-page",
+      "legacyMappingId": "aia-health-ci-hero",
+      "protectedRule": "Health / medical-expense insurance; not critical-illness lump-sum"
+    },
+    {
+      "intentId": "critical-illness-insurance-definition",
+      "primaryQuery": "ประกันโรคร้ายแรง คืออะไร",
+      "queryVariants": [
+        "ประกันโรคร้ายแรง",
+        "ประกันโรคร้ายแรงต่างจากประกันสุขภาพอย่างไร"
+      ],
+      "searchIntent": "informational",
+      "ownerUrl": "https://ccpun.com/blog/life-insurance/critical-illness-insurance/",
+      "semanticTopic": "critical-illness",
+      "ownerState": "published",
+      "ownershipBasis": "existing-published-page",
+      "legacyMappingId": "critical-illness-insurance"
+    },
+    {
+      "intentId": "aia-vitality-definition",
+      "primaryQuery": "AIA Vitality คืออะไร",
+      "queryVariants": [
+        "aia vitality",
+        "เอไอเอ ไวทัลลิตี้"
+      ],
+      "searchIntent": "informational",
+      "ownerUrl": "https://ccpun.com/blog/life-insurance/aia-vitality/",
+      "semanticTopic": "life-insurance",
+      "ownerState": "published",
+      "ownershipBasis": "existing-published-page",
+      "legacyMappingId": "aia-vitality"
+    }
+  ]
+}
