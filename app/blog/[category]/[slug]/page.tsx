@@ -164,6 +164,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ catego
                   src={article.featuredImage.src}
                   alt={article.featuredImage.alt}
                   fill
+                  fetchPriority="high"
                   sizes="(max-width: 768px) 100vw, 768px"
                   className="object-cover"
                 />
