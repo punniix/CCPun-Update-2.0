@@ -18,7 +18,7 @@ const HeroSection = () => {
           src="/assets/hero-pun-laptop-v3.png"
           alt=""
           fill
-          priority
+          fetchPriority="high"
           quality={90}
           sizes="100vw"
           className="absolute inset-0 h-full w-full object-cover object-[62%_center]"
@@ -42,8 +42,8 @@ const HeroSection = () => {
                   src="/assets/hero-pun-laptop-mobile-v5.webp"
                   alt=""
                   fill
-                  priority
-                  quality={92}
+                  fetchPriority="high"
+                  quality={75}
                   sizes="100vw"
                   className="object-cover object-center"
                 />
