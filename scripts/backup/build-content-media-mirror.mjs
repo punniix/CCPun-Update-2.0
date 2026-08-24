@@ -57,6 +57,7 @@ function safeSegment(value) {
 }
 function statusOf(article) { return article._id.startsWith('drafts.') ? 'Drafts' : 'Published'; }
 function hashBuffer(buffer) { return createHash('sha256').update(buffer).digest('hex'); }
+function posixRelative(from, to) { return path.relative(from, to).split(path.sep).join('/'); }
 
 function richText(block) {
   const defs = new Map((block.markDefs ?? []).map((mark) => [mark._key, mark]));
@@ -156,8 +157,13 @@ async function mirrorMedia({ article, key, role, media }) {
     buffer = await fetchBytes(media.url);
     await writeFile(outputPath, buffer, { mode: 0o600 });
   }
-  const relative = path.relative(contentRoot, outputPath).split(path.sep).join('/');
-  return { relativePath: relative, bytes: buffer.length, sha256: hashBuffer(buffer), source: media.url, assetId: media.assetId ?? null };
+  return {
+    outputPath,
+    bytes: buffer.length,
+    sha256: hashBuffer(buffer),
+    source: media.url,
+    assetId: media.assetId ?? null,
+  };
 }
 
 const articles = await client.fetch(query);
@@ -176,24 +182,24 @@ for (const article of articles) {
   if (article.featuredImage) {
     const mirrored = await mirrorMedia({ article, key: 'featured', role: 'featured', media: article.featuredImage });
     if (mirrored) {
-      mediaPathByKey.set('featured', mirrored.relativePath);
-      manifest.media.push({ articleId: article._id, role: 'featured', ...mirrored });
+      mediaPathByKey.set('featured', posixRelative(articleDir, mirrored.outputPath));
+      manifest.media.push({ articleId: article._id, role: 'featured', path: posixRelative(root, mirrored.outputPath), bytes: mirrored.bytes, sha256: mirrored.sha256, source: mirrored.source, assetId: mirrored.assetId });
     }
   }
   for (const block of article.body ?? []) {
     if (block.media) {
       const mirrored = await mirrorMedia({ article, key: block._key, role: block._type, media: block.media });
       if (mirrored) {
-        mediaPathByKey.set(block._key, mirrored.relativePath);
-        manifest.media.push({ articleId: article._id, blockKey: block._key, role: block._type, ...mirrored });
+        mediaPathByKey.set(block._key, posixRelative(articleDir, mirrored.outputPath));
+        manifest.media.push({ articleId: article._id, blockKey: block._key, role: block._type, path: posixRelative(root, mirrored.outputPath), bytes: mirrored.bytes, sha256: mirrored.sha256, source: mirrored.source, assetId: mirrored.assetId });
       }
     }
     for (const image of block.images ?? []) {
       if (!image.media) continue;
       const mirrored = await mirrorMedia({ article, key: image._key, role: 'gallery', media: image.media });
       if (mirrored) {
-        mediaPathByKey.set(image._key, mirrored.relativePath);
-        manifest.media.push({ articleId: article._id, blockKey: image._key, role: 'gallery', ...mirrored });
+        mediaPathByKey.set(image._key, posixRelative(articleDir, mirrored.outputPath));
+        manifest.media.push({ articleId: article._id, blockKey: image._key, role: 'gallery', path: posixRelative(root, mirrored.outputPath), bytes: mirrored.bytes, sha256: mirrored.sha256, source: mirrored.source, assetId: mirrored.assetId });
       }
     }
   }
@@ -227,7 +233,14 @@ for (const article of articles) {
   const mdPath = path.join(articleDir, 'article.md');
   await writeFile(jsonPath, `${JSON.stringify(article, null, 2)}\n`, { mode: 0o600 });
   await writeFile(mdPath, markdown, { mode: 0o600 });
-  manifest.articles.push({ id: article._id, status, slug: article.slug, canonicalPath, json: path.relative(root, jsonPath), markdown: path.relative(root, mdPath) });
+  manifest.articles.push({
+    id: article._id,
+    status,
+    slug: article.slug,
+    canonicalPath,
+    json: posixRelative(root, jsonPath),
+    markdown: posixRelative(root, mdPath),
+  });
 }
 
 await writeFile(path.join(root, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`, { mode: 0o600 });
