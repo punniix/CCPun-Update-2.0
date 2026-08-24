@@ -1,9 +1,14 @@
 import type { Article } from "./types";
 import { LEGACY_CATEGORY_TOPICS, normalizeArticleTaxonomy } from "./taxonomy";
 
-// URL Migration V2: every interim /life-insurance/ article path redirects
-// directly to the final semantic destination. Do not add a hop through any
-// historical path; Google and users should see one permanent redirect only.
+// URL Migration V2 manifest. These interim /life-insurance/ paths eventually
+// resolve to their final semantic destinations. The route must NOT apply this
+// manifest before reading the current article category during the cutover:
+// code can deploy before Sanity changes, and an unconditional pre-fetch
+// redirect would create life -> health/critical -> life loops. The normal
+// post-fetch category mismatch redirect is the runtime authority and becomes a
+// direct permanent redirect automatically as soon as the Sanity category is
+// migrated.
 const MOVED_ARTICLE_PATHS: Record<string, string> = {
   "life-insurance/aia-health-happy-describe": "/blog/health-insurance/aia-health-happy-describe/",
   "life-insurance/aia-health-ci-hero-guide": "/blog/health-insurance/aia-health-ci-hero-guide/",
@@ -46,6 +51,7 @@ export function getLegacyCategoryRedirectPath(segment: string) {
   return topic ? `/blog/?tag=${encodeURIComponent(topic)}` : null;
 }
 
-export function getMovedArticleRedirectPath(category: string, slug: string) {
+export function getMovedArticleRedirectPath(category: string, slug: string, cutoverReady = false) {
+  if (!cutoverReady) return null;
   return MOVED_ARTICLE_PATHS[`${category}/${slug}`] ?? null;
 }
