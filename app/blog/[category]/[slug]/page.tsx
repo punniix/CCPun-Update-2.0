@@ -11,6 +11,7 @@ import ArticleFaq from "@/components/Blog/ArticleFaq";
 import { serializeJsonLd } from "@/lib/content/json-ld";
 import { getContentProvider } from "@/lib/content/provider";
 import { buildArticleSchemaGraph } from "@/lib/content/schema";
+import { getArticleSemanticTopic } from "@/lib/content/taxonomy";
 import { getArticleCanonical, getArticleCategorySlug, getArticlePath, getMovedArticleRedirectPath, isArticleCanonicalAligned } from "@/lib/content/url";
 
 const LINE_OA_URL = "https://lin.ee/tqLCs4f";
@@ -69,6 +70,14 @@ export default async function ArticlePage({ params }: { params: Promise<{ catego
   if (!article) notFound();
   if (category !== getArticleCategorySlug(article)) permanentRedirect(getArticlePath(article));
 
+  const semanticTopic = getArticleSemanticTopic({
+    articleSlug: article.slug,
+    categoryTitle: article.category,
+    categorySlug: article.categorySlug,
+    tags: article.tags,
+  });
+  const topicName = semanticTopic?.title ?? article.category;
+  const topicHref = semanticTopic ? `/blog/${semanticTopic.slug}/` : "/blog/";
   const isDraft = article.status !== "published";
   const schema = isArticleCanonicalAligned(article) ? buildArticleSchemaGraph(article) : null;
 
@@ -82,12 +91,16 @@ export default async function ArticlePage({ params }: { params: Promise<{ catego
             <div className="blog-hero__texture absolute inset-0 pointer-events-none" aria-hidden="true" />
             <div className="blog-article-hero__content relative z-10 mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
               <nav aria-label="Breadcrumb" className="mb-4 flex min-w-0 items-center gap-2 text-sm">
+                <Link href="/" className="whitespace-nowrap text-muted-foreground transition-colors hover:text-primary">
+                  หน้าแรก
+                </Link>
+                <span className="text-muted-foreground/50" aria-hidden="true">&gt;</span>
                 <Link href="/blog/" className="whitespace-nowrap text-muted-foreground transition-colors hover:text-primary">
                   บทความ
                 </Link>
                 <span className="text-muted-foreground/50" aria-hidden="true">&gt;</span>
-                <Link href={`/blog/?category=${encodeURIComponent(article.category)}`} className="whitespace-nowrap text-muted-foreground transition-colors hover:text-primary">
-                  {article.category}
+                <Link href={topicHref} className="whitespace-nowrap text-muted-foreground transition-colors hover:text-primary">
+                  {topicName}
                 </Link>
                 <span className="text-muted-foreground/50" aria-hidden="true">&gt;</span>
                 <span className="truncate font-medium text-foreground">{article.title}</span>
@@ -123,9 +136,9 @@ export default async function ArticlePage({ params }: { params: Promise<{ catego
                     <RefreshCw className="h-4 w-4" aria-hidden="true" />
                     <span>อัปเดตล่าสุด {formatDate(article.updatedAt)}</span>
                   </span>
-                  <span className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
-                    {article.category}
-                  </span>
+                  <Link href={topicHref} className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-medium text-primary transition-colors hover:bg-primary/15">
+                    {topicName}
+                  </Link>
                   {isDraft && (
                     <>
                       <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium text-muted-foreground">

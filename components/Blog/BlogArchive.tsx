@@ -83,7 +83,7 @@ export default function BlogArchive({ articles, showDraft }: { articles: Article
               })}
             </div>
 
-            <div className="flex flex-wrap gap-2" aria-label="แท็กหัวข้อย่อย">
+            <div className="flex flex-wrap gap-2" aria-label="ตัวกรองหัวข้อย่อย">
               {TOPIC_TAGS.map((tag) => (
                 <button
                   key={tag}
@@ -92,7 +92,7 @@ export default function BlogArchive({ articles, showDraft }: { articles: Article
                   className={`blog-cat-pill whitespace-nowrap${filters.tag === tag ? " blog-cat-pill--active" : ""}`}
                   onClick={() => updateFilters(filters.category, filters.tag === tag ? "all" : tag, filters.query)}
                 >
-                  {tag}
+                  กรอง: {tag}
                 </button>
               ))}
             </div>

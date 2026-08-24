@@ -1,0 +1,90 @@
+name: CCPun SEO Topic Hubs CI
+
+on:
+  push:
+    branches: [seo/category-hubs-20260824]
+  pull_request:
+    branches: [v4-production]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ccpun-seo-topic-hubs-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: TypeScript
+        run: npx tsc --noEmit --incremental false
+
+      - name: Existing Vercel and analytics regression
+        run: npm run test:vercel
+
+      - name: Admin and content regression
+        run: npm run test:admin
+
+      - name: Existing legacy URL ledger
+        run: npm run qa:legacy-urls
+
+      - name: SEO topic hub static contract
+        run: node tests/seo-topic-hubs-regression.mjs
+
+      - name: SEO HTTP contract on read-only Production content
+        shell: bash
+        run: |
+          npm run local:production:read > /tmp/ccpun-seo-http.log 2>&1 &
+          SERVER_PID=$!
+          cleanup() {
+            kill "$SERVER_PID" 2>/dev/null || true
+            wait "$SERVER_PID" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+
+          READY=0
+          for attempt in $(seq 1 90); do
+            if curl --fail --silent --show-error http://127.0.0.1:3000/blog/ >/dev/null 2>&1; then
+              READY=1
+              break
+            fi
+            if ! kill -0 "$SERVER_PID" 2>/dev/null; then
+              echo 'Local read-only Production server exited before becoming ready.'
+              cat /tmp/ccpun-seo-http.log
+              exit 1
+            fi
+            sleep 1
+          done
+
+          if [ "$READY" -ne 1 ]; then
+            echo 'Timed out waiting for local read-only Production server.'
+            cat /tmp/ccpun-seo-http.log
+            exit 1
+          fi
+
+          node qa/seo-topic-hubs-http-regression.mjs
+
+      - name: Production-parity build on non-production content lane
+        run: npm run build
+        env:
+          CCPUN_APP_ENV: development
+          NEXT_PUBLIC_CCPUN_APP_ENV: development
+          NEXT_PUBLIC_SANITY_PROJECT_ID: ccb9lnw5
+          NEXT_PUBLIC_SANITY_DATASET: uat
