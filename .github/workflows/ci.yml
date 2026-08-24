@@ -45,6 +45,9 @@ jobs:
       - name: Insurance taxonomy V2 self-test
         run: npm run cms:taxonomy:v2:self-test
 
+      - name: Backup automation regression
+        run: node tests/backup-regression.mjs
+
       - name: Production-parity build on non-production data plane
         run: npm run build
         env:
