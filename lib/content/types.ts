@@ -63,6 +63,7 @@ export type Article = {
   category: string;
   categorySlug?: string;
   tags?: string[];
+  semanticTopic?: string;
   authorName: string;
   status: ArticleStatus;
   publishedAt?: string;

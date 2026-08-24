@@ -24,6 +24,7 @@ export async function GET() {
       isArticleInSemanticTopic(
         {
           articleSlug: article.slug,
+          semanticTopic: article.semanticTopic,
           categoryTitle: article.category,
           categorySlug: article.categorySlug,
           tags: article.tags,

@@ -128,6 +128,7 @@ const rawArticleSchema = z.object({
   seo: z.object({
     title: z.string().min(1).nullish(),
     description: z.string().min(1).nullish(),
+    semanticTopic: z.string().min(1).nullish(),
     canonical: z.string().url().nullish(),
     noindex: z.boolean().nullish(),
   }).nullish(),
@@ -326,6 +327,7 @@ function toArticle(rawInput: unknown): Article {
     category: raw.category,
     categorySlug: raw.categorySlug ?? undefined,
     tags: raw.tags ?? undefined,
+    semanticTopic: raw.seo?.semanticTopic ?? undefined,
     authorName: raw.authorName,
     status,
     publishedAt: raw.publishedAt ?? undefined,

@@ -72,6 +72,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ catego
 
   const semanticTopic = getArticleSemanticTopic({
     articleSlug: article.slug,
+    semanticTopic: article.semanticTopic,
     categoryTitle: article.category,
     categorySlug: article.categorySlug,
     tags: article.tags,

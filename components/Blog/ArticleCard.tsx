@@ -13,6 +13,7 @@ export default function ArticleCard({ article, showDraft = false }: { article: A
   const href = getArticlePath(article);
   const semanticTopic = getArticleSemanticTopic({
     articleSlug: article.slug,
+    semanticTopic: article.semanticTopic,
     categoryTitle: article.category,
     categorySlug: article.categorySlug,
     tags: article.tags,
