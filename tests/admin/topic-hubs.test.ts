@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import { buildArticleSchemaGraph, buildBlogTopicHubSchema } from "../../lib/content/schema";
 import {
@@ -29,6 +30,10 @@ function article(overrides: Partial<Article>): Article {
     body: [],
     ...overrides,
   };
+}
+
+function source(relativePath: string) {
+  return readFileSync(new URL(`../../${relativePath}`, import.meta.url), "utf8");
 }
 
 test("Phase 1 exposes five real topic hubs while investment remains non-indexable", () => {
@@ -62,19 +67,19 @@ test("semantic topic is decoupled from the current canonical URL category", () =
   assert.equal(getArticleCanonical(healthHappy), "https://ccpun.com/blog/life-insurance/aia-health-happy-describe/");
 });
 
-test("existing moved article redirects keep their original direction with no reverse redirect", () => {
-  assert.equal(
-    getMovedArticleRedirectPath("health-insurance", "aia-health-happy-describe"),
-    "/blog/life-insurance/aia-health-happy-describe/",
-  );
-  assert.equal(
-    getMovedArticleRedirectPath("health-insurance", "aia-health-ci-hero-guide"),
-    "/blog/life-insurance/aia-health-ci-hero-guide/",
-  );
-  assert.equal(
-    getMovedArticleRedirectPath("critical-illness", "critical-illness-insurance"),
-    "/blog/life-insurance/critical-illness-insurance/",
-  );
+test("existing moved article redirects keep their original direction with no reverse redirect or chain", () => {
+  const moved = [
+    ["health-insurance", "aia-health-happy-describe", "/blog/life-insurance/aia-health-happy-describe/"],
+    ["health-insurance", "aia-health-ci-hero-guide", "/blog/life-insurance/aia-health-ci-hero-guide/"],
+    ["critical-illness", "critical-illness-insurance", "/blog/life-insurance/critical-illness-insurance/"],
+  ] as const;
+
+  for (const [category, slug, target] of moved) {
+    assert.equal(getMovedArticleRedirectPath(category, slug), target);
+    const segments = target.split("/").filter(Boolean);
+    assert.equal(getMovedArticleRedirectPath(segments[1]!, segments[2]!), null, `${target} must be a terminal redirect target`);
+  }
+
   assert.equal(getMovedArticleRedirectPath("life-insurance", "aia-health-happy-describe"), null);
   assert.equal(getMovedArticleRedirectPath("life-insurance", "critical-illness-insurance"), null);
 });
@@ -105,4 +110,48 @@ test("hub ItemList links to article canonical URLs rather than synthetic topic l
   const itemList = graph.find((node) => node["@type"] === "ItemList")!;
   const items = itemList.itemListElement as Array<Record<string, unknown>>;
   assert.equal(items[0]?.url, "https://ccpun.com/blog/life-insurance/aia-health-happy-describe/");
+});
+
+test("hub route resolves real hubs before any legacy one-segment redirect fallback", () => {
+  const categoryPage = source("app/blog/[category]/page.tsx");
+  const hubLookup = categoryPage.indexOf("const hub = getBlogTopicHub(slug)");
+  const legacyFallback = categoryPage.indexOf("getLegacyCategoryRedirectPath(slug)");
+  assert.ok(hubLookup >= 0, "topic hub lookup is missing");
+  assert.ok(legacyFallback > hubLookup, "topic hubs must be resolved before legacy redirect fallback");
+  assert.match(categoryPage, /alternates:\s*\{ canonical \}/);
+  assert.match(categoryPage, /robots:\s*!isEnabled && shouldIndexHub/);
+  assert.match(categoryPage, /buildBlogTopicHubSchema\(hub, relevantIndexableArticles\)/);
+  assert.match(categoryPage, /href=\{hub\.featuredLink\.href\}/);
+});
+
+test("visible and JSON-LD article breadcrumbs never use query-filter URLs as SEO nodes", () => {
+  const articlePage = source("app/blog/[category]/[slug]/page.tsx");
+  const schemaSource = source("lib/content/schema.ts");
+  assert.doesNotMatch(articlePage, /\/blog\/\?category=/);
+  assert.doesNotMatch(schemaSource, /\/blog\/\?category=/);
+  assert.match(articlePage, /href=\{topicHref\}/);
+  assert.match(articlePage, /getMovedArticleRedirectPath\(category, slug\)/);
+  assert.match(schemaSource, /articleSection:\s*sectionName/);
+  assert.match(schemaSource, /item:\s*sectionUrl/);
+});
+
+test("Blog sitemap and navigation expose only useful indexable hub nodes", () => {
+  const sitemap = source("app/sitemaps/blog.xml/route.ts");
+  const blogPage = source("app/blog/page.tsx");
+  const blogArchive = source("components/Blog/BlogArchive.tsx");
+  const articleCard = source("components/Blog/ArticleCard.tsx");
+
+  assert.match(sitemap, /article\.noindex !== true/);
+  assert.match(sitemap, /isArticleCanonicalAligned\(article\)/);
+  assert.match(sitemap, /if \(!hub\.indexable\) return \[\]/);
+  assert.doesNotMatch(sitemap, /\?category=|\?tag=/);
+
+  assert.match(blogPage, /BLOG_TOPIC_HUBS\.filter/);
+  assert.match(blogPage, /hub\.indexable/);
+  assert.match(blogPage, /isArticleCanonicalAligned\(article\)/);
+  assert.match(blogPage, /aria-label="หัวข้อบทความหลัก"/);
+  assert.doesNotMatch(blogArchive, /BLOG_TOPIC_HUBS/, "SEO hub navigation should be server-rendered by app/blog/page.tsx, not owned by the client filter component");
+
+  assert.match(articleCard, /const href = getArticlePath\(article\)/);
+  assert.match(articleCard, /getArticleSemanticTopic/);
 });
