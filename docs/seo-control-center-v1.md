@@ -51,17 +51,20 @@ A requested change to a protected field is not a normal content edit. It must be
 9. Preview/UAT validation
 10. explicit human approval before Production
 
-## Control Center UI
+## Control Center architecture
 
-The Sanity SEO object shows:
+The existing `/snt-admin/seo/` Control Plane is the operational SEO dashboard. It owns live deterministic audit/readiness calculations and the human review workflow.
 
-- Google-style title/description/URL preview
-- readiness status for title, description, topic, intent, featured image, author, sources and indexability
-- whether the article is Draft or Published
-- a protected-field warning
-- the latest stored CCPun SEO audit score
+Sanity Studio remains the safe editorial surface. Its SEO object shows:
 
-The preview is informational and does not claim to reproduce Google's SERP rendering exactly.
+- routine editable SEO fields
+- the latest stored CCPun SEO audit snapshot
+- guidance that Semantic Topic is independent from the physical URL
+- Protected-field guidance, while schema rules enforce the actual locks after publication
+
+Control Plane เป็นแหล่งเดียวสำหรับการคำนวณ audit และ readiness. Studio must not recompute a second local audit/readiness result because that could disagree with the canonical saved audit.
+
+A richer search-result preview can be added later inside the existing Control Plane if needed, using the same canonical article context. It is intentionally not recomputed inside `SeoScoreInput` in v1.
 
 ## Non-goals for v1
 
@@ -71,6 +74,7 @@ The preview is informational and does not claim to reproduce Google's SERP rende
 - no automatic publishing
 - no changes to GA4, GTM, Meta Pixel or Consent Mode
 - no migration of existing winner URLs
+- no UX/UI 4.2 work
 
 ## Current migration rule
 
