@@ -63,6 +63,14 @@ const API_ERROR_MESSAGES: Record<string, string> = {
   "proposal-source-stale": "บทความเปลี่ยนไประหว่างสร้างข้อเสนอ กรุณาลองสร้างข้อเสนอใหม่อีกครั้ง",
   "proposal-generation-failed": "ยังสร้างข้อเสนอไม่สำเร็จ กรุณาลองอีกครั้ง",
   "research-snapshot-failed": "ยังบันทึกข้อมูลงานวิจัยไม่สำเร็จ กรุณาลองอีกครั้ง",
+  "provider-sync-local-required": "ตอนนี้การ Refresh Ubersuggest ต้องทำจาก Local CCPun Admin ที่เชื่อม OAuth ไว้ ส่วน admin.ccpun.com จะอ่าน snapshot ล่าสุดจาก Sanity",
+  "provider-auth-required": "Ubersuggest ต้องเชื่อมบัญชีใหม่ก่อนจึงจะดึงข้อมูลได้",
+  "provider-project-not-found": "ไม่พบ project ccpun.com ในบัญชี Ubersuggest ที่เชื่อมอยู่",
+  "provider-rate-limited": "ระบบชะลอการเรียก Ubersuggest เพื่อรักษา quota กรุณาใช้ snapshot ล่าสุดก่อน",
+  "provider-timeout": "Ubersuggest ใช้เวลาตอบนานเกินกำหนด ระบบยังไม่ได้เขียน snapshot ใหม่",
+  "provider-invalid-response": "รูปแบบข้อมูลจาก Ubersuggest ไม่ตรง contract ระบบจึงไม่บันทึกข้อมูลชุดนี้",
+  "provider-tool-failed": "Ubersuggest ยังตอบข้อมูลชุดนี้ไม่สำเร็จ ระบบจะเก็บ snapshot เดิมไว้",
+  "research-write-not-configured": "ช่องทางบันทึก Research Snapshot ยังไม่พร้อม จึงไม่ดึง provider เพื่อป้องกันข้อมูลหายและใช้ quota โดยไม่จำเป็น",
   "mutation-failed": "ยังบันทึกการเปลี่ยนแปลงไม่สำเร็จ กรุณาลองอีกครั้ง",
 };
 
