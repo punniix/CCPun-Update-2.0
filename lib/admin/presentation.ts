@@ -62,6 +62,13 @@ const API_ERROR_MESSAGES: Record<string, string> = {
   "audit-stale": "บทความเปลี่ยนไประหว่างการตรวจ กรุณาลองตรวจ SEO ใหม่อีกครั้ง",
   "proposal-source-stale": "บทความเปลี่ยนไประหว่างสร้างข้อเสนอ กรุณาลองสร้างข้อเสนอใหม่อีกครั้ง",
   "proposal-generation-failed": "ยังสร้างข้อเสนอไม่สำเร็จ กรุณาลองอีกครั้ง",
+  "no-safe-proposal": "ไม่พบข้อเสนอใหม่ที่ปลอดภัยพอให้ส่งเข้าคิวตรวจ",
+  "seo-ai-not-configured": "ยังไม่ได้ตั้งค่าผู้ให้บริการ AI สำหรับ SEO ระบบจึงปิดการสร้างข้อเสนอไว้ก่อน",
+  "primary-keyword-required": "กรุณากำหนด Primary keyword ของบทความก่อนสร้างข้อเสนอ SEO",
+  "seo-research-required": "ยังไม่มี Research Snapshot หรือ Search Intent Owner ที่เพียงพอสำหรับคำค้นหลักนี้ กรุณาเก็บหลักฐานก่อนสร้างข้อเสนอ",
+  "keyword-owner-conflict": "คำค้นหลักนี้มีบทความ Owner อื่นอยู่แล้ว ระบบหยุดเพื่อป้องกัน keyword cannibalization",
+  "seo-ai-invalid-output": "ผลลัพธ์จาก AI ไม่ผ่านรูปแบบหรือกติกาความยาวของ SEO กรุณาลองสร้างใหม่",
+  "seo-ai-provider-failed": "ยังเชื่อมต่อผู้ให้บริการ AI ไม่สำเร็จ กรุณาลองใหม่ภายหลัง",
   "research-snapshot-failed": "ยังบันทึกข้อมูลงานวิจัยไม่สำเร็จ กรุณาลองอีกครั้ง",
   "mutation-failed": "ยังบันทึกการเปลี่ยนแปลงไม่สำเร็จ กรุณาลองอีกครั้ง",
 };
