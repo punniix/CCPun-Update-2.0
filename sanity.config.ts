@@ -10,7 +10,7 @@ import {
   filterStudioNewDocumentOptions,
   filterStudioStructureItems,
   getStudioPublishingOptions,
-  protectLocalProductionDestructiveActions,
+  protectProductionContentLifecycleActions,
 } from "./cms/sanity/studio-policy";
 import { isStudioDataPlaneAllowed, resolveSanityConfigEnvironment } from "./lib/admin/environment";
 
@@ -23,7 +23,7 @@ const environment = resolveSanityConfigEnvironment(
 );
 const isProductionCms = dataset === "production";
 const studioName = isProductionCms ? "ccpun-website-production-cms" : "ccpun-website-uat-cms";
-const studioTitle = isProductionCms ? "CCPun Website Production CMS" : "CCPun Website UAT CMS";
+const studioTitle = isProductionCms ? "CCPun Website Production CMS" : "CCpun Website UAT CMS";
 
 export const sanityStudioConfig =
   projectId && dataset && isStudioDataPlaneAllowed(dataset, environment, undefined, undefined, projectId)
@@ -71,9 +71,10 @@ export const sanityStudioConfig =
         schema: { types: schemaTypes },
         document: {
           actions: (previousActions, context) =>
-            protectLocalProductionDestructiveActions(
+            protectProductionContentLifecycleActions(
               filterStudioDocumentActions(previousActions, context.dataset, environment, context.schemaType, projectId),
               environment,
+              context.schemaType,
             ),
           newDocumentOptions: (previousOptions) => filterStudioNewDocumentOptions(previousOptions, dataset, environment, projectId),
         },
