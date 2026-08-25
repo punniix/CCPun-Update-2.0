@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import GenerateSeoSuggestionsButton from "@/components/admin/GenerateSeoSuggestionsButton";
 import RunSeoAuditButton from "@/components/admin/RunSeoAuditButton";
 import { requireAdminPermission } from "@/lib/admin/require-permission";
 import { getSeoProposalContext, runSeoAudit } from "@/lib/admin/seo-audit";
 import { getAdminSanityStatus } from "@/lib/admin/sanity-control";
 import { isStudioDataPlaneAllowed } from "@/lib/admin/environment";
+import { isSeoAiConfigured } from "@/lib/admin/seo-ai";
 
 export const metadata: Metadata = { title: "รายละเอียดผลตรวจ SEO" };
 
@@ -27,6 +29,8 @@ export default async function SeoAuditDetailPage({ params }: PageProps) {
   const status = getAdminSanityStatus();
   const studioReady = isStudioDataPlaneAllowed(status.dataset ?? undefined);
   const isDraft = audit.articleId.startsWith("drafts.");
+  const aiReady = isSeoAiConfigured();
+  const hasPrimaryKeyword = audit.checks.find((check) => check.id === "primary-keyword")?.passed ?? false;
 
   return (
     <div>
@@ -40,6 +44,7 @@ export default async function SeoAuditDetailPage({ params }: PageProps) {
           <Link href="/snt-admin/seo/" className="inline-flex min-h-11 items-center rounded-xl border border-white/10 px-4 py-2.5 text-sm text-white/70 hover:bg-white/5">กลับหน้าตรวจ SEO</Link>
           {studioReady ? <Link href={studioHref} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center rounded-xl border border-[#e0c985]/30 bg-[#e0c985]/10 px-4 py-2.5 text-sm font-medium text-[#f4df9b] hover:bg-[#e0c985]/15">เปิดแก้ใน Studio<span className="sr-only"> (เปิดแท็บใหม่)</span></Link> : null}
           {status.writeReady && isDraft ? <RunSeoAuditButton articleId={id} /> : null}
+          {status.writeReady && isDraft && aiReady && hasPrimaryKeyword ? <GenerateSeoSuggestionsButton articleId={id} /> : null}
         </div>
       </div>
 
@@ -54,6 +59,23 @@ export default async function SeoAuditDetailPage({ params }: PageProps) {
         <article className="rounded-2xl border border-white/10 bg-white/[0.035] p-4"><div className="text-sm text-white/60">ต้องแก้ด่วน</div><div className="mt-2 text-2xl font-semibold text-red-300">{audit.criticalIssues}</div></article>
         <article className="rounded-2xl border border-white/10 bg-white/[0.035] p-4"><div className="text-sm text-white/60">คำเตือน</div><div className="mt-2 text-2xl font-semibold text-amber-300">{audit.warnings}</div></article>
         <article className="rounded-2xl border border-white/10 bg-white/[0.035] p-4"><div className="text-sm text-white/60">โอกาสปรับปรุง</div><div className="mt-2 text-2xl font-semibold text-sky-300">{audit.opportunities}</div></article>
+      </section>
+
+      <section className="mt-6 rounded-3xl border border-[#e0c985]/15 bg-[#e0c985]/[0.04] p-5">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-[#f4df9b]">AI SEO Suggestions</h2>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-white/65">สร้างข้อเสนอ Search Intent, SEO Title และ Meta Description จากเนื้อหาจริง + Primary keyword + Research Snapshot/SERP + Search Intent Owner ที่ผ่านการทบทวนแล้ว ข้อเสนอทุกชิ้นมีความเสี่ยงอย่างน้อยระดับปานกลางและต้องผ่าน Human Review ก่อน Apply to Draft</p>
+          </div>
+          <div className="flex flex-wrap gap-2 text-xs">
+            <span className={`rounded-full border px-2.5 py-1 ${aiReady ? "border-emerald-300/20 bg-emerald-300/10 text-emerald-200" : "border-amber-300/20 bg-amber-300/10 text-amber-200"}`}>{aiReady ? "AI provider พร้อม" : "AI provider ยังไม่ตั้งค่า"}</span>
+            <span className={`rounded-full border px-2.5 py-1 ${hasPrimaryKeyword ? "border-emerald-300/20 bg-emerald-300/10 text-emerald-200" : "border-amber-300/20 bg-amber-300/10 text-amber-200"}`}>{hasPrimaryKeyword ? "มี Primary keyword" : "ต้องกำหนด Primary keyword ก่อน"}</span>
+            <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-white/60">GSC: Phase ถัดไป</span>
+          </div>
+        </div>
+        {!hasPrimaryKeyword ? <p className="mt-4 text-sm leading-6 text-amber-100/80">เปิด Studio และกำหนดคำค้นหลักก่อน ระบบจะไม่เดาคำค้นหลักเพื่อหลีกเลี่ยง keyword cannibalization</p> : null}
+        {!aiReady ? <p className="mt-4 text-sm leading-6 text-amber-100/80">ฟังก์ชัน Generate ถูกปิดแบบ fail-closed จนกว่าจะมี OPENAI_API_KEY ใน environment ที่อนุญาต</p> : null}
+        {status.writeReady && isDraft && aiReady && hasPrimaryKeyword ? <div className="mt-4"><GenerateSeoSuggestionsButton articleId={id} /></div> : null}
       </section>
 
       <section className="mt-6 rounded-3xl border border-white/10 bg-white/[0.025] p-5">
@@ -102,8 +124,6 @@ export default async function SeoAuditDetailPage({ params }: PageProps) {
           {geoAudit.checks.map((check) => <article key={check.id} className="rounded-2xl border border-white/10 bg-black/10 p-4"><div className="flex items-start justify-between gap-3"><div><h3 className="font-medium text-white/85">{check.label}</h3><p className="mt-1 text-sm leading-6 text-white/60">{check.detail}</p></div><span className={`shrink-0 rounded-full px-2.5 py-1 text-xs ${check.passed ? "bg-emerald-300/10 text-emerald-200" : check.required ? "bg-amber-300/10 text-amber-200" : "bg-sky-300/10 text-sky-200"}`}>{check.passed ? "ผ่าน" : check.required ? "ควรแก้" : "แนะนำ"}</span></div></article>)}
         </div>
       </section>
-
-      <p className="mt-5 rounded-2xl border border-sky-200/15 bg-sky-200/[0.05] p-4 text-sm leading-6 text-sky-100/80">ตอนนี้ระบบยังไม่สร้าง Search intent, SEO Title หรือ Meta description อัตโนมัติ เพราะยังไม่มีหลักฐาน keyword/SERP/GSC ที่เพียงพอ กรุณาตรวจผลและแก้ด้วยตัวเองใน Studio</p>
 
       <section className="mt-6 space-y-3">
         {audit.checks.map((check) => (
