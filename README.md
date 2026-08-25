@@ -94,29 +94,19 @@ Routes:
 
 - `/snt-admin/` — owner start page
 - `/snt-admin/content/` — Draft inventory
-- `/snt-admin/seo/` — deterministic SEO audits and evidence-gated AI suggestions
+- `/snt-admin/seo/` — deterministic SEO audits
 - `/snt-admin/research/` — normalized research snapshots
 - `/snt-admin/reviews/` — human approval and Apply to Draft
 - `/snt-admin/audit/` — Control Plane mutation history
 - `/studio/` — Sanity editing and Draft Preview
 
-The safe editorial flow remains:
+The current safe flow is:
 
-`Audit / Evidence → AI suggestion (optional) → Human Review → Apply to Draft → Preview → Human Publish`
+`Audit → Human edit in Studio → Preview → Human Publish`
 
-AI SEO generation is fail-closed. It is available only when all required runtime and evidence gates are satisfied:
+The proposal/review/apply foundation remains in the codebase, but automatic Search Intent, SEO Title and Meta Description generation is explicitly deferred from the current phase. This phase adds no model provider, AI API key, model-hosting requirement or AI runtime cost.
 
-- server-only `OPENAI_API_KEY` is configured;
-- the article has a human-defined Primary keyword;
-- the keyword has a fresh Research Snapshot and/or a reviewed Search Intent Owner;
-- the reviewed `1 Search Intent = 1 Owner` registry does not identify another page as owner of the same query;
-- the target Draft revision stays unchanged while proposals are generated.
-
-The first AI proposal slice creates one recommended Search Intent, SEO Title and Meta Description. It does not guess or reassign the Primary keyword, does not change slug/category/canonical/noindex and does not publish. Generated suggestions enter the existing `needs-human-review` workflow at medium risk and require a human to approve and Apply to Draft.
-
-Google Search Console remains a later evidence layer for published-page optimization. It is not required to create a guarded proposal for a new Draft when reviewed owner/research evidence already exists; it will be required before broad automated recommendations that could alter established query ownership or ranking pages.
-
-Human and AI actors may analyze and create proposals within policy. AI/system actors may not approve, Apply to Draft, publish, delete or change canonical/redirect/noindex/Production configuration.
+Future automated proposals, if enabled in a later phase, must still require evidence and human review. AI/system actors may not approve, Apply to Draft, publish, delete or change canonical/redirect/noindex/Production configuration.
 
 ## Content architecture
 
@@ -153,10 +143,8 @@ Values belong in local/Vercel Sensitive environment configuration and must never
 - `SANITY_API_WRITE_TOKEN`
 - `SANITY_STUDIO_PROJECT_ID`
 - `SANITY_STUDIO_DATASET`
-- `OPENAI_API_KEY` (server-only; enables SEO AI proposals)
-- `CCPUN_SEO_AI_MODEL` (optional server-only override; default `gpt-5.6-terra`)
 
-Never prefix the AI key with `NEXT_PUBLIC_`. Do not copy `.env*`, OAuth JSON, tokens or `.vercel/` into Git.
+Do not copy `.env*`, OAuth JSON, tokens or `.vercel/` into Git.
 
 ## Local verification
 
@@ -191,6 +179,6 @@ No source change implies permission to deploy or publish. `admin.ccpun.com` must
 
 Intelligence roadmap:
 
-`Research/Intent ownership → evidence-based SEO proposals → GSC evidence → published-content optimization → SEO retirement/Redirect/410 workflow`
+`Research/Intent ownership → GSC evidence → future automated SEO proposals (optional) → published-content optimization → SEO retirement/Redirect/410 workflow`
 
 The Cloud Production Admin changes hosting and access convenience; it does not weaken the same Draft, review, URL-ownership or human-publish controls used by the local workflow.
