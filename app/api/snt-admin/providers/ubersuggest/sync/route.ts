@@ -7,10 +7,11 @@ import { hasAdminPermission } from "@/lib/admin/rbac";
 import { fetchUbersuggestDashboardSync } from "@/lib/admin/ubersuggest-dashboard-provider";
 import { getUbersuggestDashboardData, isSnapshotFresh, persistUbersuggestDashboardSync } from "@/lib/admin/ubersuggest-dashboard";
 
-let syncInFlight: Promise<{ accountId: string; geoId: string; checkedAt: string }> | null = null;
+type SyncResult = { accountId: string; geoId: string; checkedAt: string; reused: boolean };
+let syncInFlight: Promise<SyncResult> | null = null;
 const SYNC_CACHE_HOURS = 1;
 
-async function runSync(actor: string, requestId: string) {
+async function runSync(actor: string, requestId: string): Promise<SyncResult> {
   const current = await getUbersuggestDashboardData(1);
   if (
     current.account &&
@@ -18,12 +19,12 @@ async function runSync(actor: string, requestId: string) {
     isSnapshotFresh(current.account.checkedAt, SYNC_CACHE_HOURS) &&
     isSnapshotFresh(current.geo.checkedAt, SYNC_CACHE_HOURS)
   ) {
-    return { accountId: current.account.id, geoId: current.geo.id, checkedAt: current.account.checkedAt, reused: true as const };
+    return { accountId: current.account.id, geoId: current.geo.id, checkedAt: current.account.checkedAt, reused: true };
   }
 
   const providerData = await fetchUbersuggestDashboardSync("ccpun.com");
   const saved = await persistUbersuggestDashboardSync(providerData, { actor, actorType: "human", requestId });
-  return { ...saved, reused: false as const };
+  return { ...saved, reused: false };
 }
 
 export async function POST() {
@@ -41,7 +42,7 @@ export async function POST() {
 
   const requestId = randomUUID();
   const task = syncInFlight ?? runSync(identity.actor, requestId);
-  syncInFlight = task.then(({ accountId, geoId, checkedAt }) => ({ accountId, geoId, checkedAt }));
+  syncInFlight = task;
   try {
     const result = await task;
     return NextResponse.json({ ...result, requestId }, { status: result.reused ? 200 : 201 });
@@ -55,6 +56,6 @@ export async function POST() {
     if (code === "SANITY_WRITE_NOT_CONFIGURED") return NextResponse.json({ error: "research-write-not-configured", requestId }, { status: 503 });
     return NextResponse.json({ error: "provider-tool-failed", requestId }, { status: 502 });
   } finally {
-    if (syncInFlight) syncInFlight = null;
+    if (syncInFlight === task) syncInFlight = null;
   }
 }
