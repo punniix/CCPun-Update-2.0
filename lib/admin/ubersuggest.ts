@@ -30,7 +30,8 @@ const STORE_PATH = path.join(STORE_DIR, "ubersuggest-oauth.json");
 const STORE_TMP_PATH = `${STORE_PATH}.tmp`;
 const AUTH_MAX_AGE_MS = 10 * 60 * 1000;
 const PROVIDER_MAX_RESPONSE_BYTES = 2 * 1024 * 1024;
-const KEYWORD_TOOL_TIMEOUT_MS = 45_000;
+const PROVIDER_TOOL_TIMEOUT_MS = 45_000;
+const PROVIDER_BATCH_MAX = 8;
 
 type Store = {
   clientByIssuer?: Record<string, StoredOAuthClientInformation>;
@@ -39,6 +40,13 @@ type Store = {
   codeVerifier?: string;
   discoveryState?: OAuthDiscoveryState;
   pending?: { state: string; createdAt: string };
+};
+
+export type UbersuggestToolCall = {
+  key: string;
+  name: string;
+  arguments?: Record<string, unknown>;
+  timeoutMs?: number;
 };
 
 const overviewSchema = z.object({
@@ -201,6 +209,14 @@ function safeAuthorizationUrl(url: URL | undefined) {
   return url!.toString();
 }
 
+function normalizeProviderError(error: unknown, authorizationUrl?: URL) {
+  if (UnauthorizedError.isInstance(error) || authorizationUrl) return new Error("UBERSUGGEST_AUTH_REQUIRED");
+  if (error instanceof z.ZodError) return new Error("UBERSUGGEST_INVALID_RESPONSE");
+  if (error instanceof Error && (error.name === "TimeoutError" || /timed?\s*out/i.test(error.message))) return new Error("UBERSUGGEST_TIMEOUT");
+  if (error instanceof Error && error.message.startsWith("UBERSUGGEST_")) return error;
+  return new Error("UBERSUGGEST_TOOL_FAILED");
+}
+
 export async function getUbersuggestConnectionStatus() {
   if (!providerLaneAllowed()) return { connected: false, localOnly: true };
   const store = await loadStore();
@@ -248,6 +264,31 @@ export async function finishUbersuggestAuthorization(params: URLSearchParams) {
   }
 }
 
+export async function callUbersuggestTools(calls: UbersuggestToolCall[]): Promise<Record<string, unknown>> {
+  if (!calls.length || calls.length > PROVIDER_BATCH_MAX) throw new Error("UBERSUGGEST_BATCH_INVALID");
+  if (new Set(calls.map((call) => call.key)).size !== calls.length) throw new Error("UBERSUGGEST_BATCH_INVALID");
+
+  const { provider, transport, client } = createConnection();
+  try {
+    await client.connect(transport, { timeout: 15_000 });
+    if (provider.authorizationUrl) throw new Error("UBERSUGGEST_AUTH_REQUIRED");
+    const entries = await Promise.all(calls.map(async (call) => {
+      const timeout = Math.max(1_000, Math.min(call.timeoutMs ?? PROVIDER_TOOL_TIMEOUT_MS, PROVIDER_TOOL_TIMEOUT_MS));
+      const result = await client.callTool(
+        { name: call.name, arguments: call.arguments ?? {} },
+        { timeout, maxTotalTimeout: timeout },
+      );
+      if (result.isError) throw new Error("UBERSUGGEST_TOOL_FAILED");
+      return [call.key, result.structuredContent] as const;
+    }));
+    return Object.fromEntries(entries);
+  } catch (error) {
+    throw normalizeProviderError(error, provider.authorizationUrl);
+  } finally {
+    await client.close().catch(() => undefined);
+  }
+}
+
 function normalizedIntent(value: string | null | undefined): ResearchInput["intent"] {
   const normalized = value?.toLowerCase();
   if (normalized?.includes("inform")) return "informational";
@@ -260,17 +301,13 @@ function normalizedIntent(value: string | null | undefined): ResearchInput["inte
 export async function fetchUbersuggestResearch(keyword: string): Promise<ResearchInput> {
   const cleanKeyword = keyword.replace(/\s+/g, " ").trim();
   if (!cleanKeyword || cleanKeyword.length > 300) throw new Error("UBERSUGGEST_KEYWORD_INVALID");
-  const { provider, transport, client } = createConnection();
   try {
-    await client.connect(transport, { timeout: 15_000 });
-    if (provider.authorizationUrl) throw new Error("UBERSUGGEST_AUTH_REQUIRED");
-    const [overviewResult, serpResult] = await Promise.all([
-      client.callTool({ name: "keyword_overview", arguments: { keyword: cleanKeyword } }, { timeout: KEYWORD_TOOL_TIMEOUT_MS, maxTotalTimeout: KEYWORD_TOOL_TIMEOUT_MS }),
-      client.callTool({ name: "serp_analysis", arguments: { keyword: cleanKeyword, limit: 10 } }, { timeout: KEYWORD_TOOL_TIMEOUT_MS, maxTotalTimeout: KEYWORD_TOOL_TIMEOUT_MS }),
+    const results = await callUbersuggestTools([
+      { key: "overview", name: "keyword_overview", arguments: { keyword: cleanKeyword } },
+      { key: "serp", name: "serp_analysis", arguments: { keyword: cleanKeyword, limit: 10 } },
     ]);
-    if (overviewResult.isError || serpResult.isError) throw new Error("UBERSUGGEST_TOOL_FAILED");
-    const overview = overviewSchema.parse(overviewResult.structuredContent);
-    const serp = serpSchema.parse(serpResult.structuredContent);
+    const overview = overviewSchema.parse(results.overview);
+    const serp = serpSchema.parse(results.serp);
     const entries = serp.serpEntries.filter((entry) => entry.url).slice(0, 10);
     return researchInputSchema.parse({
       keyword: cleanKeyword,
@@ -289,12 +326,7 @@ export async function fetchUbersuggestResearch(keyword: string): Promise<Researc
       checkedAt: new Date().toISOString(),
     });
   } catch (error) {
-    if (UnauthorizedError.isInstance(error) || provider.authorizationUrl) throw new Error("UBERSUGGEST_AUTH_REQUIRED");
     if (error instanceof z.ZodError) throw new Error("UBERSUGGEST_INVALID_RESPONSE");
-    if (error instanceof Error && (error.name === "TimeoutError" || /timed?\s*out/i.test(error.message))) throw new Error("UBERSUGGEST_TIMEOUT");
-    if (error instanceof Error && error.message === "UBERSUGGEST_TOOL_FAILED") throw error;
-    throw new Error("UBERSUGGEST_TOOL_FAILED");
-  } finally {
-    await client.close().catch(() => undefined);
+    throw error;
   }
 }
