@@ -22,6 +22,15 @@ test("Admin promotion is pinned to the immutable Admin project and exact commit 
   assert.match(promoter, /deployment\?\.state === "READY"/);
 });
 
+test("Admin promotion accepts Vercel uid or id and fails closed without either", () => {
+  assert.match(promoter, /deployment\?\.uid \?\? deployment\?\.id/);
+  assert.match(promoter, /ADMIN_DEPLOYMENT_ID_MISSING/);
+  assert.match(promoter, /const candidateId = deploymentIdentifier\(candidate\.deployment\)/);
+  assert.match(promoter, /deploymentId: candidateId/);
+  assert.match(promoter, /const productionId = deploymentIdentifier\(production\)/);
+  assert.doesNotMatch(promoter, /candidate\.deployment\.id/);
+});
+
 test("Admin promotion uses the official Vercel promote endpoint and fails closed", () => {
   assert.match(promoter, /\/v10\/projects\/\$\{encodeURIComponent\(projectId\)\}\/promote\/\$\{encodeURIComponent\(deploymentId\)\}/);
   assert.match(promoter, /required\("VERCEL_TOKEN", env\.VERCEL_TOKEN\)/);
