@@ -32,7 +32,8 @@ export default function UbersuggestResearchForm({ connected, writeReady }: { con
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const keyword = String(new FormData(event.currentTarget).get("keyword") || "").trim();
+    const formElement = event.currentTarget;
+    const keyword = String(new FormData(formElement).get("keyword") || "").trim();
     if (!window.confirm(`ดึงข้อมูล Ubersuggest สำหรับ “${keyword}” หรือไม่? ระบบจะใช้โควตาเฉพาะเมื่อไม่มีข้อมูลใหม่ภายใน 24 ชั่วโมง`)) return;
     setState("working");
     setMessage("");
@@ -45,7 +46,7 @@ export default function UbersuggestResearchForm({ connected, writeReady }: { con
     }
     setMessage(payload?.reused ? "ใช้ข้อมูลเดิมที่ยังใหม่อยู่ — ไม่เสียโควตาซ้ำ" : "ดึงและบันทึกข้อมูลแล้ว");
     setState("done");
-    event.currentTarget.reset();
+    formElement.reset();
     router.refresh();
   }
 
