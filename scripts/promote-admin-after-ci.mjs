@@ -72,15 +72,24 @@ async function waitForReadyPreview(config) {
   throw new Error("ADMIN_READY_DEPLOYMENT_NOT_FOUND");
 }
 
-async function promote({ projectId, teamId, deploymentId, token }) {
+async function createProductionFromPreview({ teamId, deploymentId, projectName, token }) {
   const params = new URLSearchParams({ teamId });
   const response = await vercelFetch(
-    `/v10/projects/${encodeURIComponent(projectId)}/promote/${encodeURIComponent(deploymentId)}?${params.toString()}`,
+    `/v13/deployments?${params.toString()}`,
     token,
-    { method: "POST" },
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        deploymentId,
+        name: projectName,
+        target: "production",
+        meta: { action: "promote" },
+      }),
+    },
   );
-  if (![200, 201, 202, 204].includes(response.status)) {
-    throw new Error(`VERCEL_PROMOTE_FAILED_${response.status}`);
+  if (![200, 201, 202].includes(response.status)) {
+    throw new Error(`VERCEL_PRODUCTION_CREATE_FAILED_${response.status}`);
   }
 }
 
@@ -93,6 +102,13 @@ async function waitForProduction(config) {
     );
     const production = deployments.find((deployment) => deployment?.target === "production" && deployment?.state === "READY");
     if (production) return production;
+
+    const terminalFailure = deployments.find((deployment) =>
+      deployment?.target === "production"
+      && ["ERROR", "CANCELED", "BLOCKED"].includes(deployment?.state),
+    );
+    if (terminalFailure) throw new Error(`ADMIN_PRODUCTION_DEPLOYMENT_${terminalFailure.state}`);
+
     if (attempt < POLL_ATTEMPTS) await sleep(POLL_INTERVAL_MS);
   }
   throw new Error("ADMIN_PRODUCTION_PROMOTION_NOT_CONFIRMED");
@@ -115,8 +131,8 @@ export async function run(env = process.env) {
     return candidateId;
   }
 
-  console.log(`Promoting Admin deployment ${candidateId} for commit ${sha}.`);
-  await promote({ projectId, teamId, deploymentId: candidateId, token });
+  console.log(`Creating Production Admin deployment from Preview ${candidateId} for commit ${sha}.`);
+  await createProductionFromPreview({ teamId, deploymentId: candidateId, projectName, token });
   const production = await waitForProduction(config);
   const productionId = deploymentIdentifier(production);
   console.log(`Admin commit ${sha} is Production (${productionId}).`);
