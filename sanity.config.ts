@@ -4,6 +4,7 @@ import { defineConfig } from "sanity";
 import { defineLocations, presentationTool } from "sanity/presentation";
 import { structureTool } from "sanity/structure";
 import { schemaTypes } from "./cms/sanity/schema";
+import { ubersuggestSchemaTypes } from "./cms/sanity/ubersuggestTypes";
 import {
   filterStudioAuthProviders,
   filterStudioDocumentActions,
@@ -68,7 +69,7 @@ export const sanityStudioConfig =
             },
           }),
         ],
-        schema: { types: schemaTypes },
+        schema: { types: [...schemaTypes, ...ubersuggestSchemaTypes] },
         document: {
           actions: (previousActions, context) =>
             protectProductionContentLifecycleActions(
