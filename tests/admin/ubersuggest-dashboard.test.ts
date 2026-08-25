@@ -7,6 +7,7 @@ const normalized = readFileSync("lib/admin/ubersuggest-dashboard-provider.ts", "
 const snapshots = readFileSync("lib/admin/ubersuggest-dashboard.ts", "utf8");
 const route = readFileSync("app/api/snt-admin/providers/ubersuggest/sync/route.ts", "utf8");
 const page = readFileSync("app/snt-admin/(protected)/ubersuggest/page.tsx", "utf8");
+const researchPage = readFileSync("app/snt-admin/(protected)/research/page.tsx", "utf8");
 const schema = readFileSync("cms/sanity/ubersuggestTypes.ts", "utf8");
 const studioPolicy = readFileSync("cms/sanity/studio-policy.ts", "utf8");
 const studioConfig = readFileSync("sanity.config.ts", "utf8");
@@ -58,4 +59,14 @@ test("Admin exposes Ubersuggest quota GEO prompt gaps and research history", () 
   assert.match(page, /admin\.ccpun\.com/);
   assert.match(page, /ไม่เก็บ OAuth token/);
   assert.match(page, /userVisibilityPercentage === 0/);
+});
+
+test("Production Research page uses snapshots instead of offering local OAuth", () => {
+  assert.match(researchPage, /environment === "production-admin"/);
+  assert.match(researchPage, /getUbersuggestDashboardData\(1\)/);
+  assert.match(researchPage, /Snapshot พร้อมใช้/);
+  assert.match(researchPage, /เปิด Ubersuggest Intelligence/);
+  assert.match(researchPage, /productionSnapshotMode \? \(/);
+  assert.match(researchPage, /Cloud Admin ใช้ Snapshot/);
+  assert.match(researchPage, /UbersuggestResearchForm connected=\{ubersuggest\.connected\}/);
 });
