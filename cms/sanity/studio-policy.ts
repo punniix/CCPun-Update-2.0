@@ -5,7 +5,13 @@ const BLOCKED_NON_PRODUCTION_ACTIONS = new Set(["delete", "publish", "unpublish"
 const BLOCKED_PRODUCTION_ADMIN_ACTIONS = new Set(["delete", "unpublish", "unpublishVersion"]);
 const BLOCKED_PRODUCTION_ADMIN_ARTICLE_ACTIONS = new Set(["unpublishVersion"]);
 const LOCAL_PRODUCTION_ARTICLE_ACTIONS = new Set(["publish", "unpublish", "delete", "schedule", "discardChanges", "restore"]);
-const SYSTEM_DOCUMENT_TYPES = new Set(["seoSuggestion", "researchSnapshot", "auditLog"]);
+const SYSTEM_DOCUMENT_TYPES = new Set([
+  "seoSuggestion",
+  "researchSnapshot",
+  "ubersuggestAccountSnapshot",
+  "ubersuggestGeoSnapshot",
+  "auditLog",
+]);
 const OWNER_HIDDEN_DOCUMENT_TYPES = new Set(["category", ...SYSTEM_DOCUMENT_TYPES]);
 
 type StudioAuthProvider = { name: string };
