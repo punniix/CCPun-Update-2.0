@@ -23,7 +23,7 @@ const environment = resolveSanityConfigEnvironment(
 );
 const isProductionCms = dataset === "production";
 const studioName = isProductionCms ? "ccpun-website-production-cms" : "ccpun-website-uat-cms";
-const studioTitle = isProductionCms ? "CCPun Website Production CMS" : "CCpun Website UAT CMS";
+const studioTitle = isProductionCms ? "CCPun Website Production CMS" : "CCPun Website UAT CMS";
 
 export const sanityStudioConfig =
   projectId && dataset && isStudioDataPlaneAllowed(dataset, environment, undefined, undefined, projectId)
