@@ -4,8 +4,7 @@ import { getAdminEnvironment } from "@/lib/admin/environment";
 import { getAdminIdentity } from "@/lib/admin/identity";
 import { evaluateAdminAction } from "@/lib/admin/policy";
 import { createSeoSuggestion } from "@/lib/admin/sanity-control";
-import { runSeoAudit } from "@/lib/admin/seo-audit";
-import { generateEvidenceBasedSeoProposals, SeoProposalError } from "@/lib/admin/seo-ai";
+import { buildDeterministicSeoProposals, getSeoProposalContext, runSeoAudit } from "@/lib/admin/seo-audit";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -28,15 +27,14 @@ export async function POST(request: Request, context: RouteContext) {
 
   try {
     // Proposal generation must not mutate the article revision used for idempotency.
-    const [audit, generated] = await Promise.all([
-      runSeoAudit(id, false),
-      generateEvidenceBasedSeoProposals(id),
-    ]);
-    if (audit.sourceRevision !== generated.sourceRevision) throw new Error("PROPOSAL_SOURCE_STALE");
-    if (!generated.proposals.length) return NextResponse.json({ error: "no-safe-proposal", requestId }, { status: 422 });
+    const audit = await runSeoAudit(id, false);
+    const contextData = await getSeoProposalContext(id);
+    if (audit.sourceRevision !== contextData.revision) throw new Error("PROPOSAL_SOURCE_STALE");
+    const proposals = buildDeterministicSeoProposals();
+    if (!proposals.length) return NextResponse.json({ error: "no-safe-proposal", requestId }, { status: 422 });
 
     const created = [];
-    for (const proposal of generated.proposals) {
+    for (const proposal of proposals) {
       const suggestion = await createSeoSuggestion(
         {
           targetDocumentId: id,
@@ -45,10 +43,10 @@ export async function POST(request: Request, context: RouteContext) {
           reason: proposal.reason,
           confidence: proposal.confidence,
           riskLevel: proposal.riskLevel,
-          createdBy: "ccpun-seo-ai",
+          createdBy: identity.actor,
         },
         {
-          actorType: "ai",
+          actorType: identity.actorType,
           requestId,
           idempotentForAuditRevision: true,
           expectedTargetRevision: audit.sourceRevision,
@@ -57,35 +55,8 @@ export async function POST(request: Request, context: RouteContext) {
       created.push({ id: suggestion._id, type: proposal.type, status: suggestion.status });
     }
 
-    return NextResponse.json({
-      audit,
-      proposals: created,
-      evidence: {
-        focusKeyword: generated.focusKeyword,
-        researchCount: generated.researchCount,
-        ownerUrl: generated.ownerUrl,
-      },
-      requestId,
-    });
+    return NextResponse.json({ audit, proposals: created, requestId });
   } catch (error) {
-    if (error instanceof SeoProposalError) {
-      if (error.code === "SEO_AI_NOT_CONFIGURED") {
-        return NextResponse.json({ error: "seo-ai-not-configured", requestId }, { status: 503 });
-      }
-      if (error.code === "PRIMARY_KEYWORD_REQUIRED") {
-        return NextResponse.json({ error: "primary-keyword-required", requestId }, { status: 422 });
-      }
-      if (error.code === "SEO_RESEARCH_REQUIRED") {
-        return NextResponse.json({ error: "seo-research-required", requestId }, { status: 422 });
-      }
-      if (error.code === "KEYWORD_OWNER_CONFLICT") {
-        return NextResponse.json({ error: "keyword-owner-conflict", ownerUrl: error.details?.ownerUrl, requestId }, { status: 409 });
-      }
-      if (error.code === "SEO_AI_INVALID_OUTPUT") {
-        return NextResponse.json({ error: "seo-ai-invalid-output", requestId }, { status: 502 });
-      }
-      return NextResponse.json({ error: "seo-ai-provider-failed", requestId }, { status: 502 });
-    }
     if (error instanceof Error && error.message === "ARTICLE_NOT_FOUND") {
       return NextResponse.json({ error: "article-not-found", requestId }, { status: 404 });
     }
