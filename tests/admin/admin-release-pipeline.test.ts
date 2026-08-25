@@ -31,12 +31,23 @@ test("Admin promotion accepts Vercel uid or id and fails closed without either",
   assert.doesNotMatch(promoter, /candidate\.deployment\.id/);
 });
 
-test("Admin promotion uses the official Vercel promote endpoint and fails closed", () => {
-  assert.match(promoter, /\/v10\/projects\/\$\{encodeURIComponent\(projectId\)\}\/promote\/\$\{encodeURIComponent\(deploymentId\)\}/);
+test("Preview Admin promotion creates a Production deployment like the Vercel CLI", () => {
+  assert.match(promoter, /\/v13\/deployments\?\$\{params\.toString\(\)\}/);
+  assert.match(promoter, /deploymentId,/);
+  assert.match(promoter, /name: projectName/);
+  assert.match(promoter, /target: "production"/);
+  assert.match(promoter, /meta: \{ action: "promote" \}/);
+  assert.match(promoter, /"Content-Type": "application\/json"/);
+  assert.match(promoter, /VERCEL_PRODUCTION_CREATE_FAILED_/);
+  assert.doesNotMatch(promoter, /\/v10\/projects\/.*\/promote\//);
+});
+
+test("Admin promotion remains credential-gated and confirms the exact Production SHA", () => {
   assert.match(promoter, /required\("VERCEL_TOKEN", env\.VERCEL_TOKEN\)/);
   assert.match(promoter, /throw new Error\(`\$\{name\}_MISSING`\)/);
   assert.match(promoter, /ADMIN_READY_DEPLOYMENT_NOT_FOUND/);
   assert.match(promoter, /ADMIN_PRODUCTION_PROMOTION_NOT_CONFIRMED/);
+  assert.match(promoter, /ADMIN_PRODUCTION_DEPLOYMENT_/);
   assert.match(promoter, /target === "production"/);
   assert.match(workflow, /secrets\.VERCEL_TOKEN/);
   assert.doesNotMatch(workflow, /VERCEL_TOKEN:\s*vercel_/);
