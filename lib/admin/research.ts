@@ -27,30 +27,7 @@ const researchRowSchema = z.object({
   trustClass: z.string().nullish(),
 });
 
-const researchSerpEvidenceSchema = z.object({
-  position: z.number().int().positive().nullish(),
-  title: z.string().nullish(),
-  url: z.string().nullish(),
-  domain: z.string().nullish(),
-  snippet: z.string().nullish(),
-}).passthrough();
-
-const researchEvidenceSchema = z.object({
-  id: z.string(),
-  keyword: z.string(),
-  provider: z.string(),
-  scope: z.string().nullish(),
-  volume: z.number().nullish(),
-  difficulty: z.number().nullish(),
-  intent: z.string().nullish(),
-  serp: z.array(researchSerpEvidenceSchema).nullish().transform((value) => value ?? []),
-  competitors: z.array(z.string()).nullish().transform((value) => value ?? []),
-  checkedAt: z.string(),
-  trustClass: z.string().nullish(),
-});
-
 export type ResearchSnapshotRow = z.infer<typeof researchRowSchema>;
-export type SeoResearchEvidence = z.infer<typeof researchEvidenceSchema>;
 export type ResearchSnapshotList = {
   rows: ResearchSnapshotRow[];
   error: "not-configured" | "request-failed" | null;
@@ -122,32 +99,6 @@ export async function findFreshResearchSnapshot(provider: ResearchInput["provide
     freshAfter,
   });
   return z.object({ id: z.string(), checkedAt: z.string() }).nullable().parse(row);
-}
-
-export async function getSeoResearchEvidence(keyword: string, maxAgeDays = 45): Promise<SeoResearchEvidence[]> {
-  const client = readClient();
-  if (!client) return [];
-  const keywordKey = normalizeResearchKeyword(keyword);
-  if (!keywordKey) return [];
-  const freshAfter = new Date(Date.now() - Math.max(1, maxAgeDays) * 24 * 60 * 60 * 1000).toISOString();
-  const rows = await client.fetch(groq`*[
-    _type == "researchSnapshot" &&
-    keywordKey == $keywordKey &&
-    checkedAt >= $freshAfter
-  ] | order(checkedAt desc)[0...3] {
-    "id": _id,
-    keyword,
-    provider,
-    scope,
-    volume,
-    difficulty,
-    intent,
-    serp[0...10]{position, title, url, domain, snippet},
-    competitors,
-    checkedAt,
-    trustClass
-  }`, { keywordKey, freshAfter });
-  return z.array(researchEvidenceSchema).parse(rows);
 }
 
 export async function createResearchSnapshot(input: ResearchInput, context: ResearchMutationContext) {
