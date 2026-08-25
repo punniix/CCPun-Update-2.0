@@ -12,10 +12,11 @@ export default function ResearchSnapshotForm() {
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const formElement = event.currentTarget;
     if (!window.confirm(`บันทึกข้อมูลงานวิจัยนี้ใน ${laneLabel} หรือไม่? ข้อมูลนี้ใช้ประกอบการวิเคราะห์เท่านั้น และจะไม่เผยแพร่หรือแก้บทความเอง`)) return;
     setState("saving");
     setErrorMessage("");
-    const form = new FormData(event.currentTarget);
+    const form = new FormData(formElement);
     const payload = {
       keyword: String(form.get("keyword") || "").trim(),
       provider: "manual",
@@ -37,7 +38,7 @@ export default function ResearchSnapshotForm() {
         setState("error");
         return;
       }
-      event.currentTarget.reset();
+      formElement.reset();
       setState("done");
       router.refresh();
     } catch {
