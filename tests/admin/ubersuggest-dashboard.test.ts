@@ -6,8 +6,9 @@ const provider = readFileSync("lib/admin/ubersuggest.ts", "utf8");
 const normalized = readFileSync("lib/admin/ubersuggest-dashboard-provider.ts", "utf8");
 const snapshots = readFileSync("lib/admin/ubersuggest-dashboard.ts", "utf8");
 const route = readFileSync("app/api/snt-admin/providers/ubersuggest/sync/route.ts", "utf8");
-const page = readFileSync("app/snt-admin/(protected)/ubersuggest/page.tsx", "utf8");
+const legacyPage = readFileSync("app/snt-admin/(protected)/ubersuggest/page.tsx", "utf8");
 const researchPage = readFileSync("app/snt-admin/(protected)/research/page.tsx", "utf8");
+const layout = readFileSync("app/snt-admin/(protected)/layout.tsx", "utf8");
 const schema = readFileSync("cms/sanity/ubersuggestTypes.ts", "utf8");
 const studioPolicy = readFileSync("cms/sanity/studio-policy.ts", "utf8");
 const studioConfig = readFileSync("sanity.config.ts", "utf8");
@@ -51,22 +52,33 @@ test("Ubersuggest sync writes account GEO and audit atomically while reusing San
   assert.match(route, /provider-sync-local-required/);
 });
 
-test("Admin exposes Ubersuggest quota GEO prompt gaps and research history", () => {
-  assert.match(page, /Account Quota/);
-  assert.match(page, /GEO \/ AEO — AI Search Visibility/);
-  assert.match(page, /AI Prompt Gaps/);
-  assert.match(page, /Research History/);
-  assert.match(page, /admin\.ccpun\.com/);
-  assert.match(page, /ไม่เก็บ OAuth token/);
-  assert.match(page, /userVisibilityPercentage === 0/);
+test("Research Intelligence owns keyword coverage Ubersuggest quota GEO prompt gaps and history", () => {
+  assert.match(researchPage, /Research Intelligence/);
+  assert.match(researchPage, /1 · เก็บข้อมูล/);
+  assert.match(researchPage, /2 · Match บทความ/);
+  assert.match(researchPage, /3 · Ubersuggest/);
+  assert.match(researchPage, /4 · GEO \/ AEO/);
+  assert.match(researchPage, /5 · History/);
+  assert.match(researchPage, /Ubersuggest Intelligence \+ Account Quota/);
+  assert.match(researchPage, /GEO \/ AEO — AI Search Visibility/);
+  assert.match(researchPage, /AI Prompt Gaps/);
+  assert.match(researchPage, /Research History \+ Decision Status/);
+  assert.match(researchPage, /getUbersuggestDashboardData\(30\)/);
+  assert.match(researchPage, /userVisibilityPercentage === 0/);
+  assert.match(researchPage, /Research gap · โอกาสสูง/);
 });
 
-test("Production Research page uses snapshots instead of offering local OAuth", () => {
+test("Production Research uses snapshots while Local lanes retain provider query and sync", () => {
   assert.match(researchPage, /environment === "production-admin"/);
-  assert.match(researchPage, /getUbersuggestDashboardData\(1\)/);
   assert.match(researchPage, /Snapshot พร้อมใช้/);
-  assert.match(researchPage, /เปิด Ubersuggest Intelligence/);
-  assert.match(researchPage, /productionSnapshotMode \? \(/);
-  assert.match(researchPage, /Cloud Admin ใช้ Snapshot/);
+  assert.match(researchPage, /Cloud Admin อ่าน Snapshot จาก Sanity เท่านั้น/);
   assert.match(researchPage, /UbersuggestResearchForm connected=\{ubersuggest\.connected\}/);
+  assert.match(researchPage, /SyncUbersuggestButton/);
+  assert.match(researchPage, /localProviderLane/);
+});
+
+test("legacy Ubersuggest route redirects into unified Research Intelligence and navigation has one research entry", () => {
+  assert.match(legacyPage, /redirect\("\/snt-admin\/research\/#ubersuggest-intelligence"\)/);
+  assert.match(layout, /href: "\/snt-admin\/research\/", label: "Research Intelligence"/);
+  assert.doesNotMatch(layout, /href: "\/snt-admin\/ubersuggest\/"/);
 });
