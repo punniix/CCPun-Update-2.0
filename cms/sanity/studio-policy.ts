@@ -3,8 +3,15 @@ import { isStudioDataPlaneAllowed, type AdminEnvironment } from "../../lib/admin
 
 const BLOCKED_NON_PRODUCTION_ACTIONS = new Set(["delete", "publish", "unpublish", "unpublishVersion"]);
 const BLOCKED_PRODUCTION_ADMIN_ACTIONS = new Set(["delete", "unpublish", "unpublishVersion"]);
+const BLOCKED_PRODUCTION_ADMIN_ARTICLE_ACTIONS = new Set(["unpublishVersion"]);
 const LOCAL_PRODUCTION_ARTICLE_ACTIONS = new Set(["publish", "unpublish", "delete", "schedule", "discardChanges", "restore"]);
-const SYSTEM_DOCUMENT_TYPES = new Set(["seoSuggestion", "researchSnapshot", "auditLog"]);
+const SYSTEM_DOCUMENT_TYPES = new Set([
+  "seoSuggestion",
+  "researchSnapshot",
+  "ubersuggestAccountSnapshot",
+  "ubersuggestGeoSnapshot",
+  "auditLog",
+]);
 const OWNER_HIDDEN_DOCUMENT_TYPES = new Set(["category", ...SYSTEM_DOCUMENT_TYPES]);
 
 type StudioAuthProvider = { name: string };
@@ -52,29 +59,65 @@ export function filterStudioDocumentActions<T extends { action?: string }>(
     return actions.filter(({ action }) => Boolean(action && LOCAL_PRODUCTION_ARTICLE_ACTIONS.has(action)));
   }
   if (environment === "production-admin") {
-    return actions.filter(({ action }) => !action || !BLOCKED_PRODUCTION_ADMIN_ACTIONS.has(action));
+    const blockedActions = schemaType === "article"
+      ? BLOCKED_PRODUCTION_ADMIN_ARTICLE_ACTIONS
+      : BLOCKED_PRODUCTION_ADMIN_ACTIONS;
+    return actions.filter(({ action }) => !action || !blockedActions.has(action));
   }
   return actions.filter(({ action }) => !action || !BLOCKED_NON_PRODUCTION_ACTIONS.has(action));
+}
+
+function wasEverPublished(props: Parameters<DocumentActionComponent>[0]) {
+  return Boolean(props.published || props.draft?.publishedAt);
 }
 
 export function createDraftOnlyDeleteAction(originalAction: DocumentActionComponent): DocumentActionComponent {
   const DraftOnlyDeleteAction: DocumentActionComponent = (props) => {
     const result = originalAction(props);
-    if (props.published) return null;
+    if (wasEverPublished(props)) return null;
     if (!result) return null;
-    return { ...result, label: "ลบฉบับร่าง", title: "ลบฉบับร่าง", tone: "critical" };
+    return {
+      ...result,
+      label: "ลบฉบับร่าง",
+      title: "ลบฉบับร่าง",
+      tone: "critical",
+    };
   };
   DraftOnlyDeleteAction.action = "delete";
   DraftOnlyDeleteAction.displayName = "CCPunDraftOnlyDeleteAction";
   return DraftOnlyDeleteAction;
 }
 
-export function protectLocalProductionDestructiveActions(
+export function createSeoSafeUnpublishAction(originalAction: DocumentActionComponent): DocumentActionComponent {
+  const SeoSafeUnpublishAction: DocumentActionComponent = (props) => {
+    const result = originalAction(props);
+    if (!props.published || !result) return null;
+    return {
+      ...result,
+      label: "นำออกจากเว็บไซต์",
+      title: "นำออกจากเว็บไซต์",
+      tone: "critical",
+    };
+  };
+  SeoSafeUnpublishAction.action = "unpublish";
+  SeoSafeUnpublishAction.displayName = "CCPunSeoSafeUnpublishAction";
+  return SeoSafeUnpublishAction;
+}
+
+export function protectProductionContentLifecycleActions(
   actions: DocumentActionComponent[],
   environment: AdminEnvironment,
+  schemaType?: string,
 ): DocumentActionComponent[] {
-  if (environment !== "local-production") return actions;
-  return actions.map((action) => action.action === "delete" ? createDraftOnlyDeleteAction(action) : action);
+  if ((environment !== "local-production" && environment !== "production-admin") || schemaType !== "article") {
+    return actions;
+  }
+
+  return actions.map((action) => {
+    if (action.action === "delete") return createDraftOnlyDeleteAction(action);
+    if (action.action === "unpublish") return createSeoSafeUnpublishAction(action);
+    return action;
+  });
 }
 
 export function filterStudioNewDocumentOptions<T extends StudioNewDocumentOption>(

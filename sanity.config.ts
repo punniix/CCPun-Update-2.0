@@ -4,13 +4,14 @@ import { defineConfig } from "sanity";
 import { defineLocations, presentationTool } from "sanity/presentation";
 import { structureTool } from "sanity/structure";
 import { schemaTypes } from "./cms/sanity/schema";
+import { ubersuggestSchemaTypes } from "./cms/sanity/ubersuggestTypes";
 import {
   filterStudioAuthProviders,
   filterStudioDocumentActions,
   filterStudioNewDocumentOptions,
   filterStudioStructureItems,
   getStudioPublishingOptions,
-  protectLocalProductionDestructiveActions,
+  protectProductionContentLifecycleActions,
 } from "./cms/sanity/studio-policy";
 import { isStudioDataPlaneAllowed, resolveSanityConfigEnvironment } from "./lib/admin/environment";
 
@@ -68,12 +69,13 @@ export const sanityStudioConfig =
             },
           }),
         ],
-        schema: { types: schemaTypes },
+        schema: { types: [...schemaTypes, ...ubersuggestSchemaTypes] },
         document: {
           actions: (previousActions, context) =>
-            protectLocalProductionDestructiveActions(
+            protectProductionContentLifecycleActions(
               filterStudioDocumentActions(previousActions, context.dataset, environment, context.schemaType, projectId),
               environment,
+              context.schemaType,
             ),
           newDocumentOptions: (previousOptions) => filterStudioNewDocumentOptions(previousOptions, dataset, environment, projectId),
         },

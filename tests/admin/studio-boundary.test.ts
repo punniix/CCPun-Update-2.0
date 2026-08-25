@@ -7,7 +7,7 @@ import {
   filterStudioNewDocumentOptions,
   filterStudioStructureItems,
   getStudioPublishingOptions,
-  protectLocalProductionDestructiveActions,
+  protectProductionContentLifecycleActions,
 } from "../../cms/sanity/studio-policy";
 import { CCPUN_VERCEL_PROJECT_IDS } from "../../lib/admin/environment";
 
@@ -71,6 +71,13 @@ test("Studio actions follow the application lane and dataset together", () => {
   useProductionAdminProject();
   assert.deepEqual(filterStudioDocumentActions(actions, "production", "production-admin", undefined, PRODUCTION_SANITY_PROJECT_ID), [
     actions[0],
+    actions[4],
+    actions[5],
+  ]);
+  assert.deepEqual(filterStudioDocumentActions(actions, "production", "production-admin", "article", PRODUCTION_SANITY_PROJECT_ID), [
+    actions[0],
+    actions[1],
+    actions[3],
     actions[4],
     actions[5],
   ]);
@@ -147,16 +154,28 @@ test("Local Production Studio is off in read mode and enables the owner article 
   });
 });
 
-test("Local Production hides permanent delete until the published article is unpublished", () => {
+test("Production article lifecycle allows new Draft deletion but protects previously published URLs", () => {
   const deleteAction = Object.assign(
     () => ({ label: "Delete", onHandle() {} }),
     { action: "delete" as const },
   );
-  const [guardedDelete] = protectLocalProductionDestructiveActions([deleteAction], "local-production");
+  const unpublishAction = Object.assign(
+    () => ({ label: "Unpublish", onHandle() {} }),
+    { action: "unpublish" as const },
+  );
+  const [guardedDelete, guardedUnpublish] = protectProductionContentLifecycleActions(
+    [deleteAction, unpublishAction],
+    "production-admin",
+    "article",
+  );
 
   assert.equal(guardedDelete({ published: { _id: "article-1" } } as never), null);
-  assert.equal(guardedDelete({ published: null } as never)?.label, "ลบฉบับร่าง");
-  assert.equal(protectLocalProductionDestructiveActions([deleteAction], "local-uat")[0], deleteAction);
+  assert.equal(guardedDelete({ published: null, draft: { _id: "drafts.article-1", publishedAt: "2026-08-24T00:00:00Z" } } as never), null);
+  assert.equal(guardedDelete({ published: null, draft: { _id: "drafts.article-new" } } as never)?.label, "ลบฉบับร่าง");
+  assert.equal(guardedUnpublish({ published: { _id: "article-1" } } as never)?.label, "นำออกจากเว็บไซต์");
+  assert.equal(guardedUnpublish({ published: null, draft: { _id: "drafts.article-new" } } as never), null);
+  assert.equal(protectProductionContentLifecycleActions([deleteAction], "local-uat", "article")[0], deleteAction);
+  assert.equal(protectProductionContentLifecycleActions([deleteAction], "production-admin", "author")[0], deleteAction);
 });
 
 test("Studio keeps identified owner content and hides system/category management", () => {
