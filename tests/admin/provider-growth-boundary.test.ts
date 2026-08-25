@@ -25,12 +25,14 @@ test("Ubersuggest credentials stay local and OAuth uses state plus PKCE", () => 
   assert.doesNotMatch(ubersuggest, /console\.(?:log|error)|SANITY.*TOKEN/);
 });
 
-test("keyword provider calls stay bounded and expose only stable friendly errors", () => {
-  assert.match(ubersuggest, /const KEYWORD_TOOL_TIMEOUT_MS = 45_000/);
+test("provider calls stay bounded and expose only stable friendly errors", () => {
+  assert.match(ubersuggest, /const PROVIDER_TOOL_TIMEOUT_MS = 45_000/);
+  assert.match(ubersuggest, /const PROVIDER_BATCH_MAX = 8/);
+  assert.match(ubersuggest, /calls\.length > PROVIDER_BATCH_MAX/);
+  assert.match(ubersuggest, /Math\.min\(call\.timeoutMs \?\? PROVIDER_TOOL_TIMEOUT_MS, PROVIDER_TOOL_TIMEOUT_MS\)/);
+  assert.match(ubersuggest, /maxTotalTimeout: timeout/);
   assert.equal((ubersuggest.match(/name: "keyword_overview"/g) ?? []).length, 1);
   assert.equal((ubersuggest.match(/name: "serp_analysis"/g) ?? []).length, 1);
-  assert.equal((ubersuggest.match(/timeout: KEYWORD_TOOL_TIMEOUT_MS/g) ?? []).length, 2);
-  assert.equal((ubersuggest.match(/maxTotalTimeout: KEYWORD_TOOL_TIMEOUT_MS/g) ?? []).length, 2);
   for (const internalCode of ["UBERSUGGEST_AUTH_REQUIRED", "UBERSUGGEST_TIMEOUT", "UBERSUGGEST_INVALID_RESPONSE", "UBERSUGGEST_TOOL_FAILED"]) {
     assert.match(ubersuggest, new RegExp(internalCode));
   }
