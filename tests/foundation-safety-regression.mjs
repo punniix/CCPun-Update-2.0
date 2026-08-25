@@ -39,7 +39,17 @@ for (const [, destination] of frozenMovedPaths.slice(0, 2)) {
 
 const studioPolicy = read('cms/sanity/studio-policy.ts');
 expect('non-production Studio blocks publish', /BLOCKED_NON_PRODUCTION_ACTIONS[^\n]*"publish"/.test(studioPolicy));
-expect('production admin blocks destructive unpublish/delete', /BLOCKED_PRODUCTION_ADMIN_ACTIONS[^\n]*"delete"[^\n]*"unpublish"/.test(studioPolicy));
+expect(
+  'production article delete/unpublish use guarded lifecycle actions',
+  studioPolicy.includes('protectProductionContentLifecycleActions') &&
+    studioPolicy.includes('createDraftOnlyDeleteAction') &&
+    studioPolicy.includes('createSeoSafeUnpublishAction') &&
+    studioPolicy.includes('wasEverPublished'),
+);
+expect(
+  'production non-article destructive actions remain blocked',
+  /BLOCKED_PRODUCTION_ADMIN_ACTIONS[^\n]*"delete"[^\n]*"unpublish"/.test(studioPolicy),
+);
 expect('disallowed Sanity data plane returns no actions', studioPolicy.includes('if (!isStudioDataPlaneAllowed(dataset, environment, undefined, undefined, projectId)) return [];'));
 
 const analytics = read('lib/analytics.ts');
