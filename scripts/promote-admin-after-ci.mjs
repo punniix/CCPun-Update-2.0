@@ -15,6 +15,14 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function deploymentIdentifier(deployment) {
+  const value = deployment?.uid ?? deployment?.id;
+  if (typeof value !== "string" || !value.trim()) {
+    throw new Error("ADMIN_DEPLOYMENT_ID_MISSING");
+  }
+  return value.trim();
+}
+
 async function vercelFetch(path, token, init = {}) {
   const response = await fetch(`${API_BASE}${path}`, {
     ...init,
@@ -101,16 +109,18 @@ export async function run(env = process.env) {
   const config = { projectId, teamId, projectName, token, sha };
 
   const candidate = await waitForReadyPreview(config);
+  const candidateId = deploymentIdentifier(candidate.deployment);
   if (candidate.state === "already-production") {
-    console.log(`Admin commit ${sha} is already Production (${candidate.deployment.id}).`);
-    return candidate.deployment.id;
+    console.log(`Admin commit ${sha} is already Production (${candidateId}).`);
+    return candidateId;
   }
 
-  console.log(`Promoting Admin deployment ${candidate.deployment.id} for commit ${sha}.`);
-  await promote({ projectId, teamId, deploymentId: candidate.deployment.id, token });
+  console.log(`Promoting Admin deployment ${candidateId} for commit ${sha}.`);
+  await promote({ projectId, teamId, deploymentId: candidateId, token });
   const production = await waitForProduction(config);
-  console.log(`Admin commit ${sha} is Production (${production.id}).`);
-  return production.id;
+  const productionId = deploymentIdentifier(production);
+  console.log(`Admin commit ${sha} is Production (${productionId}).`);
+  return productionId;
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
