@@ -315,7 +315,7 @@ export default async function AdminResearchPage({
               <div role="region" aria-label="ตาราง Research Intelligence" tabIndex={0} className="overflow-x-auto">
                 <table className="w-full min-w-[1280px] text-left text-sm">
                   <thead className="border-b border-white/10 bg-white/[0.03] text-xs tracking-wide text-white/55">
-                    <tr><th className="px-5 py-4">Keyword</th><th className="px-4 py-4">Decision status</th><th className="px-4 py-4">Opportunity</th><th className="px-4 py-4">Provider</th><th className="px-4 py-4">Scope</th><th className="px-4 py-4">Volume</th><th className="px-4 py-4">Difficulty</th><th className="px-4 py-4">Intent</th><th className="px-4 py-4">SERP</th><th className="px-5 py-4">Checked</th></tr>
+                    <tr><th className="px-5 py-4">Keyword</th><th className="px-4 py-4">Decision status</th><th className="px-4 py-4">Opportunity</th><th className="px-4 py-4">Provider</th><th className="px-4 py-4">Scope</th><th className="px-4 py-4">Volume</th><th className="px-4 py-4">Difficulty</th><th className="px-4 py-4">Intent</th><th className="px-4 py-4">SERP</th><th className="px-5 py-4">ดึงข้อมูลเมื่อ</th></tr>
                   </thead>
                   <tbody className="divide-y divide-white/5">
                     {rows.map((row) => (
