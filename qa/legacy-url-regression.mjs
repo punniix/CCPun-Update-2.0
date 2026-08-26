@@ -5,6 +5,7 @@ const ledger = JSON.parse(readFileSync(new URL('./legacy-url-ledger.json', impor
 const seenIds = new Set();
 const seenSources = new Set();
 const seenDestinations = new Set();
+const plannedFailures = [];
 let livePassed = 0;
 let candidatesReviewed = 0;
 let plannedReviewed = 0;
@@ -27,7 +28,7 @@ async function request(url, redirect = 'manual') {
   return fetch(url, {
     redirect,
     signal: AbortSignal.timeout(15000),
-    headers: { 'user-agent': 'CCPun legacy URL regression/2.1' },
+    headers: { 'user-agent': 'CCPun legacy URL regression/2.2' },
   });
 }
 
@@ -74,18 +75,21 @@ for (const mapping of ledger.mappings) {
     assert.ok(mapping.plannedDestination, `${mapping.id}: planned mapping requires plannedDestination`);
     assert.notEqual(mapping.destination, mapping.plannedDestination, `${mapping.id}: planned final URL must differ from pre-cutover destination`);
 
-    // The application cutover is now live. A planned legacy source must therefore redirect
-    // directly to the approved final destination before the ledger can be frozen as live.
+    // The application cutover is live. Test every planned WordPress source even when one fails,
+    // so a freeze cannot hide a second redirect chain behind the first assertion failure.
     const source = await request(mapping.source);
     assert.equal(source.status, mapping.sourceStatus, `${mapping.id}: legacy source status drifted during cutover verification`);
     const location = source.headers.get('location');
     assert.ok(location, `${mapping.id}: legacy redirect location missing during cutover verification`);
     logRedirectFingerprint(mapping, source, location);
-    assert.equal(
-      new URL(location, mapping.source).href,
-      mapping.plannedDestination,
-      `${mapping.id}: legacy source must redirect one hop directly to the approved final URL`,
-    );
+    const actualDestination = new URL(location, mapping.source).href;
+    if (actualDestination !== mapping.plannedDestination) {
+      plannedFailures.push({ id: mapping.id, actual: actualDestination, expected: mapping.plannedDestination });
+      console.error(`NOT_READY ${mapping.id}: ${actualDestination} -> expected ${mapping.plannedDestination}`);
+      plannedReviewed += 1;
+      continue;
+    }
+
     await assertHealthyFinal(mapping, mapping.plannedDestination);
     console.log(`READY_TO_FREEZE ${mapping.source} -> ${mapping.plannedDestination}`);
     plannedReviewed += 1;
@@ -134,5 +138,12 @@ for (const mapping of ledger.mappings) {
 }
 
 console.log(`PASS: live legacy mappings ${livePassed}/${ledger.mappings.filter(({ state }) => state === 'live').length}`);
-if (plannedReviewed) console.log(`READY_TO_FREEZE: URL cutovers ${plannedReviewed}`);
+if (plannedReviewed) console.log(`CUTOVER_CHECKED: URL cutovers ${plannedReviewed}`);
 if (candidatesReviewed) console.log(`REVIEW_REQUIRED: candidate mappings ${candidatesReviewed}`);
+if (plannedFailures.length) {
+  console.error(`LEGACY_REDIRECT_FREEZE_BLOCKED: ${plannedFailures.length} planned mappings are not one-hop final redirects`);
+  for (const failure of plannedFailures) {
+    console.error(`- ${failure.id}: ${failure.actual} (expected ${failure.expected})`);
+  }
+  process.exit(1);
+}
