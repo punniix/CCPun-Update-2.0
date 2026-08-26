@@ -44,7 +44,8 @@ The current physical URL structure is a stability layer. Semantic topic classifi
 - One Search Intent = One Owner. Do not create a new indexable URL when an existing owner can satisfy the same intent.
 - Protect winner pages from destructive rewrites while migration signals are consolidating.
 - AIA Health CI Hero is health/medical-expense insurance with critical-illness conditions/triggers. It is NOT critical-illness lump-sum insurance and must not be routed to `/ci-planning/` as a lump-sum product.
-- Existing canonical-path exceptions may remain under `/blog/life-insurance/...` while their semantic topic is `health-insurance`. Do not automatically "fix" those exceptions.
+- Before UX/UI 4.2, AIA Health Happy and AIA Health CI Hero have approved final physical/canonical owners under `/blog/health-insurance/...`. Their former `/blog/life-insurance/...` paths and historical WordPress URLs must redirect directly to those Health URLs with no intermediate hop.
+- Other semantic/physical exceptions may remain until separately approved; do not infer a physical URL migration from semantic topic alone.
 
 Protected SEO surfaces include, at minimum:
 

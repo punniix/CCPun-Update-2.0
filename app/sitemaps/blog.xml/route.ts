@@ -7,6 +7,15 @@ function latestUpdatedAt(values: string[]) {
   return values.reduce((latest, value) => (value > latest ? value : latest), values[0] ?? "");
 }
 
+function uniqueSortedEntries(entries: Array<{ loc: string; lastmod: string }>) {
+  const byLocation = new Map<string, { loc: string; lastmod: string }>();
+  for (const entry of entries) {
+    const existing = byLocation.get(entry.loc);
+    if (!existing || entry.lastmod > existing.lastmod) byLocation.set(entry.loc, entry);
+  }
+  return [...byLocation.values()].sort((a, b) => a.loc.localeCompare(b.loc));
+}
+
 export async function GET() {
   const articles = await getContentProvider().listArticles({ includeDrafts: false });
   const canonicalArticles = articles.filter(isArticleCanonicalAligned);
@@ -39,5 +48,5 @@ export async function GET() {
     }];
   });
 
-  return xmlResponse(renderUrlSet([...hubEntries, ...articleEntries]));
+  return xmlResponse(renderUrlSet(uniqueSortedEntries([...hubEntries, ...articleEntries])));
 }

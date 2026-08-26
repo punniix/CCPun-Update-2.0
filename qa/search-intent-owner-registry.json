@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": "2026-08-24",
+  "updatedAt": "2026-08-26",
   "policy": "1 Search Intent = 1 Owner",
   "owners": [
     {
@@ -25,7 +25,7 @@
         "ประกันสุขภาพ aia health happy"
       ],
       "searchIntent": "informational",
-      "ownerUrl": "https://ccpun.com/blog/life-insurance/aia-health-happy-describe/",
+      "ownerUrl": "https://ccpun.com/blog/health-insurance/aia-health-happy-describe/",
       "semanticTopic": "health-insurance",
       "ownerState": "published",
       "ownershipBasis": "existing-published-page",
@@ -39,7 +39,7 @@
         "ประกันสุขภาพ aia health ci hero"
       ],
       "searchIntent": "informational",
-      "ownerUrl": "https://ccpun.com/blog/life-insurance/aia-health-ci-hero-guide/",
+      "ownerUrl": "https://ccpun.com/blog/health-insurance/aia-health-ci-hero-guide/",
       "semanticTopic": "health-insurance",
       "ownerState": "published",
       "ownershipBasis": "existing-published-page",
