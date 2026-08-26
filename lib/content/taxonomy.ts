@@ -1,6 +1,7 @@
 export const ACTIVE_ARTICLE_CATEGORIES = [
   { slug: "personal-finance", title: "การเงินส่วนบุคคล" },
   { slug: "life-insurance", title: "ประกันชีวิต" },
+  { slug: "health-insurance", title: "ประกันสุขภาพ" },
   { slug: "investment", title: "การลงทุน" },
 ] as const;
 
@@ -116,10 +117,10 @@ const TOPIC_SLUG_BY_TAG: Record<string, BlogTopicSlug> = {
   "ประกันโรคร้ายแรง": "critical-illness",
 };
 
-// Phase 1 keeps article canonical URLs untouched. These overrides define only
-// semantic navigation/schema identity while the canonical category remains the
-// currently published Sanity category. They intentionally take precedence over
-// editable CMS semantic-topic metadata for protected winner-page semantics.
+// Protected semantic identity is independent from editor metadata. Health Happy
+// and Health CI Hero now also have physical/canonical ownership under the Health
+// Insurance category; Critical Illness remains a semantic-only hub exception
+// until a separate physical URL migration is explicitly approved.
 const ARTICLE_SEMANTIC_TOPIC_OVERRIDES: Record<string, BlogTopicSlug> = {
   "aia-health-happy-describe": "health-insurance",
   "aia-health-ci-hero-guide": "health-insurance",
@@ -155,7 +156,8 @@ export function normalizeArticleTaxonomy({
   const legacyTitleTopic = LEGACY_TOPIC_BY_TITLE[title];
   const combinedLegacyTitle = title === "ประกันสุขภาพและโรคร้ายแรง";
   const slugCategory = activeSlugs.has(slug) ? slug : legacySlugTopic ? "life-insurance" : null;
-  const titleCategory = activeSlugByTitle.get(title) ?? (legacyTitleTopic || combinedLegacyTitle ? "life-insurance" : null);
+  const titleCategory = activeSlugByTitle.get(title)
+    ?? (legacyTitleTopic ? "life-insurance" : combinedLegacyTitle ? (slugCategory ?? "life-insurance") : null);
   const categoryConflict = Boolean(slugCategory && titleCategory && slugCategory !== titleCategory);
   const inheritedTopics = legacySlugTopic
     ? [legacySlugTopic]
