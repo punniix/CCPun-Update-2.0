@@ -17,24 +17,29 @@ expect('agent workflow protects v4-production', agents.includes('Never edit `v4-
 expect('agent workflow requires Preview and human review', agents.includes('Vercel Preview -> human review -> merge'));
 expect('agent policy separates canonical URL from semantic topic', agents.includes('Semantic topic classification is a separate knowledge-graph layer'));
 expect('agent policy preserves Health CI Hero semantics', agents.includes('AIA Health CI Hero is health/medical-expense insurance') && agents.includes('It is NOT critical-illness lump-sum insurance'));
+expect('agent policy locks Health winner pages to Health physical URLs', agents.includes('AIA Health Happy and AIA Health CI Hero have approved final physical/canonical owners under `/blog/health-insurance/...`'));
 expect('agent policy protects analytics consent', agents.includes('Consent must remain authoritative'));
 
 const urlContract = read('lib/content/url.ts');
 const frozenMovedPaths = [
-  ['health-insurance/aia-health-happy-describe', '/blog/life-insurance/aia-health-happy-describe/'],
-  ['health-insurance/aia-health-ci-hero-guide', '/blog/life-insurance/aia-health-ci-hero-guide/'],
+  ['life-insurance/aia-health-happy-describe', '/blog/health-insurance/aia-health-happy-describe/'],
+  ['life-insurance/aia-health-ci-hero-guide', '/blog/health-insurance/aia-health-ci-hero-guide/'],
   ['critical-illness/critical-illness-insurance', '/blog/life-insurance/critical-illness-insurance/'],
 ];
 for (const [source, destination] of frozenMovedPaths) {
   expect(`frozen URL contract ${source}`, urlContract.includes(`"${source}": "${destination}"`), destination);
 }
+expect('health winner canonical category override remains protected', urlContract.includes('"aia-health-happy-describe": "health-insurance"') && urlContract.includes('"aia-health-ci-hero-guide": "health-insurance"'));
 expect('canonical alignment remains ccpun.com only', urlContract.includes('canonical.origin === "https://ccpun.com"'));
 
 const ledger = JSON.parse(read('qa/legacy-url-ledger.json'));
 expect('legacy URL ledger remains frozen', typeof ledger.frozenAt === 'string' && ledger.frozenAt.length > 0);
 const ledgerText = JSON.stringify(ledger);
-for (const [, destination] of frozenMovedPaths.slice(0, 2)) {
-  expect(`legacy ledger retains winner destination ${destination}`, ledgerText.includes(`https://ccpun.com${destination}`));
+for (const destination of [
+  '/blog/health-insurance/aia-health-happy-describe/',
+  '/blog/health-insurance/aia-health-ci-hero-guide/',
+]) {
+  expect(`legacy ledger retains approved winner destination ${destination}`, ledgerText.includes(`https://ccpun.com${destination}`));
 }
 
 const studioPolicy = read('cms/sanity/studio-policy.ts');
