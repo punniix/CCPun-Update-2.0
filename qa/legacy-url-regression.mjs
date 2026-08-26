@@ -5,6 +5,7 @@ const ledger = JSON.parse(readFileSync(new URL('./legacy-url-ledger.json', impor
 const seenIds = new Set();
 const seenSources = new Set();
 const seenDestinations = new Set();
+const plannedFailures = [];
 let livePassed = 0;
 let candidatesReviewed = 0;
 let plannedReviewed = 0;
@@ -27,8 +28,36 @@ async function request(url, redirect = 'manual') {
   return fetch(url, {
     redirect,
     signal: AbortSignal.timeout(15000),
-    headers: { 'user-agent': 'CCPun legacy URL regression/2.0' },
+    headers: { 'user-agent': 'CCPun legacy URL regression/2.2' },
   });
+}
+
+function logRedirectFingerprint(mapping, response, location) {
+  const names = [
+    'server',
+    'x-redirect-by',
+    'x-powered-by',
+    'x-litespeed-cache',
+    'x-litespeed-tag',
+    'cf-ray',
+    'cf-cache-status',
+    'x-hostinger-cache',
+    'x-hcdn-cache-status',
+  ];
+  const fingerprint = Object.fromEntries(
+    names.map((name) => [name, response.headers.get(name)]).filter(([, value]) => Boolean(value)),
+  );
+  console.log(`REDIRECT_FINGERPRINT ${mapping.id}`, JSON.stringify({ location, ...fingerprint }));
+}
+
+async function assertHealthyFinal(mapping, destination) {
+  const response = await request(destination);
+  const html = await response.text();
+  assert.equal(response.status, mapping.destinationStatus, `${mapping.id}: final URL is not healthy`);
+  assert.equal(canonical(html), destination, `${mapping.id}: final canonical drifted`);
+  assert.equal(language(html), 'th', `${mapping.id}: final HTML language drifted`);
+  assert.doesNotMatch(robots(html), /noindex/i, `${mapping.id}: final URL became noindex`);
+  assert.doesNotMatch(response.headers.get('x-robots-tag') ?? '', /noindex/i, `${mapping.id}: final URL gained an X-Robots-Tag noindex`);
 }
 
 for (const mapping of ledger.mappings) {
@@ -44,20 +73,25 @@ for (const mapping of ledger.mappings) {
 
   if (mapping.state === 'planned') {
     assert.ok(mapping.plannedDestination, `${mapping.id}: planned mapping requires plannedDestination`);
-    assert.notEqual(mapping.destination, mapping.plannedDestination, `${mapping.id}: planned final URL must differ from current destination`);
-    const source = await request(mapping.source);
-    assert.equal(source.status, mapping.sourceStatus, `${mapping.id}: current legacy source status drifted before cutover`);
-    const location = source.headers.get('location');
-    assert.ok(location, `${mapping.id}: current legacy redirect location missing before cutover`);
-    assert.equal(new URL(location, mapping.source).href, mapping.destination, `${mapping.id}: current legacy target drifted before cutover`);
+    assert.notEqual(mapping.destination, mapping.plannedDestination, `${mapping.id}: planned final URL must differ from pre-cutover destination`);
 
-    const current = await request(mapping.destination, 'follow');
-    const currentHtml = await current.text();
-    assert.equal(current.status, 200, `${mapping.id}: current canonical is unhealthy before cutover`);
-    assert.equal(canonical(currentHtml), mapping.destination, `${mapping.id}: current canonical drifted before cutover`);
-    assert.equal(language(currentHtml), 'th', `${mapping.id}: current HTML language drifted before cutover`);
-    assert.doesNotMatch(robots(currentHtml), /noindex/i, `${mapping.id}: current URL became noindex before cutover`);
-    console.log(`PLANNED ${mapping.destination} -> ${mapping.plannedDestination} (cutover gate not yet released)`);
+    // The application cutover is live. Test every planned WordPress source even when one fails,
+    // so a freeze cannot hide a second redirect chain behind the first assertion failure.
+    const source = await request(mapping.source);
+    assert.equal(source.status, mapping.sourceStatus, `${mapping.id}: legacy source status drifted during cutover verification`);
+    const location = source.headers.get('location');
+    assert.ok(location, `${mapping.id}: legacy redirect location missing during cutover verification`);
+    logRedirectFingerprint(mapping, source, location);
+    const actualDestination = new URL(location, mapping.source).href;
+    if (actualDestination !== mapping.plannedDestination) {
+      plannedFailures.push({ id: mapping.id, actual: actualDestination, expected: mapping.plannedDestination });
+      console.error(`NOT_READY ${mapping.id}: ${actualDestination} -> expected ${mapping.plannedDestination}`);
+      plannedReviewed += 1;
+      continue;
+    }
+
+    await assertHealthyFinal(mapping, mapping.plannedDestination);
+    console.log(`READY_TO_FREEZE ${mapping.source} -> ${mapping.plannedDestination}`);
     plannedReviewed += 1;
     continue;
   }
@@ -99,16 +133,17 @@ for (const mapping of ledger.mappings) {
     candidatesReviewed += 1;
   }
 
-  const destination = await request(mapping.destination);
-  const destinationHtml = await destination.text();
-  assert.equal(destination.status, mapping.destinationStatus, `${mapping.id}: final URL is not healthy`);
-  assert.equal(canonical(destinationHtml), mapping.destination, `${mapping.id}: final canonical drifted`);
-  assert.equal(language(destinationHtml), 'th', `${mapping.id}: final HTML language drifted`);
-  assert.doesNotMatch(robots(destinationHtml), /noindex/i, `${mapping.id}: final URL became noindex`);
-  assert.doesNotMatch(destination.headers.get('x-robots-tag') ?? '', /noindex/i, `${mapping.id}: final URL gained an X-Robots-Tag noindex`);
+  await assertHealthyFinal(mapping, mapping.destination);
   console.log(`PASS ${mapping.id}`);
 }
 
 console.log(`PASS: live legacy mappings ${livePassed}/${ledger.mappings.filter(({ state }) => state === 'live').length}`);
-if (plannedReviewed) console.log(`PLANNED: URL cutovers ${plannedReviewed}`);
+if (plannedReviewed) console.log(`CUTOVER_CHECKED: URL cutovers ${plannedReviewed}`);
 if (candidatesReviewed) console.log(`REVIEW_REQUIRED: candidate mappings ${candidatesReviewed}`);
+if (plannedFailures.length) {
+  console.error(`LEGACY_REDIRECT_FREEZE_BLOCKED: ${plannedFailures.length} planned mappings are not one-hop final redirects`);
+  for (const failure of plannedFailures) {
+    console.error(`- ${failure.id}: ${failure.actual} (expected ${failure.expected})`);
+  }
+  process.exit(1);
+}

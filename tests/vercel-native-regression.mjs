@@ -20,8 +20,8 @@ assert.equal(packageJson.scripts['qa:legacy-urls'], 'node qa/legacy-url-regressi
 const legacyUrlLedger = JSON.parse(read('qa/legacy-url-ledger.json'));
 assert.deepEqual(legacyUrlLedger.mappings.map(({ id, destination }) => [id, destination]), [
   ['blog-root', 'https://ccpun.com/blog/'],
-  ['aia-health-happy', 'https://ccpun.com/blog/life-insurance/aia-health-happy-describe/'],
-  ['aia-health-ci-hero', 'https://ccpun.com/blog/life-insurance/aia-health-ci-hero-guide/'],
+  ['aia-health-happy', 'https://ccpun.com/blog/health-insurance/aia-health-happy-describe/'],
+  ['aia-health-ci-hero', 'https://ccpun.com/blog/health-insurance/aia-health-ci-hero-guide/'],
   ['financial-pyramid', 'https://ccpun.com/blog/personal-finance/financial-pyramid/'],
   ['aia-vitality', 'https://ccpun.com/blog/life-insurance/aia-vitality/'],
   ['critical-illness-insurance', 'https://ccpun.com/blog/life-insurance/critical-illness-insurance/'],
