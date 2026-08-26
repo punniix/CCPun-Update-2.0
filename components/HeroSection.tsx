@@ -28,7 +28,7 @@ const HeroSection = () => {
         data-uat-role="hero-portrait"
         aria-hidden="true"
       >
-        <picture>
+        <picture className="relative block h-full w-full">
           <source
             media="(min-width: 768px)"
             srcSet={desktopHeroImageProps.srcSet}
