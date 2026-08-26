@@ -47,7 +47,8 @@ for (const owner of registry.owners) {
   assert.equal(typeof owner.legacyMappingId, "string");
   const mapping = legacyById.get(owner.legacyMappingId);
   assert.ok(mapping, `${owner.intentId}: legacy mapping ${owner.legacyMappingId} is missing`);
-  assert.equal(mapping.destination, owner.ownerUrl, `${owner.intentId}: owner must match the approved migration destination`);
+  const approvedDestination = mapping.plannedDestination ?? mapping.destination;
+  assert.equal(approvedDestination, owner.ownerUrl, `${owner.intentId}: owner must match the approved migration destination`);
 
   for (const query of [owner.primaryQuery, ...owner.queryVariants]) {
     assert.equal(typeof query, "string");
