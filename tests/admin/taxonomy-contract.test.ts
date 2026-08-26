@@ -2,15 +2,16 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { ACTIVE_ARTICLE_CATEGORIES, isReservedArticleSlug, normalizeArticleTaxonomy } from "../../lib/content/taxonomy";
 
-test("taxonomy exposes exactly three primary URL-bearing categories", () => {
+test("taxonomy exposes exactly four primary URL-bearing categories", () => {
   assert.deepEqual(ACTIVE_ARTICLE_CATEGORIES, [
     { slug: "personal-finance", title: "การเงินส่วนบุคคล" },
     { slug: "life-insurance", title: "ประกันชีวิต" },
+    { slug: "health-insurance", title: "ประกันสุขภาพ" },
     { slug: "investment", title: "การลงทุน" },
   ]);
 });
 
-test("active category slugs and titles normalize without adding tags", () => {
+test("active category slugs and titles normalize to their physical URL owner", () => {
   assert.deepEqual(normalizeArticleTaxonomy({ categorySlug: "personal-finance" }), {
     categorySlug: "personal-finance",
     tags: [],
@@ -20,7 +21,11 @@ test("active category slugs and titles normalize without adding tags", () => {
     tags: [],
   });
   assert.deepEqual(normalizeArticleTaxonomy({ categorySlug: "health-insurance" }), {
-    categorySlug: "life-insurance",
+    categorySlug: "health-insurance",
+    tags: ["ประกันสุขภาพ"],
+  });
+  assert.deepEqual(normalizeArticleTaxonomy({ categoryTitle: "ประกันสุขภาพ" }), {
+    categorySlug: "health-insurance",
     tags: ["ประกันสุขภาพ"],
   });
   assert.deepEqual(normalizeArticleTaxonomy({ categoryTitle: "ประกันโรคร้ายแรง" }), {
@@ -40,13 +45,13 @@ test("the legacy UAT personal-finance slug normalizes to the active category", (
   });
 });
 
-test("legacy category landing slugs stay reserved for redirects", () => {
+test("topic hub slugs stay reserved and cannot collide with article slugs", () => {
   assert.equal(isReservedArticleSlug("health-insurance"), true);
   assert.equal(isReservedArticleSlug("critical-illness"), true);
   assert.equal(isReservedArticleSlug("critical-illness-insurance"), false);
 });
 
-test("legacy health and critical categories become life-insurance topic tags", () => {
+test("current Health is physical while the historical combined WordPress category stays backward compatible", () => {
   assert.deepEqual(normalizeArticleTaxonomy({ categoryTitle: "ประกันสุขภาพและโรคร้ายแรง", categorySlug: "health-insurance" }), {
     categorySlug: "life-insurance",
     tags: ["ประกันสุขภาพ"],
@@ -70,7 +75,7 @@ test("existing tags are trimmed, blanks dropped, and deduped case-insensitively 
       tags: sourceTags,
     }),
     {
-      categorySlug: "life-insurance",
+      categorySlug: "health-insurance",
       tags: ["Retirement", "ประกันสุขภาพ", "Health"],
     },
   );

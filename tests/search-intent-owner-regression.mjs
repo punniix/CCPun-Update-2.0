@@ -47,7 +47,8 @@ for (const owner of registry.owners) {
   assert.equal(typeof owner.legacyMappingId, "string");
   const mapping = legacyById.get(owner.legacyMappingId);
   assert.ok(mapping, `${owner.intentId}: legacy mapping ${owner.legacyMappingId} is missing`);
-  assert.equal(mapping.destination, owner.ownerUrl, `${owner.intentId}: owner must match the frozen migration destination`);
+  const approvedDestination = mapping.plannedDestination ?? mapping.destination;
+  assert.equal(approvedDestination, owner.ownerUrl, `${owner.intentId}: owner must match the approved migration destination`);
 
   for (const query of [owner.primaryQuery, ...owner.queryVariants]) {
     assert.equal(typeof query, "string");
@@ -61,7 +62,7 @@ for (const owner of registry.owners) {
 const healthCiHero = registry.owners.find((owner) => owner.intentId === "aia-health-ci-hero-definition");
 assert.ok(healthCiHero, "Health CI Hero owner contract is required");
 assert.equal(healthCiHero.semanticTopic, "health-insurance");
-assert.equal(healthCiHero.ownerUrl, "https://ccpun.com/blog/life-insurance/aia-health-ci-hero-guide/");
+assert.equal(healthCiHero.ownerUrl, "https://ccpun.com/blog/health-insurance/aia-health-ci-hero-guide/");
 assert.match(healthCiHero.protectedRule ?? "", /not critical-illness lump-sum/i);
 
 console.log(`PASS: Search Intent Owner Registry (${registry.owners.length} owners, ${queryOwners.size} protected query forms)`);

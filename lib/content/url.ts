@@ -1,13 +1,30 @@
 import type { Article } from "./types";
 import { LEGACY_CATEGORY_TOPICS, normalizeArticleTaxonomy } from "./taxonomy";
 
+// Foundation cutover before UX/UI 4.2. These two winner pages now have one
+// approved physical/canonical owner under /health-insurance/. Keep this override
+// until every published Sanity article reference has naturally converged on the
+// Health Insurance category; leaving it in place afterwards is harmless and
+// protects against an accidental category regression.
+const ARTICLE_CANONICAL_CATEGORY_OVERRIDES: Record<string, string> = {
+  "aia-health-happy-describe": "health-insurance",
+  "aia-health-ci-hero-guide": "health-insurance",
+};
+
+// Historical/interim CCPun article paths redirect directly to the final owner.
+// Do not add an intermediate hop.
 const MOVED_ARTICLE_PATHS: Record<string, string> = {
-  "health-insurance/aia-health-happy-describe": "/blog/life-insurance/aia-health-happy-describe/",
-  "health-insurance/aia-health-ci-hero-guide": "/blog/life-insurance/aia-health-ci-hero-guide/",
+  "life-insurance/aia-health-happy-describe": "/blog/health-insurance/aia-health-happy-describe/",
+  "life-insurance/aia-health-ci-hero-guide": "/blog/health-insurance/aia-health-ci-hero-guide/",
   "critical-illness/critical-illness-insurance": "/blog/life-insurance/critical-illness-insurance/",
 };
 
-export function getArticleCategorySlug(article: Pick<Article, "category" | "categorySlug">) {
+type ArticleCategoryInput = Pick<Article, "category" | "categorySlug"> & Partial<Pick<Article, "slug">>;
+
+export function getArticleCategorySlug(article: ArticleCategoryInput) {
+  const protectedCategory = article.slug ? ARTICLE_CANONICAL_CATEGORY_OVERRIDES[article.slug] : undefined;
+  if (protectedCategory) return protectedCategory;
+
   const slug = normalizeArticleTaxonomy({
     categoryTitle: article.category,
     categorySlug: article.categorySlug,
@@ -21,6 +38,9 @@ export function getArticlePath(article: Pick<Article, "slug" | "category" | "cat
 }
 
 export function getArticleCanonical(article: Pick<Article, "slug" | "category" | "categorySlug" | "canonical">) {
+  if (ARTICLE_CANONICAL_CATEGORY_OVERRIDES[article.slug]) {
+    return `https://ccpun.com${getArticlePath(article)}`;
+  }
   return article.canonical ?? `https://ccpun.com${getArticlePath(article)}`;
 }
 
