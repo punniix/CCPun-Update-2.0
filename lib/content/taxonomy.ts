@@ -156,9 +156,8 @@ export function normalizeArticleTaxonomy({
   const legacyTitleTopic = LEGACY_TOPIC_BY_TITLE[title];
   const combinedLegacyTitle = title === "ประกันสุขภาพและโรคร้ายแรง";
   const slugCategory = activeSlugs.has(slug) ? slug : legacySlugTopic ? "life-insurance" : null;
-  const titleCategory = activeSlugByTitle.get(title)
-    ?? (legacyTitleTopic ? "life-insurance" : combinedLegacyTitle ? (slugCategory ?? "life-insurance") : null);
-  const categoryConflict = Boolean(slugCategory && titleCategory && slugCategory !== titleCategory);
+  const titleCategory = activeSlugByTitle.get(title) ?? (legacyTitleTopic || combinedLegacyTitle ? "life-insurance" : null);
+  const categoryConflict = Boolean(slugCategory && titleCategory && slugCategory !== titleCategory && !combinedLegacyTitle);
   const inheritedTopics = legacySlugTopic
     ? [legacySlugTopic]
     : combinedLegacyTitle
@@ -166,9 +165,14 @@ export function normalizeArticleTaxonomy({
       : legacyTitleTopic
         ? [legacyTitleTopic]
         : [];
+  const resolvedCategory = combinedLegacyTitle
+    ? "life-insurance"
+    : categoryConflict
+      ? null
+      : slugCategory ?? titleCategory;
 
   return {
-    categorySlug: categoryConflict ? null : slugCategory ?? titleCategory,
+    categorySlug: resolvedCategory,
     tags: normalizeTags([...(tags ?? []), ...inheritedTopics]),
   };
 }
