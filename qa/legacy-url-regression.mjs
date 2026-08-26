@@ -27,8 +27,18 @@ async function request(url, redirect = 'manual') {
   return fetch(url, {
     redirect,
     signal: AbortSignal.timeout(15000),
-    headers: { 'user-agent': 'CCPun legacy URL regression/2.0' },
+    headers: { 'user-agent': 'CCPun legacy URL regression/2.1' },
   });
+}
+
+async function assertHealthyFinal(mapping, destination) {
+  const response = await request(destination);
+  const html = await response.text();
+  assert.equal(response.status, mapping.destinationStatus, `${mapping.id}: final URL is not healthy`);
+  assert.equal(canonical(html), destination, `${mapping.id}: final canonical drifted`);
+  assert.equal(language(html), 'th', `${mapping.id}: final HTML language drifted`);
+  assert.doesNotMatch(robots(html), /noindex/i, `${mapping.id}: final URL became noindex`);
+  assert.doesNotMatch(response.headers.get('x-robots-tag') ?? '', /noindex/i, `${mapping.id}: final URL gained an X-Robots-Tag noindex`);
 }
 
 for (const mapping of ledger.mappings) {
@@ -44,20 +54,21 @@ for (const mapping of ledger.mappings) {
 
   if (mapping.state === 'planned') {
     assert.ok(mapping.plannedDestination, `${mapping.id}: planned mapping requires plannedDestination`);
-    assert.notEqual(mapping.destination, mapping.plannedDestination, `${mapping.id}: planned final URL must differ from current destination`);
-    const source = await request(mapping.source);
-    assert.equal(source.status, mapping.sourceStatus, `${mapping.id}: current legacy source status drifted before cutover`);
-    const location = source.headers.get('location');
-    assert.ok(location, `${mapping.id}: current legacy redirect location missing before cutover`);
-    assert.equal(new URL(location, mapping.source).href, mapping.destination, `${mapping.id}: current legacy target drifted before cutover`);
+    assert.notEqual(mapping.destination, mapping.plannedDestination, `${mapping.id}: planned final URL must differ from pre-cutover destination`);
 
-    const current = await request(mapping.destination, 'follow');
-    const currentHtml = await current.text();
-    assert.equal(current.status, 200, `${mapping.id}: current canonical is unhealthy before cutover`);
-    assert.equal(canonical(currentHtml), mapping.destination, `${mapping.id}: current canonical drifted before cutover`);
-    assert.equal(language(currentHtml), 'th', `${mapping.id}: current HTML language drifted before cutover`);
-    assert.doesNotMatch(robots(currentHtml), /noindex/i, `${mapping.id}: current URL became noindex before cutover`);
-    console.log(`PLANNED ${mapping.destination} -> ${mapping.plannedDestination} (cutover gate not yet released)`);
+    // The application cutover is now live. A planned legacy source must therefore redirect
+    // directly to the approved final destination before the ledger can be frozen as live.
+    const source = await request(mapping.source);
+    assert.equal(source.status, mapping.sourceStatus, `${mapping.id}: legacy source status drifted during cutover verification`);
+    const location = source.headers.get('location');
+    assert.ok(location, `${mapping.id}: legacy redirect location missing during cutover verification`);
+    assert.equal(
+      new URL(location, mapping.source).href,
+      mapping.plannedDestination,
+      `${mapping.id}: legacy source must redirect one hop directly to the approved final URL`,
+    );
+    await assertHealthyFinal(mapping, mapping.plannedDestination);
+    console.log(`READY_TO_FREEZE ${mapping.source} -> ${mapping.plannedDestination}`);
     plannedReviewed += 1;
     continue;
   }
@@ -99,16 +110,10 @@ for (const mapping of ledger.mappings) {
     candidatesReviewed += 1;
   }
 
-  const destination = await request(mapping.destination);
-  const destinationHtml = await destination.text();
-  assert.equal(destination.status, mapping.destinationStatus, `${mapping.id}: final URL is not healthy`);
-  assert.equal(canonical(destinationHtml), mapping.destination, `${mapping.id}: final canonical drifted`);
-  assert.equal(language(destinationHtml), 'th', `${mapping.id}: final HTML language drifted`);
-  assert.doesNotMatch(robots(destinationHtml), /noindex/i, `${mapping.id}: final URL became noindex`);
-  assert.doesNotMatch(destination.headers.get('x-robots-tag') ?? '', /noindex/i, `${mapping.id}: final URL gained an X-Robots-Tag noindex`);
+  await assertHealthyFinal(mapping, mapping.destination);
   console.log(`PASS ${mapping.id}`);
 }
 
 console.log(`PASS: live legacy mappings ${livePassed}/${ledger.mappings.filter(({ state }) => state === 'live').length}`);
-if (plannedReviewed) console.log(`PLANNED: URL cutovers ${plannedReviewed}`);
+if (plannedReviewed) console.log(`READY_TO_FREEZE: URL cutovers ${plannedReviewed}`);
 if (candidatesReviewed) console.log(`REVIEW_REQUIRED: candidate mappings ${candidatesReviewed}`);
