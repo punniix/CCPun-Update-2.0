@@ -43,21 +43,21 @@ for (const mapping of ledger.mappings) {
   }
 
   if (mapping.state === 'planned') {
-    assert.ok(mapping.currentDestination, `${mapping.id}: planned mapping requires currentDestination`);
-    assert.notEqual(mapping.currentDestination, mapping.destination, `${mapping.id}: planned final URL must differ from current destination`);
+    assert.ok(mapping.plannedDestination, `${mapping.id}: planned mapping requires plannedDestination`);
+    assert.notEqual(mapping.destination, mapping.plannedDestination, `${mapping.id}: planned final URL must differ from current destination`);
     const source = await request(mapping.source);
     assert.equal(source.status, mapping.sourceStatus, `${mapping.id}: current legacy source status drifted before cutover`);
     const location = source.headers.get('location');
     assert.ok(location, `${mapping.id}: current legacy redirect location missing before cutover`);
-    assert.equal(new URL(location, mapping.source).href, mapping.currentDestination, `${mapping.id}: current legacy target drifted before cutover`);
+    assert.equal(new URL(location, mapping.source).href, mapping.destination, `${mapping.id}: current legacy target drifted before cutover`);
 
-    const current = await request(mapping.currentDestination, 'follow');
+    const current = await request(mapping.destination, 'follow');
     const currentHtml = await current.text();
     assert.equal(current.status, 200, `${mapping.id}: current canonical is unhealthy before cutover`);
-    assert.equal(canonical(currentHtml), mapping.currentDestination, `${mapping.id}: current canonical drifted before cutover`);
+    assert.equal(canonical(currentHtml), mapping.destination, `${mapping.id}: current canonical drifted before cutover`);
     assert.equal(language(currentHtml), 'th', `${mapping.id}: current HTML language drifted before cutover`);
     assert.doesNotMatch(robots(currentHtml), /noindex/i, `${mapping.id}: current URL became noindex before cutover`);
-    console.log(`PLANNED ${mapping.currentDestination} -> ${mapping.destination} (cutover gate not yet released)`);
+    console.log(`PLANNED ${mapping.destination} -> ${mapping.plannedDestination} (cutover gate not yet released)`);
     plannedReviewed += 1;
     continue;
   }
