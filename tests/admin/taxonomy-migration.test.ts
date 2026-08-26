@@ -112,7 +112,7 @@ test("already-normalized taxonomy is idempotent and published-only articles are 
   assert.equal(plan.draftArticleCount, 1);
   assert.equal(plan.publishedOnlyCount, 1);
   assert.deepEqual(plan.changes, []);
-  assert.equal(plan.categoryCreates.length, 2);
+  assert.equal(plan.categoryCreates.length, 3);
 });
 
 test("an empty UAT taxonomy plans deterministic active categories and normalizes the UAT fixture", () => {
@@ -136,6 +136,7 @@ test("an empty UAT taxonomy plans deterministic active categories and normalizes
   assert.deepEqual(plan.categoryCreates.map(({ _id }) => _id), [
     "ccpun-category-personal-finance",
     "ccpun-category-life-insurance",
+    "ccpun-category-health-insurance",
     "ccpun-category-investment",
   ]);
   assert.deepEqual(plan.changes[0].set, {
@@ -155,7 +156,6 @@ test("raw Sanity category references resolve from Draft category documents witho
     { _id: "drafts.legacy-health", _type: "category", title: "ประกันสุขภาพ", slug: "health-insurance" },
   ]);
   assert.deepEqual(plan.changes[0].set, {
-    category: { _type: "reference", _ref: "ccpun-wp-category-4" },
     tags: ["ประกันสุขภาพ"],
   });
 });
@@ -234,18 +234,18 @@ test("apply uses revision guards and creates exactly one atomic audit without ar
   }], [lifeCategory]);
 
   const result = await applyTaxonomyMigration(client, plan, "2026-08-22T00:00:00.000Z");
-  assert.deepEqual(result, { changed: 1, categoriesCreated: 2, auditLogCreated: true });
+  assert.deepEqual(result, { changed: 1, categoriesCreated: 3, auditLogCreated: true });
   assert.equal(transactionCount, 1);
   assert.equal(commitCount, 1);
   assert.equal(operations.filter((operation) => operation.kind === "patch").length, 1);
-  assert.equal(operations.filter((operation) => operation.kind === "createIfNotExists").length, 3);
+  assert.equal(operations.filter((operation) => operation.kind === "createIfNotExists").length, 4);
   const articlePatch = operations.find((operation) => operation.kind === "patch");
   assert.deepEqual(articlePatch, {
     kind: "patch",
     id: "drafts.article-1",
     revision: "draft-rev-1",
     set: {
-      category: { _type: "reference", _ref: "ccpun-wp-category-4" },
+      category: { _type: "reference", _ref: "ccpun-category-health-insurance" },
       tags: ["ประกันสุขภาพ"],
     },
   });
