@@ -47,8 +47,8 @@ const hubCases = [
     canonical: 'https://ccpun.com/blog/health-insurance/',
     index: true,
     mustContain: [
-      '/blog/life-insurance/aia-health-happy-describe/',
-      '/blog/life-insurance/aia-health-ci-hero-guide/',
+      '/blog/health-insurance/aia-health-happy-describe/',
+      '/blog/health-insurance/aia-health-ci-hero-guide/',
       '"@type":"CollectionPage"',
       '"@type":"ItemList"',
     ],
@@ -86,8 +86,8 @@ for (const hub of hubCases) {
 }
 
 const canonicalArticles = [
-  ['/blog/life-insurance/aia-health-happy-describe/', 'https://ccpun.com/blog/life-insurance/aia-health-happy-describe/', '/blog/health-insurance/', 'ประกันสุขภาพ'],
-  ['/blog/life-insurance/aia-health-ci-hero-guide/', 'https://ccpun.com/blog/life-insurance/aia-health-ci-hero-guide/', '/blog/health-insurance/', 'ประกันสุขภาพ'],
+  ['/blog/health-insurance/aia-health-happy-describe/', 'https://ccpun.com/blog/health-insurance/aia-health-happy-describe/', '/blog/health-insurance/', 'ประกันสุขภาพ'],
+  ['/blog/health-insurance/aia-health-ci-hero-guide/', 'https://ccpun.com/blog/health-insurance/aia-health-ci-hero-guide/', '/blog/health-insurance/', 'ประกันสุขภาพ'],
   ['/blog/life-insurance/critical-illness-insurance/', 'https://ccpun.com/blog/life-insurance/critical-illness-insurance/', '/blog/critical-illness/', 'ประกันโรคร้ายแรง'],
   ['/blog/life-insurance/aia-vitality/', 'https://ccpun.com/blog/life-insurance/aia-vitality/', '/blog/life-insurance/', 'ประกันชีวิต'],
   ['/blog/personal-finance/financial-pyramid/', 'https://ccpun.com/blog/personal-finance/financial-pyramid/', '/blog/personal-finance/', 'การเงินส่วนบุคคล'],
@@ -105,8 +105,8 @@ for (const [path, canonical, topicPath, articleSection] of canonicalArticles) {
 }
 
 const oldRedirects = [
-  ['/blog/health-insurance/aia-health-happy-describe/', '/blog/life-insurance/aia-health-happy-describe/'],
-  ['/blog/health-insurance/aia-health-ci-hero-guide/', '/blog/life-insurance/aia-health-ci-hero-guide/'],
+  ['/blog/life-insurance/aia-health-happy-describe/', '/blog/health-insurance/aia-health-happy-describe/'],
+  ['/blog/life-insurance/aia-health-ci-hero-guide/', '/blog/health-insurance/aia-health-ci-hero-guide/'],
   ['/blog/critical-illness/critical-illness-insurance/', '/blog/life-insurance/critical-illness-insurance/'],
 ];
 
@@ -139,7 +139,22 @@ for (const loc of [
 ]) {
   assertContains(sitemap.text, `<loc>${loc}</loc>`, '/sitemaps/blog.xml');
 }
+for (const staleLoc of [
+  'https://ccpun.com/blog/life-insurance/aia-health-happy-describe/',
+  'https://ccpun.com/blog/life-insurance/aia-health-ci-hero-guide/',
+]) {
+  assert.ok(!sitemap.text.includes(`<loc>${staleLoc}</loc>`), `/sitemaps/blog.xml must not contain stale Health Life URL ${staleLoc}`);
+}
+assert.equal(new Set([...sitemap.text.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => match[1])).size, [...sitemap.text.matchAll(/<loc>([^<]+)<\/loc>/g)].length, 'blog sitemap must not contain duplicate URLs');
 assert.ok(!sitemap.text.includes('https://ccpun.com/blog/investment/'), 'noindex investment hub must not be in sitemap');
 assert.ok(!sitemap.text.includes('?category=') && !sitemap.text.includes('?tag='), 'filter URLs must not be in sitemap');
+
+const robotsTxt = await request('/robots.txt');
+assertStatus(robotsTxt.response.status, 200, '/robots.txt');
+assertContains(robotsTxt.text, 'Sitemap: https://ccpun.com/sitemap.xml', '/robots.txt');
+for (const privatePath of ['/api/', '/snt-admin/', '/studio/']) {
+  assertContains(robotsTxt.text, `Disallow: ${privatePath}`, '/robots.txt');
+}
+assert.ok(!robotsTxt.text.includes('Disallow: /blog/'), '/robots.txt must not block blog content');
 
 console.log('PASS: SEO topic hub HTTP regression');
