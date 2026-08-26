@@ -280,7 +280,7 @@ export default function CookieConsent() {
                   เว็บไซต์ใช้ Google Analytics เพื่อวิเคราะห์การใช้งาน และใช้ Meta Pixel เฉพาะหน้า CI Planning กับ Financial Health Check หลังคุณเลือกยินยอม{' '}
                   <Link
                     href="/cookie-policy"
-                    className="text-primary hover:underline underline-offset-2"
+                    className="inline-flex min-h-11 items-center text-primary underline-offset-2 hover:underline"
                   >
                     นโยบายคุกกี้
                   </Link>

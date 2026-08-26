@@ -93,7 +93,7 @@ const faqSchema = {
 
 export default function CiPlanningPage() {
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="public-ux42 min-h-screen bg-background flex flex-col">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }} />
       <script
         type="application/ld+json"
@@ -108,12 +108,22 @@ export default function CiPlanningPage() {
           highlight="เพียงพอรับภาระจริงไหม?"
           highlightOnNewLine
           description="กรอกรายได้หรือภาระที่ยังต้องดูแล แล้วเทียบกับเงินก้อนจากประกันโรคร้ายแรงและสินทรัพย์สภาพคล่องที่พร้อมใช้"
+          calculatorHref="#ci-calculator"
         />
-        <CILandingIntro />
+        <section aria-labelledby="ci-guide-title" className="bg-secondary/55 px-4 py-6">
+          <div className="mx-auto max-w-3xl">
+            <h2 id="ci-guide-title" className="text-2xl font-bold text-foreground">วิธีใช้แบบสั้น</h2>
+            <ol className="mt-3 space-y-1 text-base leading-relaxed text-muted-foreground">
+              <li>1 รายได้และภาระที่ยังต้องดูแล</li>
+              <li>2 เงินก้อนและสินทรัพย์ที่พร้อมใช้</li>
+              <li>ผลลัพธ์: ทุนตามรายจ่าย / ทุนตามรายได้ แสดงแยกกัน</li>
+            </ol>
+          </div>
+        </section>
         <section
           id="ci-calculator"
           aria-labelledby="ci-calculator-title"
-          className="mx-auto max-w-3xl scroll-mt-28 px-4 pt-6"
+          className="mx-auto max-w-3xl scroll-mt-24 px-4 pt-8"
         >
           <div className="mb-6 text-center">
             <p className="text-sm font-semibold text-primary">เครื่องคำนวณทุนโรคร้ายแรง</p>
@@ -124,7 +134,9 @@ export default function CiPlanningPage() {
           <CIWizard />
         </section>
 
-        <section aria-label="ข้อมูลประกอบการอ่านผลการวางแผนทุนโรคร้ายแรง" className="px-4 pt-14 md:pt-20">
+        <CILandingIntro />
+
+        <section aria-label="ข้อมูลประกอบการอ่านผลการวางแผนทุนโรคร้ายแรง" className="px-4 pt-2 md:pt-4">
           <div className="mx-auto max-w-5xl space-y-12 md:space-y-16">
             <aside
               aria-labelledby="ci-example-title"

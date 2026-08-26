@@ -130,7 +130,7 @@ const Navbar = ({ isToolPage = false }: NavbarProps) => {
   return (
     <nav className={`glass-nav transition-shadow duration-500 ${isScrolled ? "shadow-xl shadow-black/20" : ""}`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-20">
+        <div className="flex h-[72px] items-center justify-between">
           {/* Logo */}
           <Link href={logoHref} prefetch={false} className="flex min-h-11 items-center">
             <span className="text-2xl font-bold tracking-tight">
@@ -238,7 +238,7 @@ const Navbar = ({ isToolPage = false }: NavbarProps) => {
             aria-modal="true"
             aria-label="เมนูนำทางมือถือ"
             tabIndex={-1}
-            className="md:hidden fixed inset-x-0 top-20 z-[55] max-h-[calc(100vh-5rem)] overflow-y-auto border-t border-white/10 bg-background/95 px-4 pb-6 shadow-2xl shadow-black/40 backdrop-blur-xl"
+            className="md:hidden fixed inset-x-0 top-[72px] z-[55] max-h-[calc(100vh-72px)] overflow-y-auto border-t border-white/10 bg-background/95 px-4 pb-6 shadow-2xl shadow-black/40 backdrop-blur-xl"
           >
             <div className="flex flex-col gap-2 pt-4">
               <Link href={homeHref} prefetch={false} onClick={() => setIsMobileMenuOpen(false)} className="flex min-h-11 items-center text-sm font-medium text-muted-foreground hover:text-primary transition-colors">
@@ -289,7 +289,7 @@ const Navbar = ({ isToolPage = false }: NavbarProps) => {
           <button
             type="button"
             aria-label="ปิดเมนู"
-            className="md:hidden fixed inset-0 top-20 z-[54] bg-black/35 backdrop-blur-[2px]"
+            className="md:hidden fixed inset-0 top-[72px] z-[54] bg-black/35 backdrop-blur-[2px]"
             onClick={() => {
               setIsMobileMenuOpen(false);
               setIsMobileToolsOpen(false);

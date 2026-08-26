@@ -5,6 +5,7 @@ type ToolHeroProps = {
   highlightOnNewLine?: boolean;
   suffix?: string;
   description: string;
+  calculatorHref: string;
 };
 
 export default function ToolHero({
@@ -14,9 +15,10 @@ export default function ToolHero({
   highlightOnNewLine = false,
   suffix,
   description,
+  calculatorHref,
 }: ToolHeroProps) {
   return (
-    <section className="relative isolate w-full overflow-hidden border-b border-border/30 pb-10 pt-28 md:pb-12">
+    <section className="tool-orientation-hero relative isolate w-full overflow-hidden border-b border-border/30 pb-12 pt-28 md:pb-14">
       <div
         aria-hidden="true"
         className="absolute inset-0 -z-20"
@@ -31,12 +33,12 @@ export default function ToolHero({
       />
 
       <div className="mx-auto max-w-3xl px-4 text-center">
-        <span className="mb-4 inline-block rounded-full border border-primary/40 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
+        <span className="mb-4 inline-block text-sm font-semibold text-primary">
           {badge}
         </span>
         <h1 className={`mx-auto mb-4 text-[clamp(2rem,5vw,3rem)] font-bold leading-[1.2] text-foreground [text-wrap:balance] ${highlightOnNewLine ? 'max-w-[32ch]' : 'max-w-[18ch]'}`}>
           <span className={highlightOnNewLine ? 'block md:whitespace-nowrap' : undefined}>{title}</span>
-          <span className={`${highlightOnNewLine ? 'block md:whitespace-nowrap' : ''} text-primary`}>{highlight}</span>{' '}
+          <span className={highlightOnNewLine ? 'block md:whitespace-nowrap' : ''}>{highlight}</span>{' '}
           {suffix && <span className="text-sm font-normal text-muted-foreground">{suffix}</span>}
         </h1>
         <div
@@ -46,6 +48,20 @@ export default function ToolHero({
         <p className="mx-auto max-w-[58ch] text-base leading-relaxed text-foreground/80 md:text-[1.0625rem]">
           {description}
         </p>
+        <ul className="mx-auto mt-6 grid max-w-lg gap-2 text-sm text-foreground/70 sm:grid-cols-3">
+          <li className="rounded-full bg-secondary px-4 py-2">2 ขั้นตอน</li>
+          <li className="rounded-full bg-secondary px-4 py-2">ไม่ต้องกรอกชื่อ/เบอร์/อีเมล</li>
+          <li className="rounded-full bg-secondary px-4 py-2">เห็นผลหลังกรอกครบ</li>
+        </ul>
+        <a
+          href={calculatorHref}
+          className="gold-button liquid-shine mt-6 inline-flex min-h-14 min-w-44 items-center justify-center px-8 py-3 text-base"
+        >
+          เริ่มประเมิน
+        </a>
+        <a href={calculatorHref} className="mt-4 block min-h-11 text-sm font-medium leading-[44px] text-primary">
+          ดูวิธีคิด ↓
+        </a>
       </div>
     </section>
   );
