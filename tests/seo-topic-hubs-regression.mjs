@@ -23,9 +23,13 @@ assert.match(taxonomy, /"aia-health-ci-hero-guide": "health-insurance"/);
 assert.match(taxonomy, /"critical-illness-insurance": "critical-illness"/);
 assert.match(taxonomy, /"aia-vitality": "life-insurance"/);
 
-// Phase 1 canonical category contract remains the current three-category model.
-assert.match(taxonomy, /ACTIVE_ARTICLE_CATEGORIES = \[[\s\S]*personal-finance[\s\S]*life-insurance[\s\S]*investment[\s\S]*\] as const/);
-assert.doesNotMatch(taxonomy.match(/ACTIVE_ARTICLE_CATEGORIES = \[[\s\S]*?\] as const/)?.[0] ?? '', /health-insurance|critical-illness/);
+// Foundation cutover: Health is now a real physical article category. Critical Illness
+// remains semantic-only until a separate physical URL migration is approved.
+const activeCategoryBlock = taxonomy.match(/ACTIVE_ARTICLE_CATEGORIES = \[[\s\S]*?\] as const/)?.[0] ?? '';
+for (const slug of ['personal-finance', 'life-insurance', 'health-insurance', 'investment']) {
+  assert.match(activeCategoryBlock, new RegExp(slug));
+}
+assert.doesNotMatch(activeCategoryBlock, /critical-illness/);
 
 // Explicit Semantic Topic is carried from Sanity into the public semantic layer, but protected
 // slug overrides must win so winner-page semantics cannot be changed accidentally in the CMS.
@@ -40,12 +44,12 @@ for (const surface of [blogPage, categoryPage, articlePage, card, schema, sitema
   assert.match(surface, /semanticTopic: article\.semanticTopic/);
 }
 
-// Exact existing moved-article redirects must keep old -> current direction.
-assert.match(urls, /"health-insurance\/aia-health-happy-describe": "\/blog\/life-insurance\/aia-health-happy-describe\/"/);
-assert.match(urls, /"health-insurance\/aia-health-ci-hero-guide": "\/blog\/life-insurance\/aia-health-ci-hero-guide\/"/);
+// Health winner pages now move old Life paths directly to their final Health owners.
+assert.match(urls, /"life-insurance\/aia-health-happy-describe": "\/blog\/health-insurance\/aia-health-happy-describe\/"/);
+assert.match(urls, /"life-insurance\/aia-health-ci-hero-guide": "\/blog\/health-insurance\/aia-health-ci-hero-guide\/"/);
 assert.match(urls, /"critical-illness\/critical-illness-insurance": "\/blog\/life-insurance\/critical-illness-insurance\/"/);
-assert.doesNotMatch(urls, /"life-insurance\/aia-health-happy-describe":/);
-assert.doesNotMatch(urls, /"life-insurance\/critical-illness-insurance":/);
+assert.doesNotMatch(urls, /"health-insurance\/aia-health-happy-describe": "\/blog\/life-insurance/);
+assert.doesNotMatch(urls, /"health-insurance\/aia-health-ci-hero-guide": "\/blog\/life-insurance/);
 
 // Hub routing happens before the legacy one-segment redirect fallback.
 assert.match(categoryPage, /const hub = getBlogTopicHub\(slug\);[\s\S]*if \(!hub\) \{[\s\S]*getLegacyCategoryRedirectPath/);
@@ -72,10 +76,11 @@ assert.doesNotMatch(schema, /\/blog\/\?category=/);
 assert.match(schema, /"@type": "CollectionPage"/);
 assert.match(schema, /"@type": "ItemList"/);
 
-// Sitemap includes useful hubs only and never exposes filter state.
+// Sitemap includes useful canonical hubs/articles only, dedupes final URLs, and never exposes filters.
 assert.match(sitemap, /if \(!hub\.indexable\) return \[\]/);
 assert.match(sitemap, /if \(!relevant\.length\) return \[\]/);
 assert.match(sitemap, /https:\/\/ccpun\.com\/blog\/\$\{hub\.slug\}\//);
+assert.match(sitemap, /uniqueSortedEntries/);
 assert.doesNotMatch(sitemap, /\?category=|\?tag=/);
 
 // Main Blog page exposes indexable topic hubs as server-rendered internal links.
