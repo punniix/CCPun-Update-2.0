@@ -30,8 +30,8 @@ export const LEGACY_ARTICLES: Article[] = [
     title: "AIA Health Happy คืออะไร? แต่ละแผนเหมาะกับใคร อัปเดต 2026",
     excerpt:
       "AIA Health Happy ประกันสุขภาพใหม่ปี 2026 คุ้มครอง IPD+OPD สูงสุด 25 ล้านบาท มีความคุ้มครองเพิ่ม 2 เท่าหากป่วยโรคร้าย แต่ละแผนเหมาะกับใคร?",
-    category: "ประกันชีวิต",
-    categorySlug: "life-insurance",
+    category: "ประกันสุขภาพ",
+    categorySlug: "health-insurance",
     tags: ["ประกันสุขภาพ"],
     authorName: "CCPun",
     status: "published",
@@ -78,8 +78,8 @@ export const LEGACY_ARTICLES: Article[] = [
     title: "ประกันสุขภาพ AIA Health CI Hero คืออะไร? ทำไมถึงเป็นประกันสุขภาพที่เหมาะกับคนที่มีสวัสดิการเป็นอย่างมาก",
     excerpt:
       "แกะประกัน AIA Health CI Hero ประกันสุขภาพเหมาจ่าย กรณีเจอ 6 กลุ่มโรคร้ายแรง ที่เหมาะสำหรับคนมีประกันกลุ่ม สวัสดิการข้าราชการ หรือคนที่มีงบจำกัด",
-    category: "ประกันชีวิต",
-    categorySlug: "life-insurance",
+    category: "ประกันสุขภาพ",
+    categorySlug: "health-insurance",
     tags: ["ประกันสุขภาพ", "ประกันโรคร้ายแรง"],
     authorName: "CCPun",
     status: "published",
