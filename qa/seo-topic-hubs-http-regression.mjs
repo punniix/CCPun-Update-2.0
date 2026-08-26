@@ -149,12 +149,13 @@ assert.equal(new Set([...sitemap.text.matchAll(/<loc>([^<]+)<\/loc>/g)].map((mat
 assert.ok(!sitemap.text.includes('https://ccpun.com/blog/investment/'), 'noindex investment hub must not be in sitemap');
 assert.ok(!sitemap.text.includes('?category=') && !sitemap.text.includes('?tag='), 'filter URLs must not be in sitemap');
 
+// This suite intentionally runs in Local Production read mode, which is a protected review lane.
+// The live public robots contract (Sitemap + private-path disallows) is enforced statically and
+// re-verified against ccpun.com after deployment. The review lane itself must remain fully blocked.
 const robotsTxt = await request('/robots.txt');
 assertStatus(robotsTxt.response.status, 200, '/robots.txt');
-assertContains(robotsTxt.text, 'Sitemap: https://ccpun.com/sitemap.xml', '/robots.txt');
-for (const privatePath of ['/api/', '/snt-admin/', '/studio/']) {
-  assertContains(robotsTxt.text, `Disallow: ${privatePath}`, '/robots.txt');
-}
-assert.ok(!robotsTxt.text.includes('Disallow: /blog/'), '/robots.txt must not block blog content');
+assertContains(robotsTxt.text, 'User-Agent: *', '/robots.txt');
+assertContains(robotsTxt.text, 'Disallow: /', '/robots.txt');
+assert.ok(!robotsTxt.text.includes('Sitemap: https://ccpun.com/sitemap.xml'), '/robots.txt review lane must not advertise the public sitemap');
 
 console.log('PASS: SEO topic hub HTTP regression');
