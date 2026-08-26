@@ -51,9 +51,9 @@ test("topic hub slugs stay reserved and cannot collide with article slugs", () =
   assert.equal(isReservedArticleSlug("critical-illness-insurance"), false);
 });
 
-test("health is a physical category while critical illness keeps the existing life URL contract", () => {
+test("current Health is physical while the historical combined WordPress category stays backward compatible", () => {
   assert.deepEqual(normalizeArticleTaxonomy({ categoryTitle: "ประกันสุขภาพและโรคร้ายแรง", categorySlug: "health-insurance" }), {
-    categorySlug: "health-insurance",
+    categorySlug: "life-insurance",
     tags: ["ประกันสุขภาพ"],
   });
   assert.deepEqual(normalizeArticleTaxonomy({ categoryTitle: "ประกันสุขภาพและโรคร้ายแรง", categorySlug: "critical-illness" }), {
