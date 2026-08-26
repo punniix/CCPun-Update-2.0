@@ -50,7 +50,7 @@ test("Phase 1 exposes five real topic hubs while investment remains non-indexabl
   assert.equal(getBlogTopicHub("unknown"), null);
 });
 
-test("semantic topic is decoupled from the current canonical URL category", () => {
+test("Health winner pages use Health as both semantic topic and physical canonical owner", () => {
   const healthHappy = article({ slug: "aia-health-happy-describe", tags: ["ประกันสุขภาพ"] });
   const healthCiHero = article({ slug: "aia-health-ci-hero-guide", tags: ["ประกันชีวิต", "ประกันสุขภาพ", "ประกันโรคร้ายแรง"] });
   const critical = article({ slug: "critical-illness-insurance", tags: ["ประกันชีวิต", "ประกันสุขภาพ", "ประกันโรคร้ายแรง"] });
@@ -61,16 +61,16 @@ test("semantic topic is decoupled from the current canonical URL category", () =
   assert.equal(getArticleSemanticTopic({ articleSlug: critical.slug, categoryTitle: critical.category, categorySlug: critical.categorySlug, tags: critical.tags })?.slug, "critical-illness");
   assert.equal(getArticleSemanticTopic({ articleSlug: vitality.slug, categoryTitle: vitality.category, categorySlug: vitality.categorySlug, tags: vitality.tags })?.slug, "life-insurance");
 
-  assert.equal(getArticlePath(healthHappy), "/blog/life-insurance/aia-health-happy-describe/");
-  assert.equal(getArticlePath(healthCiHero), "/blog/life-insurance/aia-health-ci-hero-guide/");
+  assert.equal(getArticlePath(healthHappy), "/blog/health-insurance/aia-health-happy-describe/");
+  assert.equal(getArticlePath(healthCiHero), "/blog/health-insurance/aia-health-ci-hero-guide/");
   assert.equal(getArticlePath(critical), "/blog/life-insurance/critical-illness-insurance/");
-  assert.equal(getArticleCanonical(healthHappy), "https://ccpun.com/blog/life-insurance/aia-health-happy-describe/");
+  assert.equal(getArticleCanonical(healthHappy), "https://ccpun.com/blog/health-insurance/aia-health-happy-describe/");
 });
 
-test("existing moved article redirects keep their original direction with no reverse redirect or chain", () => {
+test("controlled moved article redirects point one hop to their approved terminal owner", () => {
   const moved = [
-    ["health-insurance", "aia-health-happy-describe", "/blog/life-insurance/aia-health-happy-describe/"],
-    ["health-insurance", "aia-health-ci-hero-guide", "/blog/life-insurance/aia-health-ci-hero-guide/"],
+    ["life-insurance", "aia-health-happy-describe", "/blog/health-insurance/aia-health-happy-describe/"],
+    ["life-insurance", "aia-health-ci-hero-guide", "/blog/health-insurance/aia-health-ci-hero-guide/"],
     ["critical-illness", "critical-illness-insurance", "/blog/life-insurance/critical-illness-insurance/"],
   ] as const;
 
@@ -80,11 +80,12 @@ test("existing moved article redirects keep their original direction with no rev
     assert.equal(getMovedArticleRedirectPath(segments[1]!, segments[2]!), null, `${target} must be a terminal redirect target`);
   }
 
-  assert.equal(getMovedArticleRedirectPath("life-insurance", "aia-health-happy-describe"), null);
+  assert.equal(getMovedArticleRedirectPath("health-insurance", "aia-health-happy-describe"), null);
+  assert.equal(getMovedArticleRedirectPath("health-insurance", "aia-health-ci-hero-guide"), null);
   assert.equal(getMovedArticleRedirectPath("life-insurance", "critical-illness-insurance"), null);
 });
 
-test("article schema uses semantic topic for articleSection and breadcrumb but keeps canonical", () => {
+test("article schema uses Health canonical and semantic topic for Health winner pages", () => {
   const healthHappy = article({ slug: "aia-health-happy-describe", title: "AIA Health Happy", tags: ["ประกันสุขภาพ"] });
   const schema = buildArticleSchemaGraph(healthHappy);
   assert.ok(schema);
@@ -93,14 +94,14 @@ test("article schema uses semantic topic for articleSection and breadcrumb but k
   const breadcrumb = graph.find((node) => node["@type"] === "BreadcrumbList")!;
   const items = breadcrumb.itemListElement as Array<Record<string, unknown>>;
 
-  assert.equal(posting.mainEntityOfPage, "https://ccpun.com/blog/life-insurance/aia-health-happy-describe/");
+  assert.equal(posting.mainEntityOfPage, "https://ccpun.com/blog/health-insurance/aia-health-happy-describe/");
   assert.equal(posting.articleSection, "ประกันสุขภาพ");
   assert.equal(items[2]?.name, "ประกันสุขภาพ");
   assert.equal(items[2]?.item, "https://ccpun.com/blog/health-insurance/");
-  assert.equal(items[3]?.item, "https://ccpun.com/blog/life-insurance/aia-health-happy-describe/");
+  assert.equal(items[3]?.item, "https://ccpun.com/blog/health-insurance/aia-health-happy-describe/");
 });
 
-test("hub ItemList links to article canonical URLs rather than synthetic topic leaf URLs", () => {
+test("hub ItemList links to the final Health canonical URL", () => {
   const hub = getBlogTopicHub("health-insurance")!;
   const healthHappy = article({ slug: "aia-health-happy-describe", title: "AIA Health Happy", tags: ["ประกันสุขภาพ"] });
   assert.equal(isArticleInSemanticTopic({ articleSlug: healthHappy.slug, categoryTitle: healthHappy.category, categorySlug: healthHappy.categorySlug, tags: healthHappy.tags }, "health-insurance"), true);
@@ -109,7 +110,7 @@ test("hub ItemList links to article canonical URLs rather than synthetic topic l
   const graph = schema["@graph"] as Array<Record<string, unknown>>;
   const itemList = graph.find((node) => node["@type"] === "ItemList")!;
   const items = itemList.itemListElement as Array<Record<string, unknown>>;
-  assert.equal(items[0]?.url, "https://ccpun.com/blog/life-insurance/aia-health-happy-describe/");
+  assert.equal(items[0]?.url, "https://ccpun.com/blog/health-insurance/aia-health-happy-describe/");
 });
 
 test("hub route resolves real hubs before any legacy one-segment redirect fallback", () => {
