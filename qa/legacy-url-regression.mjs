@@ -31,6 +31,24 @@ async function request(url, redirect = 'manual') {
   });
 }
 
+function logRedirectFingerprint(mapping, response, location) {
+  const names = [
+    'server',
+    'x-redirect-by',
+    'x-powered-by',
+    'x-litespeed-cache',
+    'x-litespeed-tag',
+    'cf-ray',
+    'cf-cache-status',
+    'x-hostinger-cache',
+    'x-hcdn-cache-status',
+  ];
+  const fingerprint = Object.fromEntries(
+    names.map((name) => [name, response.headers.get(name)]).filter(([, value]) => Boolean(value)),
+  );
+  console.log(`REDIRECT_FINGERPRINT ${mapping.id}`, JSON.stringify({ location, ...fingerprint }));
+}
+
 async function assertHealthyFinal(mapping, destination) {
   const response = await request(destination);
   const html = await response.text();
@@ -62,6 +80,7 @@ for (const mapping of ledger.mappings) {
     assert.equal(source.status, mapping.sourceStatus, `${mapping.id}: legacy source status drifted during cutover verification`);
     const location = source.headers.get('location');
     assert.ok(location, `${mapping.id}: legacy redirect location missing during cutover verification`);
+    logRedirectFingerprint(mapping, source, location);
     assert.equal(
       new URL(location, mapping.source).href,
       mapping.plannedDestination,
