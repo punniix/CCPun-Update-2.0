@@ -17,6 +17,10 @@ assert.match(packageJson.scripts['local:production:read'], /CCPUN_LOCAL_PRODUCTI
 assert.match(packageJson.scripts['local:production:draft'], /CCPUN_LOCAL_PRODUCTION_DRAFT_WRITES=1/);
 assert.equal(packageJson.scripts['qa:legacy-urls'], 'node qa/legacy-url-regression.mjs');
 
+const adminNonprodGuard = read('scripts/guard-admin-lab-deploy.mjs');
+assert.match(adminNonprodGuard, /prj_F6yodVaz1U57FcUlEXsKBazI7KF7/);
+assert.doesNotMatch(adminNonprodGuard, /project\.projectName/);
+
 const legacyUrlLedger = JSON.parse(read('qa/legacy-url-ledger.json'));
 assert.deepEqual(legacyUrlLedger.mappings.map(({ id, destination }) => [id, destination]), [
   ['blog-root', 'https://ccpun.com/blog/'],

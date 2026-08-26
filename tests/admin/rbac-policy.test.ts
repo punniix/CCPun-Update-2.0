@@ -84,7 +84,7 @@ test("human owner may apply approved work only in a dedicated Admin lane", () =>
     true,
   );
 
-  process.env.VERCEL_PROJECT_ID = CCPUN_VERCEL_PROJECT_IDS.legacyAdminLab;
+  process.env.VERCEL_PROJECT_ID = CCPUN_VERCEL_PROJECT_IDS.adminNonproduction;
   assert.equal(
     evaluateAdminAction({
       actorType: "human",

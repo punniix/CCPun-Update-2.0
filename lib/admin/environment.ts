@@ -15,6 +15,7 @@ export type AdminEnvironment = (typeof ADMIN_ENVIRONMENTS)[number];
 export const CCPUN_VERCEL_PROJECT_IDS = {
   web: "prj_dxwjITkd0av5QiJQv2snUlIASUWu",
   adminProduction: "prj_6tuUxJxYbQ4mpF7sMgNWx2p2jowN",
+  adminNonproduction: "prj_F6yodVaz1U57FcUlEXsKBazI7KF7",
   legacyAdminLab: "prj_438M14AAob2nbf20q7Xa5L7A7aMo",
   legacyAdminUat: "prj_OR7AlGsE8spGahQegDvd0JudaiEg",
 } as const;
@@ -51,11 +52,6 @@ const SANITY_PROJECT_BY_ENVIRONMENT: Partial<Record<AdminEnvironment, string>> =
   "production-admin": "kyfxgjnq",
   production: "kyfxgjnq",
 };
-
-const TRANSITIONAL_ADMIN_NONPROD_PROJECT_IDS = new Set<string>([
-  CCPUN_VERCEL_PROJECT_IDS.legacyAdminLab,
-  CCPUN_VERCEL_PROJECT_IDS.legacyAdminUat,
-]);
 
 function getDeploymentProjectId() {
   return (
@@ -121,7 +117,7 @@ export function isDeploymentProjectAllowed(
       return (
         !deploymentProjectId ||
         deploymentProjectId === CCPUN_VERCEL_PROJECT_IDS.web ||
-        TRANSITIONAL_ADMIN_NONPROD_PROJECT_IDS.has(deploymentProjectId)
+        deploymentProjectId === CCPUN_VERCEL_PROJECT_IDS.adminNonproduction
       );
     case "web-uat":
       return deploymentProjectId === CCPUN_VERCEL_PROJECT_IDS.web;
@@ -129,9 +125,8 @@ export function isDeploymentProjectAllowed(
     case "local-production":
       return !deploymentProjectId;
     case "lab":
-      return deploymentProjectId === CCPUN_VERCEL_PROJECT_IDS.legacyAdminLab;
     case "uat":
-      return deploymentProjectId === CCPUN_VERCEL_PROJECT_IDS.legacyAdminUat;
+      return deploymentProjectId === CCPUN_VERCEL_PROJECT_IDS.adminNonproduction;
     case "production-admin":
       return Boolean(
         deploymentProjectId === CCPUN_VERCEL_PROJECT_IDS.adminProduction &&
@@ -151,7 +146,7 @@ export function isAdminSurfaceAllowed(
 ): boolean {
   switch (environment) {
     case "development":
-      return !deploymentProjectId || TRANSITIONAL_ADMIN_NONPROD_PROJECT_IDS.has(deploymentProjectId);
+      return !deploymentProjectId || deploymentProjectId === CCPUN_VERCEL_PROJECT_IDS.adminNonproduction;
     case "local-uat":
     case "local-production":
     case "lab":

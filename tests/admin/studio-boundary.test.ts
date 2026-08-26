@@ -12,7 +12,7 @@ import {
 import { CCPUN_VERCEL_PROJECT_IDS } from "../../lib/admin/environment";
 
 const PRODUCTION_ADMIN_PROJECT_ID = CCPUN_VERCEL_PROJECT_IDS.adminProduction;
-const ADMIN_LAB_PROJECT_ID = CCPUN_VERCEL_PROJECT_IDS.legacyAdminLab;
+const ADMIN_LAB_PROJECT_ID = CCPUN_VERCEL_PROJECT_IDS.adminNonproduction;
 const WEB_PROJECT_ID = CCPUN_VERCEL_PROJECT_IDS.web;
 const UAT_SANITY_PROJECT_ID = "ccb9lnw5";
 const PRODUCTION_SANITY_PROJECT_ID = "kyfxgjnq";
