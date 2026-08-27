@@ -59,3 +59,19 @@ test("Preview disable is a same-origin POST and every current caller uses POST",
   assert.match(qa, /!disableResponse\?\.ok \|\| disableResponse\.pathname !== ["']\/blog\/["']/);
   assert.doesNotMatch(sanityConfig, /disable:\s*["']\/api\/preview\/disable/);
 });
+
+test("all current Admin-only Sanity documents use the authenticated Draft namespace", () => {
+  const lifecycle = read("lib/admin/suggestion-lifecycle.ts");
+  const control = read("lib/admin/sanity-control.ts");
+  const research = read("lib/admin/research.ts");
+  const dashboard = read("lib/admin/ubersuggest-dashboard.ts");
+  const seoAudit = read("lib/admin/seo-audit.ts");
+
+  assert.match(lifecycle, /function privateAdminDocumentId[\s\S]*?return `drafts\.\$\{cleanId\}`/);
+  assert.match(control, /_id: privateAdminDocumentId\(input\.id\)/);
+  assert.match(control, /suggestionId = privateAdminDocumentId\(baseSuggestionId\)/);
+  assert.match(research, /snapshotId = privateAdminDocumentId\(/);
+  assert.match(dashboard, /accountId = privateAdminDocumentId\(/);
+  assert.match(dashboard, /geoId = privateAdminDocumentId\(/);
+  assert.doesNotMatch(seoAudit, /workflowDocumentId/);
+});

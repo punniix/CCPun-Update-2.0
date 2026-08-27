@@ -6,6 +6,7 @@ import { z } from "zod";
 import { isAdminDataPlaneAllowed, isAdminReadDataPlaneAllowed } from "./environment";
 import { getAdminSanityReadToken, getAdminSanityResearchWriteToken } from "./sanity-credentials";
 import { buildAuditLogDocument } from "./sanity-control";
+import { privateAdminDocumentId } from "./suggestion-lifecycle";
 import type { UbersuggestDashboardSync } from "./ubersuggest-dashboard-provider";
 
 const projectId = process.env.NEXT_PUBLIC_SANITY_PROJECT_ID?.trim();
@@ -128,8 +129,8 @@ export async function persistUbersuggestDashboardSync(
 ) {
   const client = writeClient();
   if (!client) throw new Error("SANITY_WRITE_NOT_CONFIGURED");
-  const accountId = `ubersuggestAccountSnapshot.${randomUUID()}`;
-  const geoId = `ubersuggestGeoSnapshot.${randomUUID()}`;
+  const accountId = privateAdminDocumentId(`ubersuggestAccountSnapshot.${randomUUID()}`);
+  const geoId = privateAdminDocumentId(`ubersuggestGeoSnapshot.${randomUUID()}`);
   const auditId = `auditLog.${randomUUID()}`;
 
   const accountDocument = {

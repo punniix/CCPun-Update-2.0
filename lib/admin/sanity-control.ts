@@ -13,10 +13,11 @@ import {
   deterministicAuditSuggestionId,
   frozenControlsForApply,
   getApplyableFieldPath,
+  isAppliedSuggestionReplay,
   isHumanReviewActor,
   isCompatibleReviewSuggestion,
+  privateAdminDocumentId,
   storedFieldValue,
-  workflowDocumentId,
 } from "./suggestion-lifecycle";
 
 const projectId = process.env.NEXT_PUBLIC_SANITY_PROJECT_ID?.trim();
@@ -296,7 +297,7 @@ export function buildAuditLogDocument(input: {
   timestamp: string;
 }) {
   return {
-    _id: input.id,
+    _id: privateAdminDocumentId(input.id),
     _type: "auditLog",
     actor: input.actor,
     actorType: input.actorType,
@@ -341,11 +342,10 @@ export async function createSeoSuggestion(
   }
   const fieldPath = getApplyableFieldPath(parsed.type);
   const before = fieldPath ? storedFieldValue(valueAtSeoPath(target, fieldPath)) : (parsed.before ?? null);
-  const draftOnlyWorkflow = getAdminEnvironment() === "local-production";
   const baseSuggestionId = context.idempotentForAuditRevision
     ? deterministicAuditSuggestionId({ draftId, revision: target._rev, type: parsed.type })
     : `seoSuggestion.${randomUUID()}`;
-  const suggestionId = workflowDocumentId(baseSuggestionId, draftOnlyWorkflow);
+  const suggestionId = privateAdminDocumentId(baseSuggestionId);
   const suggestionDocument = {
     _id: suggestionId,
     _type: "seoSuggestion",
@@ -362,12 +362,9 @@ export async function createSeoSuggestion(
     createdAt: now,
   };
   const auditDocument = buildAuditLogDocument({
-    id: workflowDocumentId(
-      context.idempotentForAuditRevision
-        ? `auditLog.${baseSuggestionId.slice("seoSuggestion.".length)}`
-        : `auditLog.${randomUUID()}`,
-      draftOnlyWorkflow,
-    ),
+    id: context.idempotentForAuditRevision
+      ? `auditLog.${baseSuggestionId.slice("seoSuggestion.".length)}`
+      : `auditLog.${randomUUID()}`,
     actor: parsed.createdBy,
     actorType: auditContext.actorType,
     action: context.idempotentForAuditRevision ? "seo-suggestion:generate-from-audit" : "seo-suggestion:create",
@@ -416,7 +413,7 @@ export async function approveSeoSuggestion(input: {
   const client = requireWriteClient();
   if (!client) throw new Error("SANITY_WRITE_NOT_CONFIGURED");
 
-  const id = workflowDocumentId(parsedId, getAdminEnvironment() === "local-production");
+  const id = privateAdminDocumentId(parsedId);
   const reviewedBy = z.string().min(1).max(320).parse(input.reviewedBy);
   const context = mutationContextSchema.parse(input);
   if (!isHumanReviewActor(context.actorType)) throw new Error("HUMAN_REVIEW_REQUIRED");
@@ -450,7 +447,7 @@ export async function approveSeoSuggestion(input: {
 
   const reviewedAt = new Date().toISOString();
   const auditDocument = buildAuditLogDocument({
-    id: workflowDocumentId(`auditLog.${randomUUID()}`, getAdminEnvironment() === "local-production"),
+    id: `auditLog.${randomUUID()}`,
     actor: reviewedBy,
     actorType: context.actorType,
     action: "seo-suggestion:approve",
@@ -501,6 +498,7 @@ const applyableSuggestionSchema = z.object({
   approvedRiskLevel: riskLevelSchema.nullish(),
   approvedTargetId: documentIdSchema.nullish(),
   approvedTargetRevision: z.string().nullish(),
+  appliedAt: z.string().nullish(),
 });
 
 export async function applyApprovedSeoSuggestion(input: {
@@ -513,7 +511,7 @@ export async function applyApprovedSeoSuggestion(input: {
   const client = requireWriteClient();
   if (!client) throw new Error("SANITY_WRITE_NOT_CONFIGURED");
 
-  const id = workflowDocumentId(parsedId, getAdminEnvironment() === "local-production");
+  const id = privateAdminDocumentId(parsedId);
   const appliedBy = z.string().min(1).max(320).parse(input.appliedBy);
   const context = mutationContextSchema.parse(input);
   if (!isHumanReviewActor(context.actorType)) throw new Error("HUMAN_REVIEW_REQUIRED");
@@ -530,15 +528,32 @@ export async function applyApprovedSeoSuggestion(input: {
       approvedType,
       approvedRiskLevel,
       approvedTargetId,
-      approvedTargetRevision
+      approvedTargetRevision,
+      appliedAt
     }`,
     { id },
   );
   if (!suggestionRaw) throw new Error("SUGGESTION_NOT_FOUND");
   const suggestion = applyableSuggestionSchema.parse(suggestionRaw);
 
-  if (!canApplySuggestion(suggestion.status)) throw new Error("SUGGESTION_STATUS_CONFLICT");
   const controls = frozenControlsForApply(suggestion);
+  if (isAppliedSuggestionReplay(suggestion.status)) {
+    if (!controls || !suggestion.approvedAfter || !suggestion.appliedAt) {
+      throw new Error("SUGGESTION_APPROVAL_INCOMPLETE");
+    }
+    const fieldPath = getApplyableFieldPath(controls.type);
+    if (!fieldPath) throw new Error("SUGGESTION_TYPE_NOT_APPLYABLE");
+    return {
+      suggestionId: id,
+      draftId: controls.targetId.startsWith("drafts.") ? controls.targetId : `drafts.${controls.targetId}`,
+      fieldPath,
+      before: null,
+      after: suggestion.approvedAfter,
+      appliedAt: suggestion.appliedAt,
+      alreadyApplied: true,
+    };
+  }
+  if (!canApplySuggestion(suggestion.status)) throw new Error("SUGGESTION_STATUS_CONFLICT");
   if (!controls || !suggestion.approvedAfter || !suggestion.approvedTargetRevision) {
     throw new Error("SUGGESTION_APPROVAL_INCOMPLETE");
   }
@@ -573,7 +588,7 @@ export async function applyApprovedSeoSuggestion(input: {
 
   const appliedAt = new Date().toISOString();
   const auditDocument = buildAuditLogDocument({
-    id: workflowDocumentId(`auditLog.${randomUUID()}`, getAdminEnvironment() === "local-production"),
+    id: `auditLog.${randomUUID()}`,
     actor: appliedBy,
     actorType: context.actorType,
     action: "seo-suggestion:apply-to-draft",
@@ -603,5 +618,6 @@ export async function applyApprovedSeoSuggestion(input: {
     before: before ?? null,
     after: suggestion.approvedAfter,
     appliedAt,
+    alreadyApplied: false,
   };
 }

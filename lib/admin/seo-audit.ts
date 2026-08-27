@@ -7,7 +7,6 @@ import { summarizeContentReadiness, type ContentReadiness } from "./content-read
 import { isAdminDataPlaneAllowed, isAdminReadDataPlaneAllowed } from "./environment";
 import { getAdminSanityReadToken, getAdminSanityWriteToken } from "./sanity-credentials";
 import { buildAuditLogDocument, isRevisionConflict } from "./sanity-control";
-import { workflowDocumentId } from "./suggestion-lifecycle";
 import { isArticleCanonicalAligned } from "../content/url";
 import { countGraphemes, countMatchingQuestions, isReviewDateFresh, META_DESCRIPTION_MAX, META_DESCRIPTION_MIN, SEO_AUDIT_VERSION, SEO_TITLE_MAX, SEO_TITLE_MIN, seoBodyFacts } from "./seo-heuristics";
 
@@ -293,7 +292,7 @@ export async function runSeoAudit(
       geoAuditedAt: result.geoAudit.auditedAt,
     };
     const auditDocument = buildAuditLogDocument({
-      id: workflowDocumentId(`auditLog.${randomUUID()}`, process.env.CCPUN_APP_ENV === "local-production"),
+      id: `auditLog.${randomUUID()}`,
       actor: auditContext.actor,
       actorType: auditContext.actorType,
       action: "seo-audit:run",

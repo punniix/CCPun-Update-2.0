@@ -7,9 +7,10 @@ import {
   deterministicAuditSuggestionId,
   frozenControlsForApply,
   isHumanReviewActor,
+  isAppliedSuggestionReplay,
   isCompatibleReviewSuggestion,
+  privateAdminDocumentId,
   isStaleSuggestionRevision,
-  workflowDocumentId,
 } from "../../lib/admin/suggestion-lifecycle";
 
 test("approval and apply accept human actors only", () => {
@@ -25,6 +26,8 @@ test("proposal lifecycle never moves a replayed state backward", () => {
   assert.equal(canApplySuggestion("approved"), true);
   assert.equal(canApplySuggestion("needs-human-review"), false);
   assert.equal(canApplySuggestion("applied"), false);
+  assert.equal(isAppliedSuggestionReplay("applied"), true);
+  assert.equal(isAppliedSuggestionReplay("approved"), false);
 });
 
 test("approved base requires both the same revision and field value", () => {
@@ -75,10 +78,10 @@ test("audit proposal id is stable per draft revision and proposal type", () => {
   assert.match(first, /^seoSuggestion\.audit\.[a-f0-9]{32}$/);
 });
 
-test("Local Production workflow documents stay Draft-only", () => {
-  assert.equal(workflowDocumentId("seoSuggestion.audit.abc", true), "drafts.seoSuggestion.audit.abc");
-  assert.equal(workflowDocumentId("drafts.auditLog.abc", true), "drafts.auditLog.abc");
-  assert.equal(workflowDocumentId("drafts.auditLog.abc", false), "auditLog.abc");
+test("every internal Admin document stays in Sanity's authenticated Draft namespace", () => {
+  assert.equal(privateAdminDocumentId("seoSuggestion.audit.abc"), "drafts.seoSuggestion.audit.abc");
+  assert.equal(privateAdminDocumentId("drafts.auditLog.abc"), "drafts.auditLog.abc");
+  assert.equal(privateAdminDocumentId("researchSnapshot.abc"), "drafts.researchSnapshot.abc");
 });
 
 test("apply uses the approved type even if the live type is tampered", () => {

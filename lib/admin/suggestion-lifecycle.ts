@@ -21,6 +21,10 @@ export function canApplySuggestion(status: string) {
   return status === "approved";
 }
 
+export function isAppliedSuggestionReplay(status: string) {
+  return status === "applied";
+}
+
 export function isHumanReviewActor(actorType: string) {
   return actorType === "human";
 }
@@ -90,7 +94,7 @@ export function deterministicAuditSuggestionId(input: {
   return `seoSuggestion.audit.${digest}`;
 }
 
-export function workflowDocumentId(id: string, draftOnly: boolean) {
+export function privateAdminDocumentId(id: string) {
   const cleanId = id.replace(/^drafts\./, "");
-  return draftOnly ? `drafts.${cleanId}` : cleanId;
+  return `drafts.${cleanId}`;
 }
