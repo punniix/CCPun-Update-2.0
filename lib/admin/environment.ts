@@ -5,6 +5,7 @@ export const ADMIN_ENVIRONMENTS = [
   "local-production",
   "lab",
   "uat",
+  "admin-uat",
   "production-admin",
   "production",
   "unknown",
@@ -26,6 +27,7 @@ const EXPLICIT_ENVIRONMENTS = new Set<AdminEnvironment>([
   "local-production",
   "lab",
   "uat",
+  "admin-uat",
   "production-admin",
   "production",
 ]);
@@ -37,6 +39,7 @@ const SANITY_DATASET_BY_ENVIRONMENT: Partial<Record<AdminEnvironment, "uat" | "p
   "local-production": "production",
   lab: "uat",
   uat: "uat",
+  "admin-uat": "uat",
   "production-admin": "production",
   production: "production",
 };
@@ -48,6 +51,7 @@ const SANITY_PROJECT_BY_ENVIRONMENT: Partial<Record<AdminEnvironment, string>> =
   "local-production": "kyfxgjnq",
   lab: "ccb9lnw5",
   uat: "ccb9lnw5",
+  "admin-uat": "ccb9lnw5",
   "production-admin": "kyfxgjnq",
   production: "kyfxgjnq",
 };
@@ -132,6 +136,8 @@ export function isDeploymentProjectAllowed(
       return deploymentProjectId === CCPUN_VERCEL_PROJECT_IDS.legacyAdminLab;
     case "uat":
       return deploymentProjectId === CCPUN_VERCEL_PROJECT_IDS.legacyAdminUat;
+    case "admin-uat":
+      return deploymentProjectId === CCPUN_VERCEL_PROJECT_IDS.adminProduction;
     case "production-admin":
       return Boolean(
         deploymentProjectId === CCPUN_VERCEL_PROJECT_IDS.adminProduction &&
@@ -156,6 +162,7 @@ export function isAdminSurfaceAllowed(
     case "local-production":
     case "lab":
     case "uat":
+    case "admin-uat":
     case "production-admin":
       return isDeploymentProjectAllowed(environment, deploymentProjectId, productionAdminProjectId);
     default:
@@ -192,6 +199,7 @@ export function isAdminMutationEnvironment(
     environment === "local-uat" ||
     environment === "lab" ||
     environment === "uat" ||
+    environment === "admin-uat" ||
     (environment === "local-production" && isLocalProductionDraftWriteEnabled(environment)) ||
     environment === "production-admin"
   );
@@ -264,6 +272,8 @@ export function getEnvironmentLabel(environment = getAdminEnvironment()): string
       return "MAJOR LAB";
     case "uat":
       return "UAT";
+    case "admin-uat":
+      return "ADMIN UAT";
     case "production-admin":
       return "PRODUCTION ADMIN";
     case "production":

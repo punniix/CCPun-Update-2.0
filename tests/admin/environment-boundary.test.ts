@@ -46,6 +46,29 @@ test("lab and UAT admin clients accept only the uat dataset in their exact proje
   assert.equal(isAdminDataPlaneAllowed("uat", "uat", LAB_PROJECT_ID, undefined, UAT_SANITY_PROJECT_ID), false);
 });
 
+test("Admin survivor Preview has a dedicated UAT lane without Production access", () => {
+  assert.equal(parseAdminEnvironment("ADMIN-UAT"), "admin-uat");
+  assert.equal(isSanityProjectAllowed(UAT_SANITY_PROJECT_ID, "admin-uat"), true);
+  assert.equal(isDeploymentProjectAllowed("admin-uat", PRODUCTION_ADMIN_PROJECT_ID), true);
+  assert.equal(isAdminSurfaceAllowed("admin-uat", PRODUCTION_ADMIN_PROJECT_ID), true);
+  assert.equal(
+    isAdminDataPlaneAllowed("uat", "admin-uat", PRODUCTION_ADMIN_PROJECT_ID, undefined, UAT_SANITY_PROJECT_ID),
+    true,
+  );
+  assert.equal(
+    isAdminDataPlaneAllowed(
+      "production",
+      "admin-uat",
+      PRODUCTION_ADMIN_PROJECT_ID,
+      undefined,
+      PRODUCTION_SANITY_PROJECT_ID,
+    ),
+    false,
+  );
+  assert.equal(isAdminDataPlaneAllowed("uat", "admin-uat", UAT_PROJECT_ID, undefined, UAT_SANITY_PROJECT_ID), false);
+  assert.equal(isAdminDataPlaneAllowed("uat", "admin-uat", WEB_PROJECT_ID, undefined, UAT_SANITY_PROJECT_ID), false);
+});
+
 test("each deployed application lane accepts only its approved Vercel project and Sanity lane", () => {
   assert.equal(isSanityLaneAllowed("uat", "development", undefined, undefined, UAT_SANITY_PROJECT_ID), true);
   assert.equal(isSanityLaneAllowed("uat", "development", WEB_PROJECT_ID, undefined, UAT_SANITY_PROJECT_ID), true);
