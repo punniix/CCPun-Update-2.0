@@ -335,6 +335,7 @@ assert.match(proxy, /isLocalAdminHost\(request\.headers\.get\(["']host["']\), en
 assert.match(proxy, /isConfiguredAdminOrigin\(request\.url, process\.env\.AUTH_URL\)/);
 assert.match(proxy, /pathname\.startsWith\(["']\/api\/["']\)/);
 assert.match(proxy, /ccpun-admin-prod\.vercel\.app/);
+assert.match(proxy, /ccpun-admin\.vercel\.app/);
 assert.match(proxy, /admin\.ccpun\.com/);
 assert.match(proxy, /["']\/api\/auth\/:path\*["']/);
 

@@ -97,6 +97,7 @@ export const config = {
     "/api/preview/:path*",
     "/api/auth/:path*",
     { source: "/:path*", has: [{ type: "host", value: "ccpun-admin-prod.vercel.app" }] },
+    { source: "/:path*", has: [{ type: "host", value: "ccpun-admin.vercel.app" }] },
     { source: "/:path*", has: [{ type: "host", value: "admin.ccpun.com" }] },
   ],
 };

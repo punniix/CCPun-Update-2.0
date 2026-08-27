@@ -16,8 +16,11 @@ export type AdminEnvironment = (typeof ADMIN_ENVIRONMENTS)[number];
 export const CCPUN_VERCEL_PROJECT_IDS = {
   web: "prj_dxwjITkd0av5QiJQv2snUlIASUWu",
   adminProduction: "prj_6tuUxJxYbQ4mpF7sMgNWx2p2jowN",
-  legacyAdminLab: "prj_438M14AAob2nbf20q7Xa5L7A7aMo",
-  legacyAdminUat: "prj_OR7AlGsE8spGahQegDvd0JudaiEg",
+} as const;
+
+export const CCPUN_LEGACY_VERCEL_PROJECT_IDS = {
+  adminLab: "prj_438M14AAob2nbf20q7Xa5L7A7aMo",
+  adminUat: "prj_OR7AlGsE8spGahQegDvd0JudaiEg",
 } as const;
 
 const EXPLICIT_ENVIRONMENTS = new Set<AdminEnvironment>([
@@ -55,11 +58,6 @@ const SANITY_PROJECT_BY_ENVIRONMENT: Partial<Record<AdminEnvironment, string>> =
   "production-admin": "kyfxgjnq",
   production: "kyfxgjnq",
 };
-
-const TRANSITIONAL_ADMIN_NONPROD_PROJECT_IDS = new Set<string>([
-  CCPUN_VERCEL_PROJECT_IDS.legacyAdminLab,
-  CCPUN_VERCEL_PROJECT_IDS.legacyAdminUat,
-]);
 
 function getDeploymentProjectId() {
   return (
@@ -122,20 +120,15 @@ export function isDeploymentProjectAllowed(
 ): boolean {
   switch (environment) {
     case "development":
-      return (
-        !deploymentProjectId ||
-        deploymentProjectId === CCPUN_VERCEL_PROJECT_IDS.web ||
-        TRANSITIONAL_ADMIN_NONPROD_PROJECT_IDS.has(deploymentProjectId)
-      );
+      return !deploymentProjectId;
     case "web-uat":
       return deploymentProjectId === CCPUN_VERCEL_PROJECT_IDS.web;
     case "local-uat":
     case "local-production":
       return !deploymentProjectId;
     case "lab":
-      return deploymentProjectId === CCPUN_VERCEL_PROJECT_IDS.legacyAdminLab;
     case "uat":
-      return deploymentProjectId === CCPUN_VERCEL_PROJECT_IDS.legacyAdminUat;
+      return false;
     case "admin-uat":
       return deploymentProjectId === CCPUN_VERCEL_PROJECT_IDS.adminProduction;
     case "production-admin":
@@ -157,14 +150,15 @@ export function isAdminSurfaceAllowed(
 ): boolean {
   switch (environment) {
     case "development":
-      return !deploymentProjectId || TRANSITIONAL_ADMIN_NONPROD_PROJECT_IDS.has(deploymentProjectId);
+      return !deploymentProjectId;
     case "local-uat":
     case "local-production":
-    case "lab":
-    case "uat":
     case "admin-uat":
     case "production-admin":
       return isDeploymentProjectAllowed(environment, deploymentProjectId, productionAdminProjectId);
+    case "lab":
+    case "uat":
+      return false;
     default:
       return false;
   }
@@ -197,8 +191,6 @@ export function isAdminMutationEnvironment(
   return (
     environment === "development" ||
     environment === "local-uat" ||
-    environment === "lab" ||
-    environment === "uat" ||
     environment === "admin-uat" ||
     (environment === "local-production" && isLocalProductionDraftWriteEnabled(environment)) ||
     environment === "production-admin"
@@ -269,9 +261,9 @@ export function getEnvironmentLabel(environment = getAdminEnvironment()): string
     case "local-production":
       return "LOCAL PRODUCTION DRAFT";
     case "lab":
-      return "MAJOR LAB";
+      return "LEGACY LAB — DISABLED";
     case "uat":
-      return "UAT";
+      return "LEGACY UAT — DISABLED";
     case "admin-uat":
       return "ADMIN UAT";
     case "production-admin":

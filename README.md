@@ -13,15 +13,9 @@ Changes in this repository do not authorize a Production deploy, Sanity `product
 - Auth.js with Google OAuth and email allowlists
 - Vercel-native server runtime
 
-Stable protected Lab entry:
+Protected Admin UAT uses a branch-specific Preview inside the Admin survivor `ccpun-admin-prod`. Public Web UAT and Website 4.2 use protected branch-specific Previews inside the Web survivor `ccpun-web-v4-prod`.
 
-- Control Plane: `https://ccpun-web-lab-punniixs-projects.vercel.app/snt-admin/`
-- Sanity Studio: `https://ccpun-web-lab-punniixs-projects.vercel.app/studio/`
-
-Stable protected UAT entry:
-
-- Control Plane: `https://ccpun-web-v4-1-uat-punniixs-projects.vercel.app/snt-admin/`
-- Sanity Studio: `https://ccpun-web-v4-1-uat-punniixs-projects.vercel.app/studio/`
+`ccpun-web-v4-uat`, `ccpun-admin-nonprod`, `ccpun-web-v4-1-uat`, and `ccpun-web-lab` are `LEGACY-FROZEN`. Their existing deployments are rollback/parity evidence only. Do not deploy new work or add configuration to them.
 
 Protected Production Admin entry:
 
@@ -29,14 +23,16 @@ Protected Production Admin entry:
 - Sanity Studio: `https://admin.ccpun.com/studio/`
 - Sanity data plane: `kyfxgjnq/production`
 
-Lab and UAT use the isolated Sanity Non-Production project `ccb9lnw5` and dataset `uat`. They must fail closed instead of falling back to the real Production project `kyfxgjnq/production`.
+Admin UAT uses the isolated Sanity Non-Production project `ccb9lnw5` and dataset `uat`. It must fail closed instead of falling back to the real Production project `kyfxgjnq/production`.
 
 ## Environment contract
 
 | Application lane | Sanity dataset | Purpose |
 |---|---|---|
 | `local-uat` | `ccb9lnw5/uat` only | Owner-safe Mac runtime for testing the complete Draft workflow |
-| `development`, `lab`, `uat` | `uat` only | Development, QA and synthetic Draft workflows |
+| `development` | `uat` only | Local/CI development with no Vercel Project identity |
+| `admin-uat` | `ccb9lnw5/uat` only | Protected branch Preview in the Admin survivor |
+| `lab`, `uat` | none | Legacy labels retained only to fail closed |
 | `production-admin` | `kyfxgjnq/production` only | Protected multi-device Production editorial Control Plane and Studio |
 | `local-production` | `kyfxgjnq/production` only | Owner-only Mac Production Draft workflow |
 | public `production` | `production`, Published perspective only | Public website rendering; Admin/Studio disabled |
@@ -158,8 +154,8 @@ npm run test:vercel
 npm run lint
 npx tsc --noEmit --incremental false
 npx sanity schema validate
-npm run guard:admin-lab
-npm run build:admin-lab -- --webpack
+npm run guard:survivor
+npm run build:survivor -- --webpack
 npm audit --omit=dev --audit-level=high
 ```
 

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test, { afterEach } from "node:test";
-import { CCPUN_VERCEL_PROJECT_IDS } from "../../lib/admin/environment";
+import { CCPUN_LEGACY_VERCEL_PROJECT_IDS, CCPUN_VERCEL_PROJECT_IDS } from "../../lib/admin/environment";
 import { ADMIN_PERMISSIONS, ADMIN_ROLES, getAdminRoleForEmail, hasAdminPermission } from "../../lib/admin/rbac";
 import { ADMIN_ACTIONS, evaluateAdminAction } from "../../lib/admin/policy";
 
@@ -128,7 +128,7 @@ test("human owner may apply approved work only in a dedicated Admin lane", () =>
     true,
   );
 
-  process.env.VERCEL_PROJECT_ID = CCPUN_VERCEL_PROJECT_IDS.legacyAdminLab;
+  process.env.VERCEL_PROJECT_ID = CCPUN_LEGACY_VERCEL_PROJECT_IDS.adminLab;
   assert.equal(
     evaluateAdminAction({
       actorType: "human",
@@ -136,7 +136,7 @@ test("human owner may apply approved work only in a dedicated Admin lane", () =>
       action: "draft:apply",
       environment: "lab",
     }).allowed,
-    true,
+    false,
   );
 
   process.env.VERCEL_PROJECT_ID = CCPUN_VERCEL_PROJECT_IDS.web;

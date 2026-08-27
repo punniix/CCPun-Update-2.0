@@ -25,8 +25,8 @@
     "cms:remediate:wordpress": "CCPUN_APP_ENV=local-production NEXT_PUBLIC_SANITY_PROJECT_ID=kyfxgjnq NEXT_PUBLIC_SANITY_DATASET=production node --env-file-if-exists=.env.local scripts/remediate-wordpress-mapping.mjs --dry-run",
     "cms:taxonomy:uat:dry-run": "CCPUN_APP_ENV=local-uat SANITY_API_PROJECT_ID=ccb9lnw5 SANITY_API_DATASET=uat tsx scripts/migrate-uat-taxonomy.ts --dry-run",
     "cms:taxonomy:production:self-test": "node scripts/migrate-production-article-taxonomy.mjs --self-test",
-    "guard:admin-lab": "node scripts/guard-admin-lab-deploy.mjs",
-    "build:admin-lab": "npm run guard:admin-lab && next build",
+    "guard:survivor": "node scripts/guard-survivor-deploy.mjs",
+    "build:survivor": "npm run guard:survivor && next build",
     "test:admin": "tsx --test tests/admin/*.test.ts"
   },
   "dependencies": {
