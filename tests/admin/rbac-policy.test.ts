@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test, { afterEach } from "node:test";
 import { CCPUN_VERCEL_PROJECT_IDS } from "../../lib/admin/environment";
-import { getAdminRoleForEmail, hasAdminPermission } from "../../lib/admin/rbac";
+import { ADMIN_PERMISSIONS, ADMIN_ROLES, getAdminRoleForEmail, hasAdminPermission } from "../../lib/admin/rbac";
 import { ADMIN_ACTIONS, evaluateAdminAction } from "../../lib/admin/policy";
 
 const originalEnv = { ...process.env };
@@ -24,6 +24,31 @@ test("email allowlist maps to the configured role", () => {
   assert.equal(getAdminRoleForEmail("seo@example.com"), "seo-manager");
   assert.equal(getAdminRoleForEmail("reviewer@example.com"), "reviewer");
   assert.equal(getAdminRoleForEmail("unknown@example.com"), null);
+});
+
+test("every Admin role keeps its least-privilege permission contract", () => {
+  const expected = {
+    owner: [...ADMIN_PERMISSIONS],
+    editor: ["dashboard:read", "content:read", "content:propose", "seo:read", "seo:propose", "research:read", "research:create", "reviews:read"],
+    "seo-manager": ["dashboard:read", "content:read", "content:propose", "seo:read", "seo:propose", "research:read", "research:create", "research:provider-query", "reviews:read"],
+    reviewer: ["dashboard:read", "content:read", "seo:read", "research:read", "reviews:read", "reviews:approve", "reviews:edit", "reviews:reject"],
+    analyst: ["dashboard:read", "content:read", "seo:read", "research:read", "research:create", "reviews:read"],
+    viewer: ["dashboard:read", "content:read", "seo:read", "research:read", "reviews:read"],
+  } as const;
+
+  for (const role of ADMIN_ROLES) {
+    for (const permission of ADMIN_PERMISSIONS) {
+      assert.equal(hasAdminPermission(role, permission), expected[role].includes(permission as never), `${role}:${permission}`);
+    }
+  }
+});
+
+test("removing an email from every allowlist revokes its resolved role", () => {
+  process.env.CCPUN_ADMIN_OWNER_EMAILS = "owner@example.com";
+  assert.equal(getAdminRoleForEmail("owner@example.com"), "owner");
+
+  delete process.env.CCPUN_ADMIN_OWNER_EMAILS;
+  assert.equal(getAdminRoleForEmail("owner@example.com"), null);
 });
 
 test("owner has apply permission but viewer does not", () => {
