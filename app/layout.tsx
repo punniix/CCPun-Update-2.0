@@ -6,7 +6,7 @@ import { ccpunSchemaGraph } from "@/lib/schema";
 import ClientWidgets from "@/components/ClientWidgets";
 import { VisualEditing } from "next-sanity/visual-editing";
 import { SanityLive } from "@/lib/sanity-live";
-import { IS_DRAFT_PREVIEW_ALLOWED, IS_REVIEW_ENVIRONMENT, PRODUCTION_ANALYTICS_ENABLED } from "@/lib/deployment-environment";
+import { IS_ADMIN_APPLICATION, IS_DRAFT_PREVIEW_ALLOWED, IS_REVIEW_ENVIRONMENT, PRODUCTION_ANALYTICS_ENABLED } from "@/lib/deployment-environment";
 
 const GA_ID = PRODUCTION_ANALYTICS_ENABLED ? (process.env.NEXT_PUBLIC_GA_ID ?? "") : "";
 const META_PIXEL_ID = PRODUCTION_ANALYTICS_ENABLED ? (process.env.NEXT_PUBLIC_META_PIXEL_ID ?? "") : "";
@@ -19,12 +19,12 @@ const kanit = Kanit({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://ccpun.com'),
-  title: "CCPun ที่ปรึกษาการเงินอิสระด้านประกันชีวิต การลงทุน",
-  description: "CCPun ที่ปรึกษาการเงินอิสระ ให้คำแนะนำด้านประกันชีวิต ประกันสุขภาพ ประกันโรคร้ายแรง ประกันทุนสูง และการลงทุน ออกแบบเฉพาะสำหรับคุณ มีใบอนุญาต ก.ล.ต. และ คปภ.",
-  keywords: ["ที่ปรึกษาการเงิน", "กองทุนรวม", "ประกันชีวิต", "วางแผนภาษี", "RMF", "SSF", "ThaiESG", "AIA", "Finnomena", "PhillipCapital"],
-  authors: [{ name: "ปั้น (CCPun)", url: "https://ccpun.com" }],
-  openGraph: {
+  metadataBase: new URL(IS_ADMIN_APPLICATION ? "https://admin.ccpun.com" : "https://ccpun.com"),
+  title: IS_ADMIN_APPLICATION ? "CCPun Control Plane" : "CCPun ที่ปรึกษาการเงินอิสระด้านประกันชีวิต การลงทุน",
+  description: IS_ADMIN_APPLICATION ? "พื้นที่ควบคุมภายในของ CCPun" : "CCPun ที่ปรึกษาการเงินอิสระ ให้คำแนะนำด้านประกันชีวิต ประกันสุขภาพ ประกันโรคร้ายแรง ประกันทุนสูง และการลงทุน ออกแบบเฉพาะสำหรับคุณ มีใบอนุญาต ก.ล.ต. และ คปภ.",
+  keywords: IS_ADMIN_APPLICATION ? undefined : ["ที่ปรึกษาการเงิน", "กองทุนรวม", "ประกันชีวิต", "วางแผนภาษี", "RMF", "SSF", "ThaiESG", "AIA", "Finnomena", "PhillipCapital"],
+  authors: IS_ADMIN_APPLICATION ? undefined : [{ name: "ปั้น (CCPun)", url: "https://ccpun.com" }],
+  openGraph: IS_ADMIN_APPLICATION ? null : {
     title: "CCPun ที่ปรึกษาการเงินอิสระด้านประกันชีวิต การลงทุน",
     description: "CCPun ที่ปรึกษาการเงินอิสระ ให้คำแนะนำด้านประกันชีวิต ประกันสุขภาพ ประกันโรคร้ายแรง ประกันทุนสูง และการลงทุน ออกแบบเฉพาะสำหรับคุณ มีใบอนุญาต ก.ล.ต. และ คปภ.",
     url: "https://ccpun.com",
@@ -33,17 +33,17 @@ export const metadata: Metadata = {
     locale: "th_TH",
     type: "website",
   },
-  twitter: {
+  twitter: IS_ADMIN_APPLICATION ? null : {
     card: "summary_large_image",
     title: "CCPun ที่ปรึกษาการเงินอิสระด้านประกันชีวิต การลงทุน",
     description: "CCPun ที่ปรึกษาการเงินอิสระ ให้คำแนะนำด้านประกันชีวิต ประกันสุขภาพ ประกันโรคร้ายแรง ประกันทุนสูง และการลงทุน ออกแบบเฉพาะสำหรับคุณ มีใบอนุญาต ก.ล.ต. และ คปภ.",
     images: ["https://ccpun.com/og-image-20260610.webp?v=68ae8d8"],
   },
-  alternates: {
+  alternates: IS_ADMIN_APPLICATION ? { canonical: null } : {
     canonical: "https://ccpun.com/",
     languages: { "th-TH": "https://ccpun.com/", "x-default": "https://ccpun.com/" },
   },
-  robots: IS_REVIEW_ENVIRONMENT ? { index: false, follow: false, nocache: true } : undefined,
+  robots: IS_ADMIN_APPLICATION || IS_REVIEW_ENVIRONMENT ? { index: false, follow: false, nocache: true } : undefined,
   icons: {
     icon: { url: "/favicon.png", type: "image/png" },
     apple: "/favicon.png",
@@ -79,7 +79,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           @keyframes scroll-breath{0%,100%{transform:translateX(-50%) translateY(0);opacity:1}50%{transform:translateX(-50%) translateY(6px);opacity:.62}}
           @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.hero-badge,.hero-heading,.hero-subtitle,.hero-cta,.scroll-indicator{animation:none!important}}
         ` }} />
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(ccpunSchemaGraph) }} />
+        {!IS_ADMIN_APPLICATION ? <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(ccpunSchemaGraph) }} /> : null}
       </head>
       <body className="antialiased font-sans">
         <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:p-2 focus:bg-background focus:text-foreground focus:rounded focus:border focus:border-primary/50">
