@@ -186,6 +186,29 @@ Studio and Draft Preview routes use the same Auth.js allowlist as the Control Pl
 
 The audit authority is intentionally split until a stronger provider integration is approved: `/snt-admin/audit` records Control Plane mutations with request IDs, while direct Studio Draft edits and Human Publish rely on Sanity History. Before Production Admin, verify Sanity History retention and least-privilege access, document administrator-email retention, and give the owner an explicit path to both histories. Do not claim the Control Plane log alone covers Studio actions.
 
+## Website 4.1 Owner-only release contract
+
+The first Website 4.1 Production release is intentionally smaller than the complete 4.1 product backlog. It may promote the verified Owner-only Control Plane, Auth.js boundary, deterministic SEO audit, Research Snapshot reads, human Review Queue and Draft-only Apply workflow. Multi-user runtime identities, AI workload identity, Redirect Manager, bulk SEO, advanced Growth metrics and live cloud provider refresh remain later milestones.
+
+Release evidence for candidate `0a60ba6656cf68516c431994281c349b66dc735c` on 2026-08-27:
+
+- Foundation, Vercel, analytics and Admin contracts pass; Admin tests are `154/154` and the production dependency audit reports zero vulnerabilities.
+- Web and Admin survivor Previews are READY while the Production baseline remains `v4-production@ffdd20c75767ed3fe5fa66a0bcab122f09ed61a2`.
+- The Owner Auth.js session endpoint returned authenticated status with an eight-hour remaining lifetime; the authenticated session token was not visible to browser JavaScript.
+- Two UAT-only Draft proposals were created for release QA. Concurrent Edit accepted one request and rejected the stale contender with `409`; Reject returned the terminal `rejected` state. `/snt-admin/audit/` showed both `seo-suggestion:edit` and `seo-suggestion:reject`.
+- Public Web Preview returned `404` plus `noindex` for `/snt-admin/`, `/studio/` and the Admin session API. Homepage title, H1 and canonical matched current Production.
+- GSC, GA4 and Vercel Growth sources reported `not-connected`; no fake metric or automatic Production provider fallback was used. Ubersuggest live OAuth/query remains local-only.
+
+### Retention and rollback
+
+- Control Plane audit documents and review records have no automatic deletion in Website 4.1. Keep them until the COO approves a later retention policy; do not add a purge job merely to complete this release.
+- Sanity History remains the authority for direct Studio Draft edits and Human Publish. Human Publish is a separate explicit COO action and is not authorized by a code release.
+- Record the release commit and both survivor deployment IDs before promotion. Code rollback returns both survivor Projects to the previous verified Production commit; for this candidate the baseline is `ffdd20c75767ed3fe5fa66a0bcab122f09ed61a2`.
+- Data rollback uses the affected Draft revision in Sanity History. Never overwrite or republish a Published document automatically. Credential exposure requires provider revocation/rotation before local cleanup.
+- If authentication, project/dataset identity or Draft-only isolation fails after promotion, stop the Admin release and restore the previous verified deployment. Domain, environment, credential and Production mutations still require an exact COO approval.
+
+The candidate can move from Draft PR to final release approval after the documentation and Preview evidence are attached. This contract does not authorize merge, Production deployment, Sanity Publish, domain movement or provider activation.
+
 ### A1 threat controls
 
 | Failure mode | Enforced control |
