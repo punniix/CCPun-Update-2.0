@@ -323,6 +323,9 @@ assert.match(nextConfig, /noindex, nofollow, noarchive/);
 assert.match(nextConfig, /source:\s*["']\/:path\*["'],\s*headers:\s*\[\.\.\.SECURITY_HEADERS, \.\.\.REVIEW_HEADERS\]/);
 assert.match(nextConfig, /source:\s*["']\/snt-admin\/:path\*["'],\s*headers:\s*PRIVATE_SURFACE_ROBOTS_HEADERS/);
 assert.match(nextConfig, /source:\s*["']\/studio\/:path\*["'],\s*headers:\s*PRIVATE_SURFACE_ROBOTS_HEADERS/);
+assert.match(nextConfig, /source:\s*["']\/api\/snt-admin\/:path\*["'],\s*headers:\s*PRIVATE_ADMIN_API_HEADERS/);
+assert.match(nextConfig, /source:\s*["']\/api\/preview\/:path\*["'],\s*headers:\s*PRIVATE_ADMIN_API_HEADERS/);
+assert.match(nextConfig, /Cache-Control["'], value: ["']private, no-cache, no-store, max-age=0, must-revalidate/);
 assert.match(nextConfig, /PRIVATE_SURFACE_ROBOTS_HEADERS = \[\{ key: ["']X-Robots-Tag["'], value: ["']noindex, nofollow, noarchive["'] \}\]/);
 
 assert.match(proxy, /environment === ["']production-admin["']/);

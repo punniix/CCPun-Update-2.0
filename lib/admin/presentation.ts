@@ -114,6 +114,7 @@ export function environmentLabel(environment: string): string {
   if (environment === "local-production") return "Local Production บน Mac (ข้อมูลจริง)";
   if (environment === "lab") return "ห้องทดลองหลัก";
   if (environment === "uat") return "ระบบทดสอบ UAT";
+  if (environment === "admin-uat") return "ระบบหลังบ้าน UAT";
   if (environment === "production-admin") return "ระบบหลังบ้าน Production (ข้อมูลจริง)";
   if (environment === "production") return "ระบบจริง Production";
   return "ยังยืนยันสภาพแวดล้อมไม่ได้";

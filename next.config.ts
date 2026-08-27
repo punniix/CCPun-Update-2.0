@@ -7,6 +7,10 @@ const REVIEW_HEADERS = IS_REVIEW_ENVIRONMENT
   ? [{ key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" }]
   : [];
 const PRIVATE_SURFACE_ROBOTS_HEADERS = [{ key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" }];
+const PRIVATE_ADMIN_API_HEADERS = [
+  ...PRIVATE_SURFACE_ROBOTS_HEADERS,
+  { key: "Cache-Control", value: "private, no-cache, no-store, max-age=0, must-revalidate" },
+];
 
 const SANITY_PROJECT_ID = process.env.NEXT_PUBLIC_SANITY_PROJECT_ID?.trim();
 const SANITY_DATASET = process.env.NEXT_PUBLIC_SANITY_DATASET?.trim();
@@ -93,6 +97,14 @@ const nextConfig: NextConfig = {
       {
         source: "/studio/:path*",
         headers: PRIVATE_SURFACE_ROBOTS_HEADERS,
+      },
+      {
+        source: "/api/snt-admin/:path*",
+        headers: PRIVATE_ADMIN_API_HEADERS,
+      },
+      {
+        source: "/api/preview/:path*",
+        headers: PRIVATE_ADMIN_API_HEADERS,
       },
     ];
   },
