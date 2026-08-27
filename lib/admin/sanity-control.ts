@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import { createClient, groq } from "next-sanity";
 import { z } from "zod";
 import { getAdminEnvironment, isAdminDataPlaneAllowed, isAdminReadDataPlaneAllowed } from "./environment";
+import { safeAuditJson } from "./audit-sanitizer";
 import { getAdminSanityReadToken, getAdminSanityWriteToken } from "./sanity-credentials";
 import {
   approvedBaseIsCurrent,
@@ -233,6 +234,9 @@ const suggestionTypeSchema = z.enum([
 
 const riskLevelSchema = z.enum(["low", "medium", "high", "critical"]);
 const documentIdSchema = z.string().min(1).max(200).regex(/^[A-Za-z0-9_.-]+$/);
+const suggestionDocumentIdSchema = documentIdSchema.regex(
+  /^(?:drafts\.)?seoSuggestion\.(?:[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}|audit\.[0-9a-f]{32})$/i,
+);
 
 const newSuggestionSchema = z.object({
   targetDocumentId: documentIdSchema,
@@ -273,10 +277,10 @@ function valueAtSeoPath(article: z.infer<typeof targetDraftSchema>, fieldPath: s
   return article.seo?.searchIntent;
 }
 
-function safeJson(value: unknown) {
-  if (value === undefined) return undefined;
-  const serialized = JSON.stringify(value);
-  return serialized.length > 16000 ? `${serialized.slice(0, 16000)}…` : serialized;
+function parseSuggestionDocumentId(value: string) {
+  const parsed = suggestionDocumentIdSchema.safeParse(value);
+  if (!parsed.success) throw new Error("INVALID_SUGGESTION_ID");
+  return parsed.data;
 }
 
 export function buildAuditLogDocument(input: {
@@ -299,8 +303,8 @@ export function buildAuditLogDocument(input: {
     action: input.action,
     objectType: input.objectType,
     objectId: input.objectId,
-    before: safeJson(input.before),
-    after: safeJson(input.after),
+    before: safeAuditJson(input.before),
+    after: safeAuditJson(input.after),
     requestId: input.requestId,
     environment: getAdminEnvironment(),
     timestamp: input.timestamp,
@@ -408,10 +412,11 @@ export async function approveSeoSuggestion(input: {
   actorType: "human" | "ai" | "system";
   requestId: string;
 }) {
+  const parsedId = parseSuggestionDocumentId(input.id);
   const client = requireWriteClient();
   if (!client) throw new Error("SANITY_WRITE_NOT_CONFIGURED");
 
-  const id = workflowDocumentId(z.string().min(1).parse(input.id), getAdminEnvironment() === "local-production");
+  const id = workflowDocumentId(parsedId, getAdminEnvironment() === "local-production");
   const reviewedBy = z.string().min(1).max(320).parse(input.reviewedBy);
   const context = mutationContextSchema.parse(input);
   if (!isHumanReviewActor(context.actorType)) throw new Error("HUMAN_REVIEW_REQUIRED");
@@ -504,10 +509,11 @@ export async function applyApprovedSeoSuggestion(input: {
   actorType: "human" | "ai" | "system";
   requestId: string;
 }) {
+  const parsedId = parseSuggestionDocumentId(input.id);
   const client = requireWriteClient();
   if (!client) throw new Error("SANITY_WRITE_NOT_CONFIGURED");
 
-  const id = workflowDocumentId(z.string().min(1).parse(input.id), getAdminEnvironment() === "local-production");
+  const id = workflowDocumentId(parsedId, getAdminEnvironment() === "local-production");
   const appliedBy = z.string().min(1).max(320).parse(input.appliedBy);
   const context = mutationContextSchema.parse(input);
   if (!isHumanReviewActor(context.actorType)) throw new Error("HUMAN_REVIEW_REQUIRED");
@@ -573,8 +579,8 @@ export async function applyApprovedSeoSuggestion(input: {
     action: "seo-suggestion:apply-to-draft",
     objectType: "article",
     objectId: draftId,
-    before: { field: fieldPath, value: storedFieldValue(before) },
-    after: { field: fieldPath, value: suggestion.approvedAfter },
+    before: { field: fieldPath, valuePresent: before !== null && before !== undefined && String(before).length > 0 },
+    after: { field: fieldPath, valuePresent: suggestion.approvedAfter.length > 0 },
     requestId: context.requestId,
     timestamp: appliedAt,
   });

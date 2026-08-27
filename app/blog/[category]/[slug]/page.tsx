@@ -145,9 +145,11 @@ export default async function ArticlePage({ params }: { params: Promise<{ catego
                       <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium text-muted-foreground">
                         ฉบับร่าง Preview · noindex
                       </span>
-                      <Link href="/api/preview/disable/" className="rounded-full border border-primary/25 px-3 py-1 text-xs font-medium text-primary hover:bg-primary/10">
-                        ปิด Preview
-                      </Link>
+                      <form action="/api/preview/disable/" method="post">
+                        <button type="submit" className="rounded-full border border-primary/25 px-3 py-1 text-xs font-medium text-primary hover:bg-primary/10">
+                          ปิด Preview
+                        </button>
+                      </form>
                     </>
                   )}
                 </div>

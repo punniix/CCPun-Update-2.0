@@ -31,7 +31,7 @@ export default auth((request) => {
   const isLoginPage = pathname === "/snt-admin/login" || pathname === "/snt-admin/login/";
   const role = request.auth?.user?.role ?? null;
   const isInvalidAdminMutation =
-    isAdminApi &&
+    (isAdminApi || isPreviewApi) &&
     !["GET", "HEAD", "OPTIONS"].includes(request.method) &&
     !isSameOriginAdminMutation(request.url, request.headers.get("origin"));
 
