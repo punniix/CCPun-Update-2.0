@@ -4,7 +4,7 @@ import { existsSync, readFileSync } from 'node:fs';
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 
 const packageJson = JSON.parse(read('package.json'));
-assert.equal(packageJson.version, '4.0.0');
+assert.equal(packageJson.version, '4.1.0');
 assert.equal(packageJson.scripts.build, 'next build');
 assert.equal(packageJson.scripts.start, 'next start');
 assert.match(packageJson.scripts['local:uat'], /CCPUN_APP_ENV=local-uat/);
@@ -16,6 +16,9 @@ assert.equal(packageJson.scripts['local:production'], undefined);
 assert.match(packageJson.scripts['local:production:read'], /CCPUN_LOCAL_PRODUCTION_DRAFT_WRITES=0/);
 assert.match(packageJson.scripts['local:production:draft'], /CCPUN_LOCAL_PRODUCTION_DRAFT_WRITES=1/);
 assert.equal(packageJson.scripts['qa:legacy-urls'], 'node qa/legacy-url-regression.mjs');
+
+const vercelConfig = JSON.parse(read('vercel.json'));
+assert.equal(vercelConfig.ignoreCommand, 'node scripts/vercel-ignore-build.mjs');
 
 const legacyUrlLedger = JSON.parse(read('qa/legacy-url-ledger.json'));
 assert.deepEqual(legacyUrlLedger.mappings.map(({ id, destination }) => [id, destination]), [
