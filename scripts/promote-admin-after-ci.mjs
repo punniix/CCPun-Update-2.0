@@ -1,7 +1,6 @@
 const API_BASE = "https://api.vercel.com";
 const DEFAULT_PROJECT_ID = "prj_6tuUxJxYbQ4mpF7sMgNWx2p2jowN";
 const DEFAULT_TEAM_ID = "team_GbcO71LS2dLHwiBV6Cs39Kax";
-const DEFAULT_PROJECT_NAME = "ccpun-admin-prod";
 const POLL_ATTEMPTS = 36;
 const POLL_INTERVAL_MS = 10_000;
 
@@ -43,11 +42,8 @@ async function listDeployments({ projectId, teamId, token }) {
   return Array.isArray(payload?.deployments) ? payload.deployments : [];
 }
 
-function matchingDeployments(deployments, sha, projectName) {
-  return deployments.filter((deployment) =>
-    deployment?.name === projectName
-    && deployment?.meta?.githubCommitSha === sha,
-  );
+function matchingDeployments(deployments, sha) {
+  return deployments.filter((deployment) => deployment?.meta?.githubCommitSha === sha);
 }
 
 async function waitForReadyPreview(config) {
@@ -55,7 +51,6 @@ async function waitForReadyPreview(config) {
     const deployments = matchingDeployments(
       await listDeployments(config),
       config.sha,
-      config.projectName,
     );
 
     const production = deployments.find((deployment) => deployment?.target === "production" && deployment?.state === "READY");
@@ -98,7 +93,6 @@ async function waitForProduction(config) {
     const deployments = matchingDeployments(
       await listDeployments(config),
       config.sha,
-      config.projectName,
     );
     const production = deployments.find((deployment) => deployment?.target === "production" && deployment?.state === "READY");
     if (production) return production;
@@ -121,8 +115,7 @@ export async function run(env = process.env) {
 
   const projectId = env.CCPUN_ADMIN_PROJECT_ID?.trim() || DEFAULT_PROJECT_ID;
   const teamId = env.VERCEL_TEAM_ID?.trim() || DEFAULT_TEAM_ID;
-  const projectName = env.CCPUN_ADMIN_PROJECT_NAME?.trim() || DEFAULT_PROJECT_NAME;
-  const config = { projectId, teamId, projectName, token, sha };
+  const config = { projectId, teamId, token, sha };
 
   const candidate = await waitForReadyPreview(config);
   const candidateId = deploymentIdentifier(candidate.deployment);
@@ -132,6 +125,7 @@ export async function run(env = process.env) {
   }
 
   console.log(`Creating Production Admin deployment from Preview ${candidateId} for commit ${sha}.`);
+  const projectName = required("ADMIN_DEPLOYMENT_NAME", candidate.deployment?.name);
   await createProductionFromPreview({ teamId, deploymentId: candidateId, projectName, token });
   const production = await waitForProduction(config);
   const productionId = deploymentIdentifier(production);

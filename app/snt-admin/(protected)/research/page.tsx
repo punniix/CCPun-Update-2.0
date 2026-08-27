@@ -122,7 +122,7 @@ export default async function AdminResearchPage({
           ["#geo-aeo", "4 · GEO / AEO"],
           ["#history", "5 · History"],
         ].map(([href, label]) => (
-          <a key={href} href={href} className="rounded-xl border border-white/10 bg-white/[0.035] px-3 py-2.5 text-sm text-white/70 transition hover:border-[#e0c985]/30 hover:text-[#f4df9b]">
+          <a key={href} href={href} className="inline-flex min-h-11 items-center rounded-xl border border-white/10 bg-white/[0.035] px-3 py-2.5 text-sm text-white/70 transition hover:border-[#e0c985]/30 hover:text-[#f4df9b]">
             {label}
           </a>
         ))}

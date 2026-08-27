@@ -1,10 +1,13 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
+import GenerateSeoProposalButton from "@/components/admin/GenerateSeoProposalButton";
 import RunSeoAuditButton from "@/components/admin/RunSeoAuditButton";
 import { requireAdminPermission } from "@/lib/admin/require-permission";
 import { getSeoProposalContext, runSeoAudit } from "@/lib/admin/seo-audit";
 import { getAdminSanityStatus } from "@/lib/admin/sanity-control";
 import { isStudioDataPlaneAllowed } from "@/lib/admin/environment";
+import { buildDeterministicSeoProposals } from "@/lib/admin/seo-proposals";
 
 export const metadata: Metadata = { title: "รายละเอียดผลตรวจ SEO" };
 
@@ -27,6 +30,17 @@ export default async function SeoAuditDetailPage({ params }: PageProps) {
   const status = getAdminSanityStatus();
   const studioReady = isStudioDataPlaneAllowed(status.dataset ?? undefined);
   const isDraft = audit.articleId.startsWith("drafts.");
+  const safeProposals = buildDeterministicSeoProposals({
+    focusKeyword: article.focusKeyword,
+    currentSearchIntent: article.searchIntent,
+    research: article.research,
+    now: audit.auditedAt,
+  });
+  const serpTitle = article.seoTitle?.trim() || article.title || "ยังไม่มีชื่อ";
+  const serpDescription = article.seoDescription?.trim() || "ยังไม่มี Meta description";
+  const socialTitle = article.ogTitle?.trim() || serpTitle;
+  const socialDescription = article.ogDescription?.trim() || serpDescription;
+  const canonical = article.canonical?.trim() || (article.categorySlug && article.slug ? `https://ccpun.com/blog/${article.categorySlug}/${article.slug}/` : "https://ccpun.com/blog/");
 
   return (
     <div>
@@ -40,6 +54,7 @@ export default async function SeoAuditDetailPage({ params }: PageProps) {
           <Link href="/snt-admin/seo/" className="inline-flex min-h-11 items-center rounded-xl border border-white/10 px-4 py-2.5 text-sm text-white/70 hover:bg-white/5">กลับหน้าตรวจ SEO</Link>
           {studioReady ? <Link href={studioHref} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center rounded-xl border border-[#e0c985]/30 bg-[#e0c985]/10 px-4 py-2.5 text-sm font-medium text-[#f4df9b] hover:bg-[#e0c985]/15">เปิดแก้ใน Studio<span className="sr-only"> (เปิดแท็บใหม่)</span></Link> : null}
           {status.writeReady && isDraft ? <RunSeoAuditButton articleId={id} /> : null}
+          {status.writeReady && isDraft && safeProposals.length ? <GenerateSeoProposalButton articleId={id} /> : null}
         </div>
       </div>
 
@@ -54,6 +69,25 @@ export default async function SeoAuditDetailPage({ params }: PageProps) {
         <article className="rounded-2xl border border-white/10 bg-white/[0.035] p-4"><div className="text-sm text-white/60">ต้องแก้ด่วน</div><div className="mt-2 text-2xl font-semibold text-red-300">{audit.criticalIssues}</div></article>
         <article className="rounded-2xl border border-white/10 bg-white/[0.035] p-4"><div className="text-sm text-white/60">คำเตือน</div><div className="mt-2 text-2xl font-semibold text-amber-300">{audit.warnings}</div></article>
         <article className="rounded-2xl border border-white/10 bg-white/[0.035] p-4"><div className="text-sm text-white/60">โอกาสปรับปรุง</div><div className="mt-2 text-2xl font-semibold text-sky-300">{audit.opportunities}</div></article>
+      </section>
+
+      <section className="mt-6 grid gap-4 lg:grid-cols-2">
+        <article className="rounded-3xl border border-white/10 bg-white/[0.025] p-5">
+          <h2 className="text-lg font-semibold">ตัวอย่างผลค้นหา</h2>
+          <div className="mt-4 rounded-2xl bg-white p-4 text-[#202124]">
+            <p className="truncate text-sm text-[#202124]">{canonical}</p>
+            <p className="mt-1 text-xl text-[#1a0dab]">{serpTitle}</p>
+            <p className="mt-1 text-sm leading-5 text-[#4d5156]">{serpDescription}</p>
+          </div>
+        </article>
+        <article className="overflow-hidden rounded-3xl border border-white/10 bg-white/[0.025]">
+          {article.socialImage ? <Image src={article.socialImage} alt="" width={1200} height={630} className="aspect-[1.91/1] w-full object-cover" /> : <div className="aspect-[1.91/1] bg-white/5" />}
+          <div className="p-5">
+            <h2 className="text-lg font-semibold">ตัวอย่างแชร์ Social</h2>
+            <p className="mt-3 font-semibold text-white/90">{socialTitle}</p>
+            <p className="mt-1 text-sm leading-6 text-white/60">{socialDescription}</p>
+          </div>
+        </article>
       </section>
 
       <section className="mt-6 rounded-3xl border border-white/10 bg-white/[0.025] p-5">
@@ -103,7 +137,7 @@ export default async function SeoAuditDetailPage({ params }: PageProps) {
         </div>
       </section>
 
-      <p className="mt-5 rounded-2xl border border-sky-200/15 bg-sky-200/[0.05] p-4 text-sm leading-6 text-sky-100/80">ตอนนี้ระบบยังไม่สร้าง Search intent, SEO Title หรือ Meta description อัตโนมัติ เพราะยังไม่มีหลักฐาน keyword/SERP/GSC ที่เพียงพอ กรุณาตรวจผลและแก้ด้วยตัวเองใน Studio</p>
+      <p className="mt-5 rounded-2xl border border-sky-200/15 bg-sky-200/[0.05] p-4 text-sm leading-6 text-sky-100/80">ระบบสร้างข้อเสนอ Search intent เท่านั้น เมื่อมี Primary keyword และ Research Snapshot จากแหล่งที่รองรับภายใน 30 วัน ข้อเสนอยังต้องให้มนุษย์ตรวจ ส่วน SEO Title และ Meta description จะไม่ถูกสร้างอัตโนมัติจนกว่าจะมีหลักฐาน GSC ownership ที่เพียงพอ</p>
 
       <section className="mt-6 space-y-3">
         {audit.checks.map((check) => (

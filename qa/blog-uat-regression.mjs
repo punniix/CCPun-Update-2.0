@@ -403,7 +403,10 @@ try {
     await screenshot(client, `article-${viewport.name}.png`);
   }
 
-  await navigate(client, `${BASE_URL}/api/preview/disable`);
+  const disableResponse = await evaluate(client, `fetch('/api/preview/disable/', { method: 'POST' }).then((response) => ({ ok: response.ok, pathname: new URL(response.url).pathname }))`);
+  if (!disableResponse?.ok || disableResponse.pathname !== '/blog/') {
+    throw new Error('Preview disable POST did not complete successfully');
+  }
   await navigate(client, `${BASE_URL}${ARTICLE_PATH}`);
   const disabled = await evaluate(client, `({title: document.title, robots: document.querySelector('meta[name="robots"]')?.content || ''})`);
   const disableChecks = [

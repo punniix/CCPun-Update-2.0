@@ -4,18 +4,22 @@ import { randomUUID } from "node:crypto";
 import { createClient, groq } from "next-sanity";
 import { z } from "zod";
 import { getAdminEnvironment, isAdminDataPlaneAllowed, isAdminReadDataPlaneAllowed } from "./environment";
+import { safeAuditJson } from "./audit-sanitizer";
 import { getAdminSanityReadToken, getAdminSanityWriteToken } from "./sanity-credentials";
 import {
   approvedBaseIsCurrent,
   canApplySuggestion,
   canApproveSuggestion,
+  canEditSuggestion,
+  canRejectSuggestion,
   deterministicAuditSuggestionId,
   frozenControlsForApply,
   getApplyableFieldPath,
+  isAppliedSuggestionReplay,
   isHumanReviewActor,
   isCompatibleReviewSuggestion,
+  privateAdminDocumentId,
   storedFieldValue,
-  workflowDocumentId,
 } from "./suggestion-lifecycle";
 
 const projectId = process.env.NEXT_PUBLIC_SANITY_PROJECT_ID?.trim();
@@ -232,7 +236,19 @@ const suggestionTypeSchema = z.enum([
 ]);
 
 const riskLevelSchema = z.enum(["low", "medium", "high", "critical"]);
+const evidenceSourceSchema = z.enum(["first-party", "provider", "serp", "competitor", "audit", "manual"]);
+const evidenceUrlSchema = z.string().url().refine((value) => ["http:", "https:"].includes(new URL(value).protocol));
+const suggestionEvidenceSchema = z.object({
+  label: z.string().trim().min(1).max(200),
+  sourceType: evidenceSourceSchema,
+  url: evidenceUrlSchema.optional(),
+  detail: z.string().trim().max(2000).optional(),
+  capturedAt: z.string().datetime().optional(),
+});
 const documentIdSchema = z.string().min(1).max(200).regex(/^[A-Za-z0-9_.-]+$/);
+const suggestionDocumentIdSchema = documentIdSchema.regex(
+  /^(?:drafts\.)?seoSuggestion\.(?:[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}|audit\.[0-9a-f]{32})$/i,
+);
 
 const newSuggestionSchema = z.object({
   targetDocumentId: documentIdSchema,
@@ -242,6 +258,7 @@ const newSuggestionSchema = z.object({
   reason: z.string().min(1).max(8000),
   confidence: z.number().min(0).max(1),
   riskLevel: riskLevelSchema,
+  evidence: z.array(suggestionEvidenceSchema).max(8).optional(),
   createdBy: z.string().min(1).max(320),
 });
 
@@ -273,10 +290,10 @@ function valueAtSeoPath(article: z.infer<typeof targetDraftSchema>, fieldPath: s
   return article.seo?.searchIntent;
 }
 
-function safeJson(value: unknown) {
-  if (value === undefined) return undefined;
-  const serialized = JSON.stringify(value);
-  return serialized.length > 16000 ? `${serialized.slice(0, 16000)}…` : serialized;
+function parseSuggestionDocumentId(value: string) {
+  const parsed = suggestionDocumentIdSchema.safeParse(value);
+  if (!parsed.success) throw new Error("INVALID_SUGGESTION_ID");
+  return parsed.data;
 }
 
 export function buildAuditLogDocument(input: {
@@ -292,15 +309,15 @@ export function buildAuditLogDocument(input: {
   timestamp: string;
 }) {
   return {
-    _id: input.id,
+    _id: privateAdminDocumentId(input.id),
     _type: "auditLog",
     actor: input.actor,
     actorType: input.actorType,
     action: input.action,
     objectType: input.objectType,
     objectId: input.objectId,
-    before: safeJson(input.before),
-    after: safeJson(input.after),
+    before: safeAuditJson(input.before),
+    after: safeAuditJson(input.after),
     requestId: input.requestId,
     environment: getAdminEnvironment(),
     timestamp: input.timestamp,
@@ -337,11 +354,10 @@ export async function createSeoSuggestion(
   }
   const fieldPath = getApplyableFieldPath(parsed.type);
   const before = fieldPath ? storedFieldValue(valueAtSeoPath(target, fieldPath)) : (parsed.before ?? null);
-  const draftOnlyWorkflow = getAdminEnvironment() === "local-production";
   const baseSuggestionId = context.idempotentForAuditRevision
     ? deterministicAuditSuggestionId({ draftId, revision: target._rev, type: parsed.type })
     : `seoSuggestion.${randomUUID()}`;
-  const suggestionId = workflowDocumentId(baseSuggestionId, draftOnlyWorkflow);
+  const suggestionId = privateAdminDocumentId(baseSuggestionId);
   const suggestionDocument = {
     _id: suggestionId,
     _type: "seoSuggestion",
@@ -353,17 +369,15 @@ export async function createSeoSuggestion(
     reason: parsed.reason,
     confidence: parsed.confidence,
     riskLevel: parsed.riskLevel,
+    evidence: (parsed.evidence ?? []).map((item, index) => ({ _type: "seoEvidence", _key: `evidence-${index}`, ...item })),
     status: "needs-human-review",
     createdBy: parsed.createdBy,
     createdAt: now,
   };
   const auditDocument = buildAuditLogDocument({
-    id: workflowDocumentId(
-      context.idempotentForAuditRevision
-        ? `auditLog.${baseSuggestionId.slice("seoSuggestion.".length)}`
-        : `auditLog.${randomUUID()}`,
-      draftOnlyWorkflow,
-    ),
+    id: context.idempotentForAuditRevision
+      ? `auditLog.${baseSuggestionId.slice("seoSuggestion.".length)}`
+      : `auditLog.${randomUUID()}`,
     actor: parsed.createdBy,
     actorType: auditContext.actorType,
     action: context.idempotentForAuditRevision ? "seo-suggestion:generate-from-audit" : "seo-suggestion:create",
@@ -408,10 +422,11 @@ export async function approveSeoSuggestion(input: {
   actorType: "human" | "ai" | "system";
   requestId: string;
 }) {
+  const parsedId = parseSuggestionDocumentId(input.id);
   const client = requireWriteClient();
   if (!client) throw new Error("SANITY_WRITE_NOT_CONFIGURED");
 
-  const id = workflowDocumentId(z.string().min(1).parse(input.id), getAdminEnvironment() === "local-production");
+  const id = privateAdminDocumentId(parsedId);
   const reviewedBy = z.string().min(1).max(320).parse(input.reviewedBy);
   const context = mutationContextSchema.parse(input);
   if (!isHumanReviewActor(context.actorType)) throw new Error("HUMAN_REVIEW_REQUIRED");
@@ -445,7 +460,7 @@ export async function approveSeoSuggestion(input: {
 
   const reviewedAt = new Date().toISOString();
   const auditDocument = buildAuditLogDocument({
-    id: workflowDocumentId(`auditLog.${randomUUID()}`, getAdminEnvironment() === "local-production"),
+    id: `auditLog.${randomUUID()}`,
     actor: reviewedBy,
     actorType: context.actorType,
     action: "seo-suggestion:approve",
@@ -486,6 +501,78 @@ export async function approveSeoSuggestion(input: {
   return { id, status: "approved", reviewedAt };
 }
 
+const reviewDecisionSchema = z.discriminatedUnion("decision", [
+  z.object({ decision: z.literal("edit"), after: z.string().min(1).max(12000), reason: z.string().min(1).max(8000) }),
+  z.object({ decision: z.literal("reject"), reason: z.string().min(1).max(2000) }),
+]);
+
+const pendingSuggestionSchema = z.object({
+  _id: z.string(),
+  _rev: z.string(),
+  status: z.string(),
+});
+
+export async function reviewSeoSuggestion(input: {
+  id: string;
+  decision: "edit" | "reject";
+  after?: string;
+  reason: string;
+  reviewedBy: string;
+  actorType: "human" | "ai" | "system";
+  requestId: string;
+}) {
+  const id = privateAdminDocumentId(parseSuggestionDocumentId(input.id));
+  const decision = reviewDecisionSchema.parse(input);
+  const reviewer = z.string().min(1).max(320).parse(input.reviewedBy);
+  const context = mutationContextSchema.parse(input);
+  if (!isHumanReviewActor(context.actorType)) throw new Error("HUMAN_REVIEW_REQUIRED");
+
+  const client = requireWriteClient();
+  if (!client) throw new Error("SANITY_WRITE_NOT_CONFIGURED");
+  const rawClient = client.withConfig({ perspective: "raw" });
+  const raw = await rawClient.fetch(
+    groq`*[_id == $id && _type == "seoSuggestion"][0]{ _id, _rev, status }`,
+    { id },
+  );
+  if (!raw) throw new Error("SUGGESTION_NOT_FOUND");
+  const suggestion = pendingSuggestionSchema.parse(raw);
+  if (decision.decision === "edit" ? !canEditSuggestion(suggestion.status) : !canRejectSuggestion(suggestion.status)) {
+    throw new Error("SUGGESTION_STATUS_CONFLICT");
+  }
+
+  const decidedAt = new Date().toISOString();
+  const nextStatus = decision.decision === "reject" ? "rejected" : "needs-human-review";
+  const values = decision.decision === "edit"
+    ? { after: decision.after, reason: decision.reason, editedBy: reviewer, editedAt: decidedAt }
+    : { status: nextStatus, rejectionReason: decision.reason, reviewedBy: reviewer, reviewedAt: decidedAt };
+  const auditDocument = buildAuditLogDocument({
+    id: `auditLog.${randomUUID()}`,
+    actor: reviewer,
+    actorType: context.actorType,
+    action: decision.decision === "edit" ? "seo-suggestion:edit" : "seo-suggestion:reject",
+    objectType: "seoSuggestion",
+    objectId: id,
+    before: { status: suggestion.status },
+    after: { status: nextStatus, valuePresent: decision.decision === "edit", reasonPresent: true },
+    requestId: context.requestId,
+    timestamp: decidedAt,
+  });
+
+  try {
+    await rawClient.transaction()
+      .patch(id, (patch) => patch.ifRevisionId(suggestion._rev).set(values))
+      .create(auditDocument)
+      .commit();
+  } catch (error) {
+    if (isRevisionConflict(error)) throw new Error("SUGGESTION_CONFLICT");
+    throw error;
+  }
+
+  return decision.decision === "edit"
+    ? { id, status: nextStatus, editedAt: decidedAt }
+    : { id, status: nextStatus, reviewedAt: decidedAt };
+}
+
 const applyableSuggestionSchema = z.object({
   id: z.string(),
   revision: z.string(),
@@ -496,6 +583,7 @@ const applyableSuggestionSchema = z.object({
   approvedRiskLevel: riskLevelSchema.nullish(),
   approvedTargetId: documentIdSchema.nullish(),
   approvedTargetRevision: z.string().nullish(),
+  appliedAt: z.string().nullish(),
 });
 
 export async function applyApprovedSeoSuggestion(input: {
@@ -504,10 +592,11 @@ export async function applyApprovedSeoSuggestion(input: {
   actorType: "human" | "ai" | "system";
   requestId: string;
 }) {
+  const parsedId = parseSuggestionDocumentId(input.id);
   const client = requireWriteClient();
   if (!client) throw new Error("SANITY_WRITE_NOT_CONFIGURED");
 
-  const id = workflowDocumentId(z.string().min(1).parse(input.id), getAdminEnvironment() === "local-production");
+  const id = privateAdminDocumentId(parsedId);
   const appliedBy = z.string().min(1).max(320).parse(input.appliedBy);
   const context = mutationContextSchema.parse(input);
   if (!isHumanReviewActor(context.actorType)) throw new Error("HUMAN_REVIEW_REQUIRED");
@@ -524,15 +613,32 @@ export async function applyApprovedSeoSuggestion(input: {
       approvedType,
       approvedRiskLevel,
       approvedTargetId,
-      approvedTargetRevision
+      approvedTargetRevision,
+      appliedAt
     }`,
     { id },
   );
   if (!suggestionRaw) throw new Error("SUGGESTION_NOT_FOUND");
   const suggestion = applyableSuggestionSchema.parse(suggestionRaw);
 
-  if (!canApplySuggestion(suggestion.status)) throw new Error("SUGGESTION_STATUS_CONFLICT");
   const controls = frozenControlsForApply(suggestion);
+  if (isAppliedSuggestionReplay(suggestion.status)) {
+    if (!controls || !suggestion.approvedAfter || !suggestion.appliedAt) {
+      throw new Error("SUGGESTION_APPROVAL_INCOMPLETE");
+    }
+    const fieldPath = getApplyableFieldPath(controls.type);
+    if (!fieldPath) throw new Error("SUGGESTION_TYPE_NOT_APPLYABLE");
+    return {
+      suggestionId: id,
+      draftId: controls.targetId.startsWith("drafts.") ? controls.targetId : `drafts.${controls.targetId}`,
+      fieldPath,
+      before: null,
+      after: suggestion.approvedAfter,
+      appliedAt: suggestion.appliedAt,
+      alreadyApplied: true,
+    };
+  }
+  if (!canApplySuggestion(suggestion.status)) throw new Error("SUGGESTION_STATUS_CONFLICT");
   if (!controls || !suggestion.approvedAfter || !suggestion.approvedTargetRevision) {
     throw new Error("SUGGESTION_APPROVAL_INCOMPLETE");
   }
@@ -567,14 +673,14 @@ export async function applyApprovedSeoSuggestion(input: {
 
   const appliedAt = new Date().toISOString();
   const auditDocument = buildAuditLogDocument({
-    id: workflowDocumentId(`auditLog.${randomUUID()}`, getAdminEnvironment() === "local-production"),
+    id: `auditLog.${randomUUID()}`,
     actor: appliedBy,
     actorType: context.actorType,
     action: "seo-suggestion:apply-to-draft",
     objectType: "article",
     objectId: draftId,
-    before: { field: fieldPath, value: storedFieldValue(before) },
-    after: { field: fieldPath, value: suggestion.approvedAfter },
+    before: { field: fieldPath, valuePresent: before !== null && before !== undefined && String(before).length > 0 },
+    after: { field: fieldPath, valuePresent: suggestion.approvedAfter.length > 0 },
     requestId: context.requestId,
     timestamp: appliedAt,
   });
@@ -597,5 +703,6 @@ export async function applyApprovedSeoSuggestion(input: {
     before: before ?? null,
     after: suggestion.approvedAfter,
     appliedAt,
+    alreadyApplied: false,
   };
 }

@@ -4,6 +4,7 @@ import test from "node:test";
 
 const researchService = readFileSync(new URL("../../lib/admin/research.ts", import.meta.url), "utf8");
 const seoAuditService = readFileSync(new URL("../../lib/admin/seo-audit.ts", import.meta.url), "utf8");
+const seoProposalService = readFileSync(new URL("../../lib/admin/seo-proposals.ts", import.meta.url), "utf8");
 const contentReadinessService = readFileSync(new URL("../../lib/admin/content-readiness.ts", import.meta.url), "utf8");
 const researchRoute = readFileSync(new URL("../../app/api/snt-admin/research/route.ts", import.meta.url), "utf8");
 const seoAuditRoute = readFileSync(new URL("../../app/api/snt-admin/seo/audit/[id]/route.ts", import.meta.url), "utf8");
@@ -51,11 +52,10 @@ test("content readiness is read-only and remains separate from the SEO score", (
   assert.match(seoDetailPage, /เปิดแก้ใน Studio/);
 });
 
-test("automatic metadata proposals stay blocked until GSC ownership evidence exists", () => {
-  const proposalBuilder = seoAuditService.slice(
-    seoAuditService.indexOf("export function buildDeterministicSeoProposals"),
-    seoAuditService.indexOf("const proposalContextSchema"),
-  );
-  assert.doesNotMatch(proposalBuilder, /proposals\.push\(/);
-  assert.match(seoDetailPage, /ยังไม่มีหลักฐาน keyword\/SERP\/GSC ที่เพียงพอ/);
+test("automatic metadata stays blocked while fresh research may propose search intent only", () => {
+  assert.match(seoProposalService, /type: "search-intent"/);
+  assert.doesNotMatch(seoProposalService, /type: "seo-title"|type: "meta-description"|type: "primary-keyword"/);
+  assert.match(proposalRoute, /focusKeyword: contextData\.focusKeyword/);
+  assert.match(proposalRoute, /evidence: proposal\.evidence/);
+  assert.match(seoDetailPage, /Search intent เท่านั้น/);
 });

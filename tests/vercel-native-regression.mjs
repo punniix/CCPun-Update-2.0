@@ -4,7 +4,7 @@ import { existsSync, readFileSync } from 'node:fs';
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 
 const packageJson = JSON.parse(read('package.json'));
-assert.equal(packageJson.version, '4.0.0');
+assert.equal(packageJson.version, '4.1.0');
 assert.equal(packageJson.scripts.build, 'next build');
 assert.equal(packageJson.scripts.start, 'next start');
 assert.match(packageJson.scripts['local:uat'], /CCPUN_APP_ENV=local-uat/);
@@ -16,6 +16,9 @@ assert.equal(packageJson.scripts['local:production'], undefined);
 assert.match(packageJson.scripts['local:production:read'], /CCPUN_LOCAL_PRODUCTION_DRAFT_WRITES=0/);
 assert.match(packageJson.scripts['local:production:draft'], /CCPUN_LOCAL_PRODUCTION_DRAFT_WRITES=1/);
 assert.equal(packageJson.scripts['qa:legacy-urls'], 'node qa/legacy-url-regression.mjs');
+
+const vercelConfig = JSON.parse(read('vercel.json'));
+assert.equal(vercelConfig.ignoreCommand, 'node scripts/vercel-ignore-build.mjs');
 
 const legacyUrlLedger = JSON.parse(read('qa/legacy-url-ledger.json'));
 assert.deepEqual(legacyUrlLedger.mappings.map(({ id, destination }) => [id, destination]), [
@@ -289,6 +292,7 @@ const deploymentEnvironment = read('lib/deployment-environment.ts');
 assert.match(deploymentEnvironment, /VERCEL_ENV === "preview"/);
 assert.match(deploymentEnvironment, /CCPUN_UAT_MODE === "1"/);
 assert.match(deploymentEnvironment, /APP_ENVIRONMENT === "production-admin"/);
+assert.match(deploymentEnvironment, /IS_ADMIN_APPLICATION = \["local-uat", "local-production", "lab", "uat", "admin-uat", "production-admin"\]\.includes\(APP_ENVIRONMENT\)/);
 assert.match(deploymentEnvironment, /VERCEL_ENV === "production"/);
 assert.match(deploymentEnvironment, /CCPUN_ENABLE_PRODUCTION_ANALYTICS === "1"/);
 
@@ -323,6 +327,9 @@ assert.match(nextConfig, /noindex, nofollow, noarchive/);
 assert.match(nextConfig, /source:\s*["']\/:path\*["'],\s*headers:\s*\[\.\.\.SECURITY_HEADERS, \.\.\.REVIEW_HEADERS\]/);
 assert.match(nextConfig, /source:\s*["']\/snt-admin\/:path\*["'],\s*headers:\s*PRIVATE_SURFACE_ROBOTS_HEADERS/);
 assert.match(nextConfig, /source:\s*["']\/studio\/:path\*["'],\s*headers:\s*PRIVATE_SURFACE_ROBOTS_HEADERS/);
+assert.match(nextConfig, /source:\s*["']\/api\/snt-admin\/:path\*["'],\s*headers:\s*PRIVATE_ADMIN_API_HEADERS/);
+assert.match(nextConfig, /source:\s*["']\/api\/preview\/:path\*["'],\s*headers:\s*PRIVATE_ADMIN_API_HEADERS/);
+assert.match(nextConfig, /Cache-Control["'], value: ["']private, no-cache, no-store, max-age=0, must-revalidate/);
 assert.match(nextConfig, /PRIVATE_SURFACE_ROBOTS_HEADERS = \[\{ key: ["']X-Robots-Tag["'], value: ["']noindex, nofollow, noarchive["'] \}\]/);
 
 assert.match(proxy, /environment === ["']production-admin["']/);
@@ -331,6 +338,7 @@ assert.match(proxy, /isLocalAdminHost\(request\.headers\.get\(["']host["']\), en
 assert.match(proxy, /isConfiguredAdminOrigin\(request\.url, process\.env\.AUTH_URL\)/);
 assert.match(proxy, /pathname\.startsWith\(["']\/api\/["']\)/);
 assert.match(proxy, /ccpun-admin-prod\.vercel\.app/);
+assert.match(proxy, /ccpun-admin\.vercel\.app/);
 assert.match(proxy, /admin\.ccpun\.com/);
 assert.match(proxy, /["']\/api\/auth\/:path\*["']/);
 
@@ -340,7 +348,11 @@ assert.match(rootLayout, /<html lang="th"/);
 assert.match(rootLayout, /PRODUCTION_ANALYTICS_ENABLED/);
 assert.match(rootLayout, /const GTM_ID = PRODUCTION_ANALYTICS_ENABLED \? "GTM-5DKMGSK3" : ""/);
 assert.match(rootLayout, /<ClientWidgets gaId=\{GA_ID\} gtmId=\{GTM_ID\} metaPixelId=\{META_PIXEL_ID\} \/>/);
-assert.match(rootLayout, /robots: IS_REVIEW_ENVIRONMENT/);
+assert.match(rootLayout, /robots: IS_ADMIN_APPLICATION \|\| IS_REVIEW_ENVIRONMENT/);
+assert.match(rootLayout, /openGraph: IS_ADMIN_APPLICATION \? null/);
+assert.match(rootLayout, /twitter: IS_ADMIN_APPLICATION \? null/);
+assert.match(rootLayout, /alternates: IS_ADMIN_APPLICATION \? \{ canonical: null \}/);
+assert.match(rootLayout, /!IS_ADMIN_APPLICATION \? <script type="application\/ld\+json"/);
 assert.match(rootLayout, /SanityLive includeDrafts=\{IS_DRAFT_PREVIEW_ALLOWED && isDraftMode\}/);
 assert.match(rootLayout, /IS_DRAFT_PREVIEW_ALLOWED && isDraftMode \? <VisualEditing \/> : null/);
 assert.match(deploymentEnvironment, /IS_DRAFT_PREVIEW_ALLOWED = isAdminReadDataPlaneAllowed/);

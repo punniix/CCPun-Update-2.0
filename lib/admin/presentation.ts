@@ -3,6 +3,8 @@ import type { AdminRole } from "./rbac";
 const ROLE_LABELS: Record<AdminRole, string> = {
   owner: "เจ้าของระบบ",
   editor: "ผู้ดูแลเนื้อหา",
+  "seo-manager": "ผู้จัดการ SEO",
+  reviewer: "ผู้ตรวจทาน",
   analyst: "ผู้วิเคราะห์",
   viewer: "ผู้ดูข้อมูล",
 };
@@ -62,6 +64,7 @@ const API_ERROR_MESSAGES: Record<string, string> = {
   "audit-stale": "บทความเปลี่ยนไประหว่างการตรวจ กรุณาลองตรวจ SEO ใหม่อีกครั้ง",
   "proposal-source-stale": "บทความเปลี่ยนไประหว่างสร้างข้อเสนอ กรุณาลองสร้างข้อเสนอใหม่อีกครั้ง",
   "proposal-generation-failed": "ยังสร้างข้อเสนอไม่สำเร็จ กรุณาลองอีกครั้ง",
+  "no-safe-proposal": "ยังไม่มี Research Snapshot ที่สดและเพียงพอสำหรับสร้างข้อเสนอ Search intent",
   "research-snapshot-failed": "ยังบันทึกข้อมูลงานวิจัยไม่สำเร็จ กรุณาลองอีกครั้ง",
   "provider-sync-local-required": "ตอนนี้การ Refresh Ubersuggest ต้องทำจาก Local CCPun Admin ที่เชื่อม OAuth ไว้ ส่วน admin.ccpun.com จะอ่าน snapshot ล่าสุดจาก Sanity",
   "provider-auth-required": "Ubersuggest ต้องเชื่อมบัญชีใหม่ก่อนจึงจะดึงข้อมูลได้",
@@ -111,6 +114,7 @@ export function environmentLabel(environment: string): string {
   if (environment === "local-production") return "Local Production บน Mac (ข้อมูลจริง)";
   if (environment === "lab") return "ห้องทดลองหลัก";
   if (environment === "uat") return "ระบบทดสอบ UAT";
+  if (environment === "admin-uat") return "ระบบหลังบ้าน UAT";
   if (environment === "production-admin") return "ระบบหลังบ้าน Production (ข้อมูลจริง)";
   if (environment === "production") return "ระบบจริง Production";
   return "ยังยืนยันสภาพแวดล้อมไม่ได้";

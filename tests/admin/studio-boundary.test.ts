@@ -9,10 +9,10 @@ import {
   getStudioPublishingOptions,
   protectProductionContentLifecycleActions,
 } from "../../cms/sanity/studio-policy";
-import { CCPUN_VERCEL_PROJECT_IDS } from "../../lib/admin/environment";
+import { CCPUN_LEGACY_VERCEL_PROJECT_IDS, CCPUN_VERCEL_PROJECT_IDS } from "../../lib/admin/environment";
 
 const PRODUCTION_ADMIN_PROJECT_ID = CCPUN_VERCEL_PROJECT_IDS.adminProduction;
-const ADMIN_LAB_PROJECT_ID = CCPUN_VERCEL_PROJECT_IDS.legacyAdminLab;
+const ADMIN_LAB_PROJECT_ID = CCPUN_LEGACY_VERCEL_PROJECT_IDS.adminLab;
 const WEB_PROJECT_ID = CCPUN_VERCEL_PROJECT_IDS.web;
 const UAT_SANITY_PROJECT_ID = "ccb9lnw5";
 const PRODUCTION_SANITY_PROJECT_ID = "kyfxgjnq";
@@ -63,7 +63,7 @@ test("Studio actions follow the application lane and dataset together", () => {
   ];
 
   useLabProject();
-  assert.deepEqual(filterStudioDocumentActions(actions, "uat", "lab", undefined, UAT_SANITY_PROJECT_ID), [actions[4], actions[5]]);
+  assert.deepEqual(filterStudioDocumentActions(actions, "uat", "lab", undefined, UAT_SANITY_PROJECT_ID), []);
 
   useLocalProject();
   assert.deepEqual(filterStudioDocumentActions(actions, "uat", "local-uat", undefined, UAT_SANITY_PROJECT_ID), [actions[4], actions[5]]);
@@ -101,7 +101,7 @@ test("UAT Studio uses Google auth and cannot schedule publishing", () => {
   const providers = [{ name: "vercel" }, { name: "google" }, { name: "github" }];
 
   useLabProject();
-  assert.deepEqual(filterStudioAuthProviders(providers, "uat", "lab", UAT_SANITY_PROJECT_ID), [{ name: "google" }]);
+  assert.deepEqual(filterStudioAuthProviders(providers, "uat", "lab", UAT_SANITY_PROJECT_ID), []);
 
   useLocalProject();
   assert.deepEqual(filterStudioAuthProviders(providers, "uat", "local-uat", UAT_SANITY_PROJECT_ID), [{ name: "google" }]);

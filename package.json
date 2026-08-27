@@ -1,6 +1,6 @@
 {
   "name": "ccpun-homepage",
-  "version": "4.0.0",
+  "version": "4.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -10,7 +10,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test:vercel": "node tests/vercel-native-regression.mjs && tsx tests/analytics-regression.ts",
+    "test:vercel": "node tests/vercel-native-regression.mjs && node --test tests/vercel-build-routing.test.mjs && tsx tests/analytics-regression.ts",
     "test:search-intent-owners": "node tests/search-intent-owner-regression.mjs",
     "test:foundation-contracts": "node tests/foundation-safety-regression.mjs && node tests/search-intent-owner-regression.mjs",
     "check:foundation": "npm run lint && npx tsc --noEmit --incremental false && npm run test:foundation-contracts && npm run test:vercel && npm run test:admin",
@@ -25,8 +25,8 @@
     "cms:remediate:wordpress": "CCPUN_APP_ENV=local-production NEXT_PUBLIC_SANITY_PROJECT_ID=kyfxgjnq NEXT_PUBLIC_SANITY_DATASET=production node --env-file-if-exists=.env.local scripts/remediate-wordpress-mapping.mjs --dry-run",
     "cms:taxonomy:uat:dry-run": "CCPUN_APP_ENV=local-uat SANITY_API_PROJECT_ID=ccb9lnw5 SANITY_API_DATASET=uat tsx scripts/migrate-uat-taxonomy.ts --dry-run",
     "cms:taxonomy:production:self-test": "node scripts/migrate-production-article-taxonomy.mjs --self-test",
-    "guard:admin-lab": "node scripts/guard-admin-lab-deploy.mjs",
-    "build:admin-lab": "npm run guard:admin-lab && next build",
+    "guard:survivor": "node scripts/guard-survivor-deploy.mjs",
+    "build:survivor": "npm run guard:survivor && next build",
     "test:admin": "tsx --test tests/admin/*.test.ts"
   },
   "dependencies": {

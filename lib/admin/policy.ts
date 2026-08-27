@@ -10,6 +10,8 @@ export const ADMIN_ACTIONS = [
   "seo:audit",
   "research:create",
   "review:approve",
+  "review:edit",
+  "review:reject",
   "draft:apply",
   "content:publish",
   "content:delete",
@@ -64,7 +66,7 @@ export function evaluateAdminAction(input: {
     action !== "dashboard:read" &&
     action !== "content:read"
   ) {
-    const draftWorkflowAction = ["seo:audit", "proposal:create", "research:create", "review:approve", "draft:apply"].includes(action);
+    const draftWorkflowAction = ["seo:audit", "proposal:create", "research:create", "review:approve", "review:edit", "review:reject", "draft:apply"].includes(action);
     if (!isLocalProductionDraftWriteEnabled(environment) || !draftWorkflowAction || actorType !== "human" || role !== "owner") {
       return { allowed: false, reason: "Local Production permits only the authenticated owner Draft workflow when explicitly enabled." };
     }
@@ -107,14 +109,19 @@ export function evaluateAdminAction(input: {
       : { allowed: false, reason: "Role cannot create research snapshots." };
   }
 
-  if (action === "review:approve") {
+  if (action === "review:approve" || action === "review:edit" || action === "review:reject") {
     if (actorType !== "human") {
-      return { allowed: false, reason: "Only a human reviewer may approve a proposal." };
+      return { allowed: false, reason: "Only a human reviewer may decide a proposal." };
     }
 
-    return hasAdminPermission(role, "reviews:approve")
-      ? { allowed: true, reason: "Human owner may approve a proposal." }
-      : { allowed: false, reason: "Role cannot approve proposals." };
+    const permission = action === "review:approve"
+      ? "reviews:approve"
+      : action === "review:edit"
+        ? "reviews:edit"
+        : "reviews:reject";
+    return hasAdminPermission(role, permission)
+      ? { allowed: true, reason: "Human reviewer may decide a proposal." }
+      : { allowed: false, reason: "Role cannot decide proposals." };
   }
 
   if (action === "draft:apply") {

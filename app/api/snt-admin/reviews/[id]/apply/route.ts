@@ -19,7 +19,7 @@ export async function POST(request: Request, context: RouteContext) {
   });
 
   if (!policy.allowed) {
-    return NextResponse.json({ error: "forbidden", reason: policy.reason }, { status: 403 });
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 
   const { id } = await context.params;
@@ -36,6 +36,9 @@ export async function POST(request: Request, context: RouteContext) {
     return NextResponse.json({ ...applied, status: "applied", requestId });
   } catch (error) {
     if (error instanceof Error) {
+      if (error.message === "INVALID_SUGGESTION_ID") {
+        return NextResponse.json({ error: "invalid-suggestion-id", requestId }, { status: 400 });
+      }
       if (error.message === "SANITY_WRITE_NOT_CONFIGURED") {
         return NextResponse.json({ error: "write-token-required", requestId }, { status: 503 });
       }
@@ -43,10 +46,10 @@ export async function POST(request: Request, context: RouteContext) {
         return NextResponse.json({ error: "human-review-required", requestId }, { status: 403 });
       }
       if (error.message === "SUGGESTION_STALE_BASE") {
-        return NextResponse.json({ error: "suggestion-stale", reason: error.message, requestId }, { status: 409 });
+        return NextResponse.json({ error: "suggestion-stale", requestId }, { status: 409 });
       }
       if (["SUGGESTION_STATUS_CONFLICT", "SUGGESTION_CONFLICT", "SUGGESTION_APPROVAL_INCOMPLETE"].includes(error.message)) {
-        return NextResponse.json({ error: "suggestion-conflict", reason: error.message, requestId }, { status: 409 });
+        return NextResponse.json({ error: "suggestion-conflict", requestId }, { status: 409 });
       }
       if (error.message === "SUGGESTION_RISK_TOO_HIGH") {
         return NextResponse.json({ error: "risk-too-high", requestId }, { status: 409 });

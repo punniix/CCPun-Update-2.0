@@ -118,6 +118,13 @@ const seoMetadata = defineType({
       options: { layout: "tags" },
     }),
     defineField({
+      name: "keywordCluster",
+      title: "กลุ่มคำค้น (Keyword Cluster)",
+      description: "ชื่อกลุ่มหัวข้อที่บทความนี้เป็นเจ้าของ ไม่ใช่หมวด URL",
+      type: "string",
+      validation: (Rule) => Rule.max(120),
+    }),
+    defineField({
       name: "searchIntent",
       title: "เป้าหมายการค้นหา",
       type: "string",
@@ -137,6 +144,27 @@ const seoMetadata = defineType({
       description: "ใช้จัด Knowledge Graph และ breadcrumb/schema ในอนาคต แยกจากหมวดที่อยู่ใน URL การเปลี่ยนช่องนี้ไม่ใช่การย้าย URL",
       type: "string",
       options: { list: semanticTopicOptions },
+    }),
+    defineField({
+      name: "ogTitle",
+      title: "ชื่อเมื่อแชร์ Social (OG Title)",
+      description: "เว้นว่างเพื่อใช้ SEO Title หรือชื่อบทความ",
+      type: "string",
+      validation: (Rule) => Rule.max(95).warning("แนะนำไม่เกิน 95 ตัวอักษร"),
+    }),
+    defineField({
+      name: "ogDescription",
+      title: "คำอธิบายเมื่อแชร์ Social (OG Description)",
+      description: "เว้นว่างเพื่อใช้ Meta Description",
+      type: "text",
+      rows: 3,
+      validation: (Rule) => Rule.max(200).warning("แนะนำไม่เกิน 200 ตัวอักษร"),
+    }),
+    defineField({
+      name: "ogImage",
+      title: "ภาพเมื่อแชร์ Social (OG Image)",
+      description: "เว้นว่างเพื่อใช้รูปหน้าปกบทความ",
+      type: "imageWithAlt",
     }),
     defineField({
       name: "auditSnapshot",

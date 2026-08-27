@@ -1,5 +1,7 @@
 # CCPun Admin & Intelligence Layer — Phase 3 SEO Intelligence
 
+> **Historical deployment record:** references to `ccpun-web-lab` and `ccpun-web-v4-1-uat` describe the former rollout. Both Projects are now `LEGACY-FROZEN`; do not execute their deploy/alias instructions. New Admin work uses a protected branch Preview inside the Admin survivor.
+
 Date: 2026-08-21
 Environment: `ccpun-web-lab` / Sanity dataset `uat`
 Status: SOL-H1–H3 source implementation complete; provider activation and final xhigh review remain pending

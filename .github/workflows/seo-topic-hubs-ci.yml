@@ -116,7 +116,6 @@ jobs:
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           CCPUN_ADMIN_PROJECT_ID: prj_6tuUxJxYbQ4mpF7sMgNWx2p2jowN
-          CCPUN_ADMIN_PROJECT_NAME: ccpun-admin-prod
           VERCEL_TEAM_ID: team_GbcO71LS2dLHwiBV6Cs39Kax
           GITHUB_SHA: ${{ github.sha }}
         run: node scripts/promote-admin-after-ci.mjs

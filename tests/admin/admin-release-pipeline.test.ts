@@ -18,7 +18,8 @@ test("Admin promotion is pinned to the immutable Admin project and exact commit 
   assert.match(workflow, /VERCEL_TEAM_ID: team_GbcO71LS2dLHwiBV6Cs39Kax/);
   assert.match(workflow, /GITHUB_SHA: \$\{\{ github\.sha \}\}/);
   assert.match(promoter, /deployment\?\.meta\?\.githubCommitSha === sha/);
-  assert.match(promoter, /deployment\?\.name === projectName/);
+  assert.doesNotMatch(workflow, /CCPUN_ADMIN_PROJECT_NAME/);
+  assert.doesNotMatch(promoter, /ccpun-admin-prod/);
   assert.match(promoter, /deployment\?\.state === "READY"/);
 });
 
@@ -34,6 +35,8 @@ test("Admin promotion accepts Vercel uid or id and fails closed without either",
 test("Preview Admin promotion creates a Production deployment like the Vercel CLI", () => {
   assert.match(promoter, /\/v13\/deployments\?\$\{params\.toString\(\)\}/);
   assert.match(promoter, /deploymentId,/);
+  assert.match(promoter, /candidate\.deployment\?\.name/);
+  assert.match(promoter, /ADMIN_DEPLOYMENT_NAME/);
   assert.match(promoter, /name: projectName/);
   assert.match(promoter, /target: "production"/);
   assert.match(promoter, /meta: \{ action: "promote" \}/);

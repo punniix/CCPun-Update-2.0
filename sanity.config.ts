@@ -49,7 +49,6 @@ export const sanityStudioConfig =
               initial: "/",
               previewMode: {
                 enable: "/api/preview/enable",
-                disable: "/api/preview/disable",
               },
             },
             resolve: {

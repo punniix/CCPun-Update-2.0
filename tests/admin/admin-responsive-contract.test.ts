@@ -28,3 +28,9 @@ test("Admin data tables remain horizontally scrollable inside labelled regions",
     assert.match(source, /role="region"[^>]*className="overflow-x-auto"/, page);
   }
 });
+
+test("Research workflow links keep a 44px mobile touch target", () => {
+  const research = readSource("app/snt-admin/(protected)/research/page.tsx");
+
+  assert.match(research, /<a key=\{href\} href=\{href\} className="[^"]*\bmin-h-11\b[^"]*\bitems-center\b/);
+});

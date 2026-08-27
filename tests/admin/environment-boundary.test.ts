@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import {
+  CCPUN_LEGACY_VERCEL_PROJECT_IDS,
   CCPUN_VERCEL_PROJECT_IDS,
   isAdminDataPlaneAllowed,
   isAdminReadDataPlaneAllowed,
@@ -19,8 +20,8 @@ import { shouldEnforceHttps } from "../../lib/security-policy";
 
 const WEB_PROJECT_ID = CCPUN_VERCEL_PROJECT_IDS.web;
 const PRODUCTION_ADMIN_PROJECT_ID = CCPUN_VERCEL_PROJECT_IDS.adminProduction;
-const LAB_PROJECT_ID = CCPUN_VERCEL_PROJECT_IDS.legacyAdminLab;
-const UAT_PROJECT_ID = CCPUN_VERCEL_PROJECT_IDS.legacyAdminUat;
+const LAB_PROJECT_ID = CCPUN_LEGACY_VERCEL_PROJECT_IDS.adminLab;
+const UAT_PROJECT_ID = CCPUN_LEGACY_VERCEL_PROJECT_IDS.adminUat;
 const UAT_SANITY_PROJECT_ID = "ccb9lnw5";
 const PRODUCTION_SANITY_PROJECT_ID = "kyfxgjnq";
 
@@ -28,16 +29,16 @@ const retiredPublisher = readFileSync(new URL("../../scripts/publish-wordpress-m
 const publishedDraftImporter = readFileSync(new URL("../../scripts/import-wordpress-published-to-sanity.mjs", import.meta.url), "utf8");
 const draftImporter = readFileSync(new URL("../../scripts/import-wordpress-drafts-to-sanity.mjs", import.meta.url), "utf8");
 const draftSeeder = readFileSync(new URL("../../scripts/create-sanity-uat-draft.mjs", import.meta.url), "utf8");
-const adminLabGuard = readFileSync(new URL("../../scripts/guard-admin-lab-deploy.mjs", import.meta.url), "utf8");
+const survivorGuard = readFileSync(new URL("../../scripts/guard-survivor-deploy.mjs", import.meta.url), "utf8");
 const proxySource = readFileSync(new URL("../../proxy.ts", import.meta.url), "utf8");
 const studioConfig = readFileSync(new URL("../../sanity.config.ts", import.meta.url), "utf8");
 const studioCli = readFileSync(new URL("../../sanity.cli.ts", import.meta.url), "utf8");
 const packageJson = JSON.parse(readFileSync(new URL("../../package.json", import.meta.url), "utf8"));
 
-test("lab and UAT admin clients accept only the uat dataset in their exact projects", () => {
+test("legacy Lab and UAT deployments fail closed after Legacy Freeze", () => {
   assert.equal(isAdminDataPlaneAllowed("uat", "development", undefined, undefined, UAT_SANITY_PROJECT_ID), true);
-  assert.equal(isAdminDataPlaneAllowed("uat", "lab", LAB_PROJECT_ID, undefined, UAT_SANITY_PROJECT_ID), true);
-  assert.equal(isAdminDataPlaneAllowed("uat", "uat", UAT_PROJECT_ID, undefined, UAT_SANITY_PROJECT_ID), true);
+  assert.equal(isAdminDataPlaneAllowed("uat", "lab", LAB_PROJECT_ID, undefined, UAT_SANITY_PROJECT_ID), false);
+  assert.equal(isAdminDataPlaneAllowed("uat", "uat", UAT_PROJECT_ID, undefined, UAT_SANITY_PROJECT_ID), false);
   assert.equal(isAdminDataPlaneAllowed("production", "lab", LAB_PROJECT_ID, undefined, UAT_SANITY_PROJECT_ID), false);
   assert.equal(isAdminDataPlaneAllowed("production", "uat", UAT_PROJECT_ID, undefined, UAT_SANITY_PROJECT_ID), false);
   assert.equal(isAdminDataPlaneAllowed(undefined, "lab", LAB_PROJECT_ID, undefined, UAT_SANITY_PROJECT_ID), false);
@@ -46,13 +47,36 @@ test("lab and UAT admin clients accept only the uat dataset in their exact proje
   assert.equal(isAdminDataPlaneAllowed("uat", "uat", LAB_PROJECT_ID, undefined, UAT_SANITY_PROJECT_ID), false);
 });
 
+test("Admin survivor Preview has a dedicated UAT lane without Production access", () => {
+  assert.equal(parseAdminEnvironment("ADMIN-UAT"), "admin-uat");
+  assert.equal(isSanityProjectAllowed(UAT_SANITY_PROJECT_ID, "admin-uat"), true);
+  assert.equal(isDeploymentProjectAllowed("admin-uat", PRODUCTION_ADMIN_PROJECT_ID), true);
+  assert.equal(isAdminSurfaceAllowed("admin-uat", PRODUCTION_ADMIN_PROJECT_ID), true);
+  assert.equal(
+    isAdminDataPlaneAllowed("uat", "admin-uat", PRODUCTION_ADMIN_PROJECT_ID, undefined, UAT_SANITY_PROJECT_ID),
+    true,
+  );
+  assert.equal(
+    isAdminDataPlaneAllowed(
+      "production",
+      "admin-uat",
+      PRODUCTION_ADMIN_PROJECT_ID,
+      undefined,
+      PRODUCTION_SANITY_PROJECT_ID,
+    ),
+    false,
+  );
+  assert.equal(isAdminDataPlaneAllowed("uat", "admin-uat", UAT_PROJECT_ID, undefined, UAT_SANITY_PROJECT_ID), false);
+  assert.equal(isAdminDataPlaneAllowed("uat", "admin-uat", WEB_PROJECT_ID, undefined, UAT_SANITY_PROJECT_ID), false);
+});
+
 test("each deployed application lane accepts only its approved Vercel project and Sanity lane", () => {
   assert.equal(isSanityLaneAllowed("uat", "development", undefined, undefined, UAT_SANITY_PROJECT_ID), true);
-  assert.equal(isSanityLaneAllowed("uat", "development", WEB_PROJECT_ID, undefined, UAT_SANITY_PROJECT_ID), true);
+  assert.equal(isSanityLaneAllowed("uat", "development", WEB_PROJECT_ID, undefined, UAT_SANITY_PROJECT_ID), false);
   assert.equal(isSanityLaneAllowed("uat", "web-uat", WEB_PROJECT_ID, undefined, UAT_SANITY_PROJECT_ID), true);
   assert.equal(isSanityLaneAllowed("uat", "web-uat", LAB_PROJECT_ID, undefined, UAT_SANITY_PROJECT_ID), false);
-  assert.equal(isSanityLaneAllowed("uat", "lab", LAB_PROJECT_ID, undefined, UAT_SANITY_PROJECT_ID), true);
-  assert.equal(isSanityLaneAllowed("uat", "uat", UAT_PROJECT_ID, undefined, UAT_SANITY_PROJECT_ID), true);
+  assert.equal(isSanityLaneAllowed("uat", "lab", LAB_PROJECT_ID, undefined, UAT_SANITY_PROJECT_ID), false);
+  assert.equal(isSanityLaneAllowed("uat", "uat", UAT_PROJECT_ID, undefined, UAT_SANITY_PROJECT_ID), false);
   assert.equal(
     isSanityLaneAllowed(
       "production",
@@ -84,7 +108,7 @@ test("each deployed application lane accepts only its approved Vercel project an
 
 test("public Web Preview, Web UAT and Production cannot mount Admin clients or Studio", () => {
   assert.equal(isAdminSurfaceAllowed("development", WEB_PROJECT_ID), false);
-  assert.equal(isSanityLaneAllowed("uat", "development", WEB_PROJECT_ID, undefined, UAT_SANITY_PROJECT_ID), true);
+  assert.equal(isSanityLaneAllowed("uat", "development", WEB_PROJECT_ID, undefined, UAT_SANITY_PROJECT_ID), false);
   assert.equal(isAdminReadDataPlaneAllowed("uat", "development", WEB_PROJECT_ID, undefined, UAT_SANITY_PROJECT_ID), false);
 
   assert.equal(isAdminSurfaceAllowed("web-uat", WEB_PROJECT_ID), false);
@@ -131,15 +155,15 @@ test("deployed lane identity fails closed on cross-project or missing-project mi
   assert.equal(isDeploymentProjectAllowed("web-uat", UAT_PROJECT_ID), false);
   assert.equal(isDeploymentProjectAllowed("web-uat", undefined), false);
 
-  assert.equal(isDeploymentProjectAllowed("lab", LAB_PROJECT_ID), true);
+  assert.equal(isDeploymentProjectAllowed("lab", LAB_PROJECT_ID), false);
   assert.equal(isDeploymentProjectAllowed("lab", UAT_PROJECT_ID), false);
-  assert.equal(isDeploymentProjectAllowed("uat", UAT_PROJECT_ID), true);
+  assert.equal(isDeploymentProjectAllowed("uat", UAT_PROJECT_ID), false);
   assert.equal(isDeploymentProjectAllowed("uat", LAB_PROJECT_ID), false);
 
   assert.equal(isDeploymentProjectAllowed("development", undefined), true);
-  assert.equal(isDeploymentProjectAllowed("development", WEB_PROJECT_ID), true);
-  assert.equal(isDeploymentProjectAllowed("development", LAB_PROJECT_ID), true);
-  assert.equal(isDeploymentProjectAllowed("development", UAT_PROJECT_ID), true);
+  assert.equal(isDeploymentProjectAllowed("development", WEB_PROJECT_ID), false);
+  assert.equal(isDeploymentProjectAllowed("development", LAB_PROJECT_ID), false);
+  assert.equal(isDeploymentProjectAllowed("development", UAT_PROJECT_ID), false);
   assert.equal(isDeploymentProjectAllowed("development", PRODUCTION_ADMIN_PROJECT_ID), false);
   assert.equal(isDeploymentProjectAllowed("development", "prj_unapproved"), false);
 
@@ -255,13 +279,16 @@ test("Admin proxy uses the project-aware surface guard", () => {
   assert.match(proxySource, /status: 404/);
 });
 
-test("Admin Lab deploy guard uses immutable project IDs rather than mutable project names", () => {
-  assert.match(adminLabGuard, /project\.projectId/);
-  assert.match(adminLabGuard, new RegExp(LAB_PROJECT_ID));
-  assert.match(adminLabGuard, new RegExp(UAT_PROJECT_ID));
-  assert.match(adminLabGuard, new RegExp(WEB_PROJECT_ID));
-  assert.match(adminLabGuard, new RegExp(PRODUCTION_ADMIN_PROJECT_ID));
-  assert.doesNotMatch(adminLabGuard, /project\.projectName/);
+test("survivor deploy guard allows only immutable survivor IDs and blocks every legacy project", () => {
+  assert.match(survivorGuard, /project\.projectId/);
+  assert.match(survivorGuard, new RegExp(LAB_PROJECT_ID));
+  assert.match(survivorGuard, new RegExp(UAT_PROJECT_ID));
+  assert.match(survivorGuard, /prj_F6yodVaz1U57FcUlEXsKBazI7KF7/);
+  assert.match(survivorGuard, /prj_E3Z5RDozUgrbW625d6pE8aQdfQuK/);
+  assert.match(survivorGuard, new RegExp(WEB_PROJECT_ID));
+  assert.match(survivorGuard, new RegExp(PRODUCTION_ADMIN_PROJECT_ID));
+  assert.match(survivorGuard, /LEGACY-FROZEN/);
+  assert.doesNotMatch(survivorGuard, /project\.projectName/);
 });
 
 test("Local Production launch scripts pin the exact project, dataset, host, and Draft switch", () => {

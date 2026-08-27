@@ -7,6 +7,7 @@ import { isAdminDataPlaneAllowed, isAdminReadDataPlaneAllowed } from "./environm
 import { getAdminSanityReadToken, getAdminSanityResearchWriteToken } from "./sanity-credentials";
 import { buildAuditLogDocument } from "./sanity-control";
 import { normalizeResearchKeyword, researchInputSchema, type ResearchInput } from "./research-input";
+import { privateAdminDocumentId } from "./suggestion-lifecycle";
 
 const projectId = process.env.NEXT_PUBLIC_SANITY_PROJECT_ID?.trim();
 const dataset = process.env.NEXT_PUBLIC_SANITY_DATASET?.trim();
@@ -111,7 +112,7 @@ export async function createResearchSnapshot(input: ResearchInput, context: Rese
   const day = (parsed.checkedAt ?? new Date().toISOString()).slice(0, 10);
   const stableKey = createHash("sha256").update(`${parsed.provider}|${keywordKey}|${day}`).digest("hex").slice(0, 32);
   const providerSnapshot = parsed.provider !== "manual";
-  const snapshotId = providerSnapshot ? `researchSnapshot.${stableKey}` : `researchSnapshot.${randomUUID()}`;
+  const snapshotId = privateAdminDocumentId(providerSnapshot ? `researchSnapshot.${stableKey}` : `researchSnapshot.${randomUUID()}`);
   const now = new Date().toISOString();
   const checkedAt = parsed.checkedAt ?? now;
   const snapshotDocument = {

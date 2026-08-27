@@ -47,16 +47,16 @@ export async function generateMetadata({ params }: { params: Promise<{ category:
       type: "article",
       locale: "th_TH",
       url: canonical,
-      title: article.seoTitle,
-      description: article.seoDescription,
+      title: article.ogTitle || article.seoTitle,
+      description: article.ogDescription || article.seoDescription,
       siteName: "CCPun Financial Advisor",
-      images: [{ url: article.featuredImage?.src ?? DEFAULT_SOCIAL_IMAGE, alt: article.featuredImage?.alt ?? "CCPun บทความวางแผนการเงิน" }],
+      images: [{ url: article.ogImage?.src ?? article.featuredImage?.src ?? DEFAULT_SOCIAL_IMAGE, alt: article.ogImage?.alt ?? article.featuredImage?.alt ?? "CCPun บทความวางแผนการเงิน" }],
     },
     twitter: {
       card: "summary_large_image",
-      title: article.seoTitle,
-      description: article.seoDescription,
-      images: [article.featuredImage?.src ?? DEFAULT_SOCIAL_IMAGE],
+      title: article.ogTitle || article.seoTitle,
+      description: article.ogDescription || article.seoDescription,
+      images: [article.ogImage?.src ?? article.featuredImage?.src ?? DEFAULT_SOCIAL_IMAGE],
     },
   };
 }
@@ -145,9 +145,11 @@ export default async function ArticlePage({ params }: { params: Promise<{ catego
                       <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium text-muted-foreground">
                         ฉบับร่าง Preview · noindex
                       </span>
-                      <Link href="/api/preview/disable/" className="rounded-full border border-primary/25 px-3 py-1 text-xs font-medium text-primary hover:bg-primary/10">
-                        ปิด Preview
-                      </Link>
+                      <form action="/api/preview/disable/" method="post">
+                        <button type="submit" className="rounded-full border border-primary/25 px-3 py-1 text-xs font-medium text-primary hover:bg-primary/10">
+                          ปิด Preview
+                        </button>
+                      </form>
                     </>
                   )}
                 </div>

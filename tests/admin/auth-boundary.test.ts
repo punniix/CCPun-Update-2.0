@@ -14,6 +14,7 @@ import { isPublicInternetAddress } from "../../lib/admin/provider-network";
 import { isVercelSsoLabTrustMode } from "../../lib/admin/lab-sso";
 import {
   getConfiguredAdminRole,
+  getAdminRoleForEmail,
   getVerifiedGoogleAdminRole,
   hasConfiguredAdminUsers,
   hasAdminPermission,
@@ -81,6 +82,36 @@ test("Google sign-in requires a verified allowlisted identity", () => {
   );
 });
 
+test("Admin UAT supports an owner-only operating model", () => {
+  process.env.CCPUN_ADMIN_OWNER_EMAILS = "owner@example.com";
+  for (const key of [
+    "CCPUN_ADMIN_EDITOR_EMAILS",
+    "CCPUN_ADMIN_SEO_MANAGER_EMAILS",
+    "CCPUN_ADMIN_REVIEWER_EMAILS",
+    "CCPUN_ADMIN_ANALYST_EMAILS",
+    "CCPUN_ADMIN_VIEWER_EMAILS",
+  ]) delete process.env[key];
+
+  assert.equal(hasConfiguredAdminUsers("admin-uat"), true);
+  assert.equal(getVerifiedGoogleAdminRole({ provider: "google", email: "owner@example.com", emailVerified: true, environment: "admin-uat" }), "owner");
+  assert.equal(getVerifiedGoogleAdminRole({ provider: "google", email: "other@example.com", emailVerified: true, environment: "admin-uat" }), null);
+});
+
+test("an email assigned to multiple Admin roles fails closed", () => {
+  process.env.CCPUN_ADMIN_OWNER_EMAILS = "ambiguous@example.com";
+  process.env.CCPUN_ADMIN_VIEWER_EMAILS = "ambiguous@example.com";
+
+  assert.equal(getAdminRoleForEmail("ambiguous@example.com"), null);
+  assert.equal(
+    getVerifiedGoogleAdminRole({
+      provider: "google",
+      email: "ambiguous@example.com",
+      emailVerified: true,
+    }),
+    null,
+  );
+});
+
 test("Local Production accepts only the verified owner allowlist", () => {
   process.env.CCPUN_ADMIN_OWNER_EMAILS = "owner@example.com";
   process.env.CCPUN_ADMIN_EDITOR_EMAILS = "editor@example.com";
@@ -128,9 +159,9 @@ test("Auth.js never assigns an Admin role while authentication is misconfigured"
 });
 
 test("Admin mutations require an exact browser origin", () => {
-  const url = "https://ccpun-web-lab.example/api/snt-admin/reviews/1/approve";
+  const url = "https://admin-preview.example/api/snt-admin/reviews/1/approve";
 
-  assert.equal(isSameOriginAdminMutation(url, "https://ccpun-web-lab.example"), true);
+  assert.equal(isSameOriginAdminMutation(url, "https://admin-preview.example"), true);
   assert.equal(isSameOriginAdminMutation(url, "https://attacker.example"), false);
   assert.equal(isSameOriginAdminMutation(url, null), false);
   assert.equal(isSameOriginAdminMutation(url, "null"), false);
