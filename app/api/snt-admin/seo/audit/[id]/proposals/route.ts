@@ -4,7 +4,8 @@ import { getAdminEnvironment } from "@/lib/admin/environment";
 import { getAdminIdentity } from "@/lib/admin/identity";
 import { evaluateAdminAction } from "@/lib/admin/policy";
 import { createSeoSuggestion } from "@/lib/admin/sanity-control";
-import { buildDeterministicSeoProposals, getSeoProposalContext, runSeoAudit } from "@/lib/admin/seo-audit";
+import { getSeoProposalContext, runSeoAudit } from "@/lib/admin/seo-audit";
+import { buildDeterministicSeoProposals } from "@/lib/admin/seo-proposals";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -19,7 +20,7 @@ export async function POST(request: Request, context: RouteContext) {
     environment: getAdminEnvironment(),
   });
   if (!policy.allowed) {
-    return NextResponse.json({ error: "forbidden", reason: policy.reason }, { status: 403 });
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 
   const { id } = await context.params;
@@ -30,7 +31,12 @@ export async function POST(request: Request, context: RouteContext) {
     const audit = await runSeoAudit(id, false);
     const contextData = await getSeoProposalContext(id);
     if (audit.sourceRevision !== contextData.revision) throw new Error("PROPOSAL_SOURCE_STALE");
-    const proposals = buildDeterministicSeoProposals();
+    const proposals = buildDeterministicSeoProposals({
+      focusKeyword: contextData.focusKeyword,
+      currentSearchIntent: contextData.searchIntent,
+      research: contextData.research,
+      now: audit.auditedAt,
+    });
     if (!proposals.length) return NextResponse.json({ error: "no-safe-proposal", requestId }, { status: 422 });
 
     const created = [];
@@ -43,6 +49,7 @@ export async function POST(request: Request, context: RouteContext) {
           reason: proposal.reason,
           confidence: proposal.confidence,
           riskLevel: proposal.riskLevel,
+          evidence: proposal.evidence,
           createdBy: identity.actor,
         },
         {

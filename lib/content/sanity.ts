@@ -128,9 +128,17 @@ const rawArticleSchema = z.object({
   seo: z.object({
     title: z.string().min(1).nullish(),
     description: z.string().min(1).nullish(),
+    ogTitle: z.string().min(1).nullish(),
+    ogDescription: z.string().min(1).nullish(),
     semanticTopic: z.string().min(1).nullish(),
     canonical: z.string().url().nullish(),
     noindex: z.boolean().nullish(),
+  }).nullish(),
+  ogImage: z.object({
+    src: z.string().min(1),
+    alt: z.string().min(1),
+    width: z.number().positive(),
+    height: z.number().positive(),
   }).nullish(),
   featuredImage: z
     .object({
@@ -334,6 +342,9 @@ function toArticle(rawInput: unknown): Article {
     updatedAt: raw.updatedAt,
     seoTitle: seoTitle || raw.title,
     seoDescription: seoDescription || excerpt || raw.title,
+    ogTitle: raw.seo?.ogTitle ?? undefined,
+    ogDescription: raw.seo?.ogDescription ?? undefined,
+    ogImage: raw.ogImage ?? undefined,
     canonical: raw.seo?.canonical ?? undefined,
     noindex: raw.seo?.noindex ?? false,
     featuredImage: raw.featuredImage
@@ -385,6 +396,12 @@ const articleProjection = groq`{
   publishedAt,
   "updatedAt": coalesce(contentUpdatedAt, migration.sourceModifiedAt, _updatedAt),
   seo,
+  "ogImage": select(defined(seo.ogImage.asset) => {
+    "src": seo.ogImage.asset->url,
+    "width": seo.ogImage.asset->metadata.dimensions.width,
+    "height": seo.ogImage.asset->metadata.dimensions.height,
+    "alt": seo.ogImage.alt
+  }),
   "featuredImage": select(
     defined(featuredImage.asset) => {
       "src": featuredImage.asset->url,

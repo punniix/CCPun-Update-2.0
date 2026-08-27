@@ -236,6 +236,15 @@ const suggestionTypeSchema = z.enum([
 ]);
 
 const riskLevelSchema = z.enum(["low", "medium", "high", "critical"]);
+const evidenceSourceSchema = z.enum(["first-party", "provider", "serp", "competitor", "audit", "manual"]);
+const evidenceUrlSchema = z.string().url().refine((value) => ["http:", "https:"].includes(new URL(value).protocol));
+const suggestionEvidenceSchema = z.object({
+  label: z.string().trim().min(1).max(200),
+  sourceType: evidenceSourceSchema,
+  url: evidenceUrlSchema.optional(),
+  detail: z.string().trim().max(2000).optional(),
+  capturedAt: z.string().datetime().optional(),
+});
 const documentIdSchema = z.string().min(1).max(200).regex(/^[A-Za-z0-9_.-]+$/);
 const suggestionDocumentIdSchema = documentIdSchema.regex(
   /^(?:drafts\.)?seoSuggestion\.(?:[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}|audit\.[0-9a-f]{32})$/i,
@@ -249,6 +258,7 @@ const newSuggestionSchema = z.object({
   reason: z.string().min(1).max(8000),
   confidence: z.number().min(0).max(1),
   riskLevel: riskLevelSchema,
+  evidence: z.array(suggestionEvidenceSchema).max(8).optional(),
   createdBy: z.string().min(1).max(320),
 });
 
@@ -359,6 +369,7 @@ export async function createSeoSuggestion(
     reason: parsed.reason,
     confidence: parsed.confidence,
     riskLevel: parsed.riskLevel,
+    evidence: (parsed.evidence ?? []).map((item, index) => ({ _type: "seoEvidence", _key: `evidence-${index}`, ...item })),
     status: "needs-human-review",
     createdBy: parsed.createdBy,
     createdAt: now,

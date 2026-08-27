@@ -29,7 +29,7 @@ export async function POST(request: Request) {
     environment: getAdminEnvironment(),
   });
   if (!policy.allowed) {
-    return NextResponse.json({ error: "forbidden", reason: policy.reason }, { status: 403 });
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 
   const parsed = manualResearchInputSchema.safeParse(await request.json().catch(() => null));

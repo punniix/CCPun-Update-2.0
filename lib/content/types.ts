@@ -70,6 +70,14 @@ export type Article = {
   updatedAt: string;
   seoTitle: string;
   seoDescription: string;
+  ogTitle?: string;
+  ogDescription?: string;
+  ogImage?: {
+    src: string;
+    alt: string;
+    width: number;
+    height: number;
+  };
   canonical?: string;
   noindex?: boolean;
   legacyUrl?: string;

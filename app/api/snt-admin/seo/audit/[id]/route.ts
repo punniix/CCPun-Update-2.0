@@ -19,7 +19,7 @@ export async function POST(_request: Request, context: RouteContext) {
     environment,
   });
   if (!policy.allowed) {
-    return NextResponse.json({ error: "forbidden", reason: policy.reason }, { status: 403 });
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 
   const { id } = await context.params;

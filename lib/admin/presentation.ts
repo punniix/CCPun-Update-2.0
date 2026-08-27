@@ -64,6 +64,7 @@ const API_ERROR_MESSAGES: Record<string, string> = {
   "audit-stale": "บทความเปลี่ยนไประหว่างการตรวจ กรุณาลองตรวจ SEO ใหม่อีกครั้ง",
   "proposal-source-stale": "บทความเปลี่ยนไประหว่างสร้างข้อเสนอ กรุณาลองสร้างข้อเสนอใหม่อีกครั้ง",
   "proposal-generation-failed": "ยังสร้างข้อเสนอไม่สำเร็จ กรุณาลองอีกครั้ง",
+  "no-safe-proposal": "ยังไม่มี Research Snapshot ที่สดและเพียงพอสำหรับสร้างข้อเสนอ Search intent",
   "research-snapshot-failed": "ยังบันทึกข้อมูลงานวิจัยไม่สำเร็จ กรุณาลองอีกครั้ง",
   "provider-sync-local-required": "ตอนนี้การ Refresh Ubersuggest ต้องทำจาก Local CCPun Admin ที่เชื่อม OAuth ไว้ ส่วน admin.ccpun.com จะอ่าน snapshot ล่าสุดจาก Sanity",
   "provider-auth-required": "Ubersuggest ต้องเชื่อมบัญชีใหม่ก่อนจึงจะดึงข้อมูลได้",

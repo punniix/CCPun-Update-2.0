@@ -47,16 +47,16 @@ export async function generateMetadata({ params }: { params: Promise<{ category:
       type: "article",
       locale: "th_TH",
       url: canonical,
-      title: article.seoTitle,
-      description: article.seoDescription,
+      title: article.ogTitle || article.seoTitle,
+      description: article.ogDescription || article.seoDescription,
       siteName: "CCPun Financial Advisor",
-      images: [{ url: article.featuredImage?.src ?? DEFAULT_SOCIAL_IMAGE, alt: article.featuredImage?.alt ?? "CCPun บทความวางแผนการเงิน" }],
+      images: [{ url: article.ogImage?.src ?? article.featuredImage?.src ?? DEFAULT_SOCIAL_IMAGE, alt: article.ogImage?.alt ?? article.featuredImage?.alt ?? "CCPun บทความวางแผนการเงิน" }],
     },
     twitter: {
       card: "summary_large_image",
-      title: article.seoTitle,
-      description: article.seoDescription,
-      images: [article.featuredImage?.src ?? DEFAULT_SOCIAL_IMAGE],
+      title: article.ogTitle || article.seoTitle,
+      description: article.ogDescription || article.seoDescription,
+      images: [article.ogImage?.src ?? article.featuredImage?.src ?? DEFAULT_SOCIAL_IMAGE],
     },
   };
 }

@@ -97,3 +97,14 @@ test("human edit and reject decisions are validated, authorized, revision-guarde
   assert.match(schema, /value: "rejected"/);
   assert.match(schema, /name: "rejectionReason"/);
 });
+
+test("Admin APIs do not expose internal authorization reasons", () => {
+  for (const route of [
+    "app/api/snt-admin/reviews/[id]/approve/route.ts",
+    "app/api/snt-admin/reviews/[id]/apply/route.ts",
+    "app/api/snt-admin/seo/suggestions/route.ts",
+    "app/api/snt-admin/seo/audit/[id]/route.ts",
+    "app/api/snt-admin/seo/audit/[id]/proposals/route.ts",
+    "app/api/snt-admin/research/route.ts",
+  ]) assert.doesNotMatch(read(route), /reason: (?:policy\.reason|error\.message)/);
+});

@@ -7,6 +7,7 @@ import { summarizeContentReadiness, type ContentReadiness } from "./content-read
 import { isAdminDataPlaneAllowed, isAdminReadDataPlaneAllowed } from "./environment";
 import { getAdminSanityReadToken, getAdminSanityWriteToken } from "./sanity-credentials";
 import { buildAuditLogDocument, isRevisionConflict } from "./sanity-control";
+import { normalizeResearchKeyword } from "./research-input";
 import { isArticleCanonicalAligned } from "../content/url";
 import { countGraphemes, countMatchingQuestions, isReviewDateFresh, META_DESCRIPTION_MAX, META_DESCRIPTION_MIN, SEO_AUDIT_VERSION, SEO_TITLE_MAX, SEO_TITLE_MIN, seoBodyFacts } from "./seo-heuristics";
 
@@ -323,16 +324,25 @@ export async function runSeoAudit(
   return result;
 }
 
-export function buildDeterministicSeoProposals() {
-  const proposals: Array<{ type: "seo-title" | "meta-description" | "search-intent"; after: string; reason: string; confidence: number; riskLevel: "low" }> = [];
-  return proposals;
-}
-
-
 const proposalContextSchema = z.object({
   revision: z.string(),
   title: z.string().nullish(),
+  slug: z.string().nullish(),
+  categorySlug: z.string().nullish(),
+  seoTitle: z.string().nullish(),
+  seoDescription: z.string().nullish(),
+  ogTitle: z.string().nullish(),
+  ogDescription: z.string().nullish(),
+  canonical: z.string().nullish(),
+  socialImage: z.string().nullish(),
+  focusKeyword: z.string().nullish(),
   searchIntent: z.string().nullish(),
+});
+
+const proposalResearchSchema = z.object({
+  provider: z.string(),
+  intent: z.string().nullable(),
+  checkedAt: z.string(),
 });
 
 export async function getSeoProposalContext(articleId: string) {
@@ -343,8 +353,32 @@ export async function getSeoProposalContext(articleId: string) {
   const raw = await readClient.fetch(groq`coalesce(*[_type == "article" && _id == $draftId][0], *[_type == "article" && _id == $publishedId][0]){
     "revision": _rev,
     title,
+    "slug": slug.current,
+    "categorySlug": category->slug.current,
+    "seoTitle": seo.title,
+    "seoDescription": seo.description,
+    "ogTitle": seo.ogTitle,
+    "ogDescription": seo.ogDescription,
+    "canonical": seo.canonical,
+    "socialImage": coalesce(seo.ogImage.asset->url, featuredImage.asset->url, migratedFeaturedImage.src),
+    "focusKeyword": seo.focusKeyword,
     "searchIntent": seo.searchIntent
   }`, { draftId, publishedId: cleanId });
   if (!raw) throw new Error("ARTICLE_NOT_FOUND");
-  return proposalContextSchema.parse(raw);
+  const article = proposalContextSchema.parse(raw);
+  const keywordKey = normalizeResearchKeyword(article.focusKeyword ?? "");
+  if (!keywordKey) return { ...article, research: null };
+  const freshAfter = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const researchRaw = await readClient.fetch(groq`*[
+    _type == "researchSnapshot" &&
+    keywordKey == $keywordKey &&
+    provider in $providers &&
+    defined(intent) &&
+    checkedAt >= $freshAfter
+  ] | order(checkedAt desc)[0]{ provider, intent, checkedAt }`, {
+    keywordKey,
+    providers: ["gsc", "ubersuggest", "serp"],
+    freshAfter,
+  });
+  return { ...article, research: proposalResearchSchema.nullable().parse(researchRaw) };
 }
