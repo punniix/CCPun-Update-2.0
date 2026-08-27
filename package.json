@@ -2,6 +2,9 @@
   "name": "ccpun-homepage",
   "version": "4.1.0",
   "private": true,
+  "engines": {
+    "node": "24.x"
+  },
   "scripts": {
     "dev": "next dev",
     "local:uat": "CCPUN_UAT_MODE=1 CCPUN_APP_ENV=local-uat NEXT_PUBLIC_CCPUN_APP_ENV=local-uat NEXT_PUBLIC_SANITY_PROJECT_ID=ccb9lnw5 NEXT_PUBLIC_SANITY_DATASET=uat SANITY_STUDIO_PROJECT_ID=ccb9lnw5 SANITY_STUDIO_DATASET=uat AUTH_URL=http://localhost:3100 next dev --hostname 127.0.0.1 --port 3100",
