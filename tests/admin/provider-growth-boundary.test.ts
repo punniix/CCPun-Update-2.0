@@ -5,6 +5,8 @@ import test from "node:test";
 const ubersuggest = readFileSync(new URL("../../lib/admin/ubersuggest.ts", import.meta.url), "utf8");
 const researchRoute = readFileSync(new URL("../../app/api/snt-admin/research/ubersuggest/route.ts", import.meta.url), "utf8");
 const growth = readFileSync(new URL("../../lib/admin/growth.ts", import.meta.url), "utf8");
+const growthPage = readFileSync(new URL("../../app/snt-admin/(protected)/growth/page.tsx", import.meta.url), "utf8");
+const growthLoading = readFileSync(new URL("../../app/snt-admin/(protected)/growth/loading.tsx", import.meta.url), "utf8");
 const research = readFileSync(new URL("../../lib/admin/research.ts", import.meta.url), "utf8");
 const geoPage = readFileSync(new URL("../../app/snt-admin/(protected)/seo/[id]/page.tsx", import.meta.url), "utf8");
 const researchPage = readFileSync(new URL("../../app/snt-admin/(protected)/research/page.tsx", import.meta.url), "utf8");
@@ -63,4 +65,15 @@ test("growth sources fail independently and GEO is explicitly non-ranking", () =
   assert.match(growth, /state: "unavailable"/);
   assert.match(growth, /GA4_TOTALS_MISSING/);
   assert.match(geoPage, /ไม่ใช่คะแนนหรือการรับประกันว่า AI จะอ้างอิง/);
+});
+
+test("growth UI exposes freshness, comparison, loading, empty, and error states without fake metrics", () => {
+  assert.match(growthPage, /ช่วงข้อมูล:/);
+  assert.match(growthPage, /อัปเดตล่าสุด:/);
+  assert.match(growthPage, /เปรียบเทียบ: ยังไม่มีข้อมูลช่วงก่อนหน้า/);
+  assert.match(growthPage, /ยังไม่เชื่อมต่อ/);
+  assert.match(growthPage, /ดึงข้อมูลไม่สำเร็จ/);
+  assert.match(growthLoading, /role="status"/);
+  assert.match(growthLoading, /aria-live="polite"/);
+  assert.doesNotMatch(growthPage, /mock|fake/i);
 });

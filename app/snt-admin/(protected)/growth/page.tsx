@@ -29,6 +29,8 @@ export default async function GrowthDashboardPage() {
       {sources.map((source) => <article key={source.source} className="rounded-3xl border border-white/10 bg-white/[0.035] p-5">
         <div className="flex items-start justify-between gap-3"><h2 className="font-semibold">{sourceLabels[source.source]}</h2><span className={`rounded-full px-2.5 py-1 text-xs ${source.state === "ready" ? "bg-emerald-300/10 text-emerald-200" : source.state === "unavailable" ? "bg-red-300/10 text-red-200" : "bg-white/5 text-white/60"}`}>{source.state === "ready" ? "อ่านข้อมูลได้" : source.state === "unavailable" ? "ดึงข้อมูลไม่สำเร็จ" : "ยังไม่เชื่อมต่อ"}</span></div>
         {source.dateRange ? <p className="mt-2 text-xs text-white/50">ช่วงข้อมูล: {source.dateRange}</p> : null}
+        {source.fetchedAt ? <p className="mt-1 text-xs text-white/50">อัปเดตล่าสุด: {new Intl.DateTimeFormat("th-TH", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Bangkok" }).format(new Date(source.fetchedAt))}</p> : null}
+        <p className="mt-1 text-xs text-white/50">เปรียบเทียบ: ยังไม่มีข้อมูลช่วงก่อนหน้า</p>
         {source.metrics.length ? <dl className="mt-4 grid gap-3 sm:grid-cols-2">{source.metrics.map((metric) => <div key={metric.label} className="rounded-xl bg-black/10 p-3"><dt className="text-xs leading-5 text-white/55">{metric.label}</dt><dd className="mt-1 text-lg font-semibold">{metric.value}</dd></div>)}</dl> : null}
         <p className="mt-4 text-sm leading-6 text-white/60">{source.limitation}</p>
       </article>)}
