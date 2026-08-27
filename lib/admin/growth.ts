@@ -1,12 +1,14 @@
 import "server-only";
 
 import { z } from "zod";
+import { formatGrowthComparison } from "./growth-comparison";
 
 export type GrowthSourceResult = {
   source: "gsc" | "ga4" | "vercel";
   state: "ready" | "not-connected" | "unavailable";
   fetchedAt?: string;
   dateRange?: string;
+  comparison?: string;
   metrics: Array<{ label: string; value: string }>;
   limitation: string;
 };
@@ -29,28 +31,62 @@ const ga4Schema = z.object({
 }).passthrough();
 const vercelSchema = z.object({ deployments: z.array(z.object({ state: z.string().nullish(), readyState: z.string().nullish(), created: z.number().nullish() }).passthrough()).default([]) }).passthrough();
 
+function gscTotals(data: z.infer<typeof gscSchema>) {
+  const clicks = data.rows.reduce((sum, row) => sum + row.clicks, 0);
+  const impressions = data.rows.reduce((sum, row) => sum + row.impressions, 0);
+  return {
+    clicks,
+    impressions,
+    position: impressions ? data.rows.reduce((sum, row) => sum + row.position * row.impressions, 0) / impressions : null,
+  };
+}
+
+function ga4Totals(data: z.infer<typeof ga4Schema>) {
+  const values = data.totals[0]?.metricValues;
+  if (!values || values.length < 3 || values.some((item) => !Number.isFinite(Number(item.value)))) throw new Error("GA4_TOTALS_MISSING");
+  return values.map((item) => Number(item.value));
+}
+
+function previousGa4Totals(data: z.infer<typeof ga4Schema> | null) {
+  if (!data) return null;
+  try {
+    return ga4Totals(data);
+  } catch {
+    return null;
+  }
+}
+
 export async function readGscSummary(): Promise<GrowthSourceResult> {
   const token = process.env.CCPUN_GSC_ACCESS_TOKEN?.trim();
   const siteUrl = process.env.CCPUN_GSC_SITE_URL?.trim();
   if (!token || !siteUrl) return { source: "gsc", state: "not-connected", metrics: [], limitation: "ยังไม่ได้อนุมัติการเชื่อม Google Search Console แบบอ่านอย่างเดียว" };
   const startDate = bangkokDate(27);
   const endDate = bangkokDate();
+  const previousStartDate = bangkokDate(55);
+  const previousEndDate = bangkokDate(28);
   try {
-    const raw = await providerFetch(`https://searchconsole.googleapis.com/webmasters/v3/sites/${encodeURIComponent(siteUrl)}/searchAnalytics/query`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ startDate, endDate, dimensions: ["query", "page"], rowLimit: 25 }),
-    });
+    const query = (rangeStart: string, rangeEnd: string) => providerFetch(`https://searchconsole.googleapis.com/webmasters/v3/sites/${encodeURIComponent(siteUrl)}/searchAnalytics/query`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ startDate: rangeStart, endDate: rangeEnd, rowLimit: 1 }),
+      });
+    const [raw, previousRaw] = await Promise.all([
+      query(startDate, endDate),
+      query(previousStartDate, previousEndDate).catch(() => null),
+    ]);
     const data = gscSchema.parse(raw);
-    const clicks = data.rows.reduce((sum, row) => sum + row.clicks, 0);
-    const impressions = data.rows.reduce((sum, row) => sum + row.impressions, 0);
-    const position = impressions ? data.rows.reduce((sum, row) => sum + row.position * row.impressions, 0) / impressions : null;
-    return { source: "gsc", state: "ready", fetchedAt: new Date().toISOString(), dateRange: `${startDate} – ${endDate}`, metrics: [
-      { label: "คลิกจากกลุ่มข้อมูลที่อ่านได้", value: clicks.toLocaleString("th-TH") },
-      { label: "การแสดงผล", value: impressions.toLocaleString("th-TH") },
-      { label: "CTR", value: impressions ? `${((clicks / impressions) * 100).toFixed(1)}%` : "—" },
-      { label: "อันดับเฉลี่ย", value: position == null ? "—" : position.toFixed(1) },
-    ], limitation: "สรุปจาก 25 คู่คำค้น/หน้าที่ API ส่งกลับ ไม่ใช่การพิสูจน์สาเหตุของอันดับ" };
+    const current = gscTotals(data);
+    const previous = previousRaw == null ? null : gscSchema.safeParse(previousRaw);
+    const previousTotals = previous?.success ? gscTotals(previous.data) : null;
+    return { source: "gsc", state: "ready", fetchedAt: new Date().toISOString(), dateRange: `${startDate} – ${endDate}`, comparison: previousTotals ? formatGrowthComparison([
+      { label: "คลิก", current: current.clicks, previous: previousTotals.clicks },
+      { label: "การแสดงผล", current: current.impressions, previous: previousTotals.impressions },
+    ]) ?? "ทั้งสองช่วงยังไม่มีข้อมูล" : "ดึงช่วงก่อนหน้าไม่สำเร็จ", metrics: [
+      { label: "คลิก", value: current.clicks.toLocaleString("th-TH") },
+      { label: "การแสดงผล", value: current.impressions.toLocaleString("th-TH") },
+      { label: "CTR", value: current.impressions ? `${((current.clicks / current.impressions) * 100).toFixed(1)}%` : "—" },
+      { label: "อันดับเฉลี่ย", value: current.position == null ? "—" : current.position.toFixed(1) },
+    ], limitation: "ยอดรวมแบบไม่แบ่ง dimension เพื่อให้ช่วงปัจจุบันและช่วงก่อนหน้าเทียบฐานเดียวกัน ไม่ใช่การพิสูจน์สาเหตุของอันดับ" };
   } catch {
     return { source: "gsc", state: "unavailable", metrics: [], limitation: "เชื่อม GSC แล้วแต่ดึงข้อมูลรอบนี้ไม่สำเร็จ ข้อมูลแหล่งอื่นยังใช้ได้" };
   }
@@ -60,19 +96,31 @@ export async function readGa4Summary(): Promise<GrowthSourceResult> {
   const token = process.env.CCPUN_GA4_ACCESS_TOKEN?.trim();
   const propertyId = process.env.CCPUN_GA4_PROPERTY_ID?.trim();
   if (!token || !propertyId) return { source: "ga4", state: "not-connected", metrics: [], limitation: "ยังไม่ได้อนุมัติการเชื่อม GA4 แบบอ่านอย่างเดียว" };
+  const startDate = bangkokDate(27);
+  const endDate = bangkokDate();
+  const previousStartDate = bangkokDate(55);
+  const previousEndDate = bangkokDate(28);
   try {
-    const raw = await providerFetch(`https://analyticsdata.googleapis.com/v1beta/properties/${encodeURIComponent(propertyId)}:runReport`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ dateRanges: [{ startDate: "28daysAgo", endDate: "today" }], metrics: [{ name: "activeUsers" }, { name: "sessions" }, { name: "eventCount" }], limit: 10, metricAggregations: ["TOTAL"] }),
-    });
+    const report = (rangeStart: string, rangeEnd: string) => providerFetch(`https://analyticsdata.googleapis.com/v1beta/properties/${encodeURIComponent(propertyId)}:runReport`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ dateRanges: [{ startDate: rangeStart, endDate: rangeEnd }], metrics: [{ name: "activeUsers" }, { name: "sessions" }, { name: "eventCount" }], limit: 10, metricAggregations: ["TOTAL"] }),
+      });
+    const [raw, previousRaw] = await Promise.all([
+      report(startDate, endDate),
+      report(previousStartDate, previousEndDate).catch(() => null),
+    ]);
     const data = ga4Schema.parse(raw);
-    const values = data.totals[0]?.metricValues;
-    if (!values || values.length < 3 || values.some((item) => !Number.isFinite(Number(item.value)))) throw new Error("GA4_TOTALS_MISSING");
-    return { source: "ga4", state: "ready", fetchedAt: new Date().toISOString(), dateRange: "28 วันล่าสุดตามเขตเวลาของ GA4", metrics: [
-      { label: "ผู้ใช้งาน", value: Number(values[0]?.value ?? 0).toLocaleString("th-TH") },
-      { label: "เซสชัน", value: Number(values[1]?.value ?? 0).toLocaleString("th-TH") },
-      { label: "เหตุการณ์", value: Number(values[2]?.value ?? 0).toLocaleString("th-TH") },
+    const values = ga4Totals(data);
+    const previous = previousRaw == null ? null : ga4Schema.safeParse(previousRaw);
+    const previousValues = previousGa4Totals(previous?.success ? previous.data : null);
+    return { source: "ga4", state: "ready", fetchedAt: new Date().toISOString(), dateRange: `${startDate} – ${endDate}`, comparison: previousValues ? formatGrowthComparison([
+      { label: "ผู้ใช้งาน", current: values[0] ?? 0, previous: previousValues[0] ?? 0 },
+      { label: "เซสชัน", current: values[1] ?? 0, previous: previousValues[1] ?? 0 },
+    ]) ?? "ทั้งสองช่วงยังไม่มีข้อมูล" : "ดึงช่วงก่อนหน้าไม่สำเร็จ", metrics: [
+      { label: "ผู้ใช้งาน", value: Number(values[0] ?? 0).toLocaleString("th-TH") },
+      { label: "เซสชัน", value: Number(values[1] ?? 0).toLocaleString("th-TH") },
+      { label: "เหตุการณ์", value: Number(values[2] ?? 0).toLocaleString("th-TH") },
     ], limitation: "เหตุการณ์หรือ CTA click เป็นสัญญาณความตั้งใจ ไม่ใช่จำนวนลูกค้า ยอดขาย หรือ lead ที่ผ่านคุณสมบัติ" };
   } catch {
     return { source: "ga4", state: "unavailable", metrics: [], limitation: "เชื่อม GA4 แล้วแต่ดึงข้อมูลรอบนี้ไม่สำเร็จ ข้อมูลแหล่งอื่นยังใช้ได้" };
@@ -91,7 +139,7 @@ export async function readVercelHealth(): Promise<GrowthSourceResult> {
     const data = vercelSchema.parse(raw);
     const latest = data.deployments[0];
     const ready = data.deployments.filter((item) => (item.readyState ?? item.state) === "READY").length;
-    return { source: "vercel", state: "ready", fetchedAt: new Date().toISOString(), metrics: [
+    return { source: "vercel", state: "ready", fetchedAt: new Date().toISOString(), comparison: "ยังไม่มี baseline ที่เทียบกันได้จาก deployment API", metrics: [
       { label: "สถานะ deployment ล่าสุด", value: latest?.readyState ?? latest?.state ?? "ไม่ทราบ" },
       { label: "READY ใน 10 รายการล่าสุด", value: `${ready}/${data.deployments.length}` },
     ], limitation: "แสดงเฉพาะข้อมูลที่แผนและ API ปัจจุบันเปิดให้ ไม่สร้าง Core Web Vitals หรือ runtime metrics ขึ้นเอง" };

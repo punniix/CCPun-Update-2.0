@@ -70,7 +70,11 @@ test("growth sources fail independently and GEO is explicitly non-ranking", () =
 test("growth UI exposes freshness, comparison, loading, empty, and error states without fake metrics", () => {
   assert.match(growthPage, /ช่วงข้อมูล:/);
   assert.match(growthPage, /อัปเดตล่าสุด:/);
-  assert.match(growthPage, /เปรียบเทียบ: ยังไม่มีข้อมูลช่วงก่อนหน้า/);
+  assert.match(growthPage, /เปรียบเทียบ: \{source\.comparison/);
+  assert.match(growth, /query\(previousStartDate, previousEndDate\)\.catch/);
+  assert.match(growth, /report\(previousStartDate, previousEndDate\)\.catch/);
+  assert.match(growth, /ดึงช่วงก่อนหน้าไม่สำเร็จ/);
+  assert.match(growth, /ยังไม่มี baseline ที่เทียบกันได้จาก deployment API/);
   assert.match(growthPage, /ยังไม่เชื่อมต่อ/);
   assert.match(growthPage, /ดึงข้อมูลไม่สำเร็จ/);
   assert.match(growthLoading, /role="status"/);

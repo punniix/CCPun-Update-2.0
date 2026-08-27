@@ -82,6 +82,21 @@ test("Google sign-in requires a verified allowlisted identity", () => {
   );
 });
 
+test("Admin UAT supports an owner-only operating model", () => {
+  process.env.CCPUN_ADMIN_OWNER_EMAILS = "owner@example.com";
+  for (const key of [
+    "CCPUN_ADMIN_EDITOR_EMAILS",
+    "CCPUN_ADMIN_SEO_MANAGER_EMAILS",
+    "CCPUN_ADMIN_REVIEWER_EMAILS",
+    "CCPUN_ADMIN_ANALYST_EMAILS",
+    "CCPUN_ADMIN_VIEWER_EMAILS",
+  ]) delete process.env[key];
+
+  assert.equal(hasConfiguredAdminUsers("admin-uat"), true);
+  assert.equal(getVerifiedGoogleAdminRole({ provider: "google", email: "owner@example.com", emailVerified: true, environment: "admin-uat" }), "owner");
+  assert.equal(getVerifiedGoogleAdminRole({ provider: "google", email: "other@example.com", emailVerified: true, environment: "admin-uat" }), null);
+});
+
 test("an email assigned to multiple Admin roles fails closed", () => {
   process.env.CCPUN_ADMIN_OWNER_EMAILS = "ambiguous@example.com";
   process.env.CCPUN_ADMIN_VIEWER_EMAILS = "ambiguous@example.com";
