@@ -2,6 +2,7 @@ import { defineArrayMember, defineField, defineType } from "sanity";
 import { ACTIVE_ARTICLE_CATEGORIES, BLOG_TOPIC_HUBS, isReservedArticleSlug } from "../../lib/content/taxonomy";
 import SeoScoreInput from "./components/SeoScoreInput";
 import { adminSchemaTypes } from "./adminTypes";
+import { socialSchemaTypes } from "./socialTypes";
 
 const activeArticleCategorySlugs = ACTIVE_ARTICLE_CATEGORIES.map(({ slug }) => slug);
 const semanticTopicOptions = BLOG_TOPIC_HUBS.map(({ slug, title }) => ({ title, value: slug }));
@@ -529,6 +530,7 @@ const article = defineType({
 
 export const schemaTypes = [
   ...adminSchemaTypes,
+  ...socialSchemaTypes,
   article,
   author,
   category,
