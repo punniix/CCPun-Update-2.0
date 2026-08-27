@@ -16,6 +16,10 @@ assert.equal(packageJson.scripts['local:production'], undefined);
 assert.match(packageJson.scripts['local:production:read'], /CCPUN_LOCAL_PRODUCTION_DRAFT_WRITES=0/);
 assert.match(packageJson.scripts['local:production:draft'], /CCPUN_LOCAL_PRODUCTION_DRAFT_WRITES=1/);
 assert.equal(packageJson.scripts['qa:legacy-urls'], 'node qa/legacy-url-regression.mjs');
+assert.deepEqual(packageJson.allowScripts, {
+  esbuild: false,
+  'unrs-resolver': false,
+});
 
 const vercelConfig = JSON.parse(read('vercel.json'));
 assert.equal(vercelConfig.ignoreCommand, 'node scripts/vercel-ignore-build.mjs');
@@ -118,6 +122,7 @@ assert.match(sanityProvider, /_type === "imageWithAlt" \|\| item\._type === "mig
 assert.match(sanityProvider, /seoTitle: seoTitle \|\| raw\.title/, 'Article title must remain the rendered SEO title fallback');
 const seoAudit = read('lib/admin/seo-audit.ts');
 assert.match(seoAudit, /const effectiveSeoTitle = seo\.title\?\.trim\(\) \|\| article\.title\?\.trim\(\) \|\| ""/);
+assert.match(seoAudit, /faqQuestions: z\.array\(z\.string\(\)\)\.nullish\(\)\.transform\(\(value\) => value \?\? \[\]\)/);
 assert.match(sanityProvider, /status === "published" && \(!excerpt \|\| !seoDescription\)/, 'Published articles must keep required excerpt and meta description validation');
 assert.match(sanityProvider, /status === "draft" \? parseRenderableBodyItems\(raw\.body\) : z\.array\(bodyItemSchema\)\.parse\(raw\.body\)/, 'Only Draft Preview may omit incomplete body blocks');
 assert.match(sanityProvider, /status === "draft"[\s\S]*parseRenderableFaqItems\(raw\.faq\)[\s\S]*z\.array\(faqItemSchema\)\.parse\(raw\.faq\)/, 'Published FAQ must remain strict');

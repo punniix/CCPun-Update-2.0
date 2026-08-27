@@ -4,11 +4,11 @@ const WEB_PROJECT_ID = "prj_dxwjITkd0av5QiJQv2snUlIASUWu";
 const ADMIN_PROJECT_ID = "prj_6tuUxJxYbQ4mpF7sMgNWx2p2jowN";
 
 function isWebOnlyBranch(branch) {
-  return branch.startsWith("ux/") || branch.startsWith("web/") || branch.includes("website-42");
+  return branch.startsWith("ux/") || branch.startsWith("web/") || branch.includes("website-43");
 }
 
 function isAdminOnlyBranch(branch) {
-  return branch.startsWith("admin/") || branch.startsWith("codex/admin-");
+  return branch.startsWith("admin/") || branch.startsWith("codex/admin-") || branch.includes("website-42");
 }
 
 export function shouldBuild({ projectId, environment, branch }) {

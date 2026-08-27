@@ -9,10 +9,10 @@ import {
   getStudioPublishingOptions,
   protectProductionContentLifecycleActions,
 } from "../../cms/sanity/studio-policy";
-import { CCPUN_LEGACY_VERCEL_PROJECT_IDS, CCPUN_VERCEL_PROJECT_IDS } from "../../lib/admin/environment";
+import { CCPUN_VERCEL_PROJECT_IDS } from "../../lib/admin/environment";
 
 const PRODUCTION_ADMIN_PROJECT_ID = CCPUN_VERCEL_PROJECT_IDS.adminProduction;
-const ADMIN_LAB_PROJECT_ID = CCPUN_LEGACY_VERCEL_PROJECT_IDS.adminLab;
+const ADMIN_LAB_PROJECT_ID = "prj_retired_lab";
 const WEB_PROJECT_ID = CCPUN_VERCEL_PROJECT_IDS.web;
 const UAT_SANITY_PROJECT_ID = "ccb9lnw5";
 const PRODUCTION_SANITY_PROJECT_ID = "kyfxgjnq";

@@ -154,7 +154,7 @@ Acceptance gate: the documented callback matches the Lab Auth.js route exactly a
 Status: **Complete — stable protected alias and evidence-bounded noindex contract verified.**
 
 - Vercel scope: `punniixs-projects` (`team_GbcO71LS2dLHwiBV6Cs39Kax`)
-- Lab project: `ccpun-web-lab` (`prj_438M14AAob2nbf20q7Xa5L7A7aMo`)
+- Historical lab Project was retired after parity verification; it is not a deployment target.
 - Stable Lab alias: `https://ccpun-web-lab-punniixs-projects.vercel.app`
 - Stable Control Plane URL: `https://ccpun-web-lab-punniixs-projects.vercel.app/snt-admin/`
 - Exact Auth.js Google callback for future F2: `https://ccpun-web-lab-punniixs-projects.vercel.app/api/auth/callback/google`

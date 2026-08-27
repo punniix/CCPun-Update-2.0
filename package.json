@@ -64,6 +64,10 @@
     "tsx": "^4.23.12",
     "typescript": "^5"
   },
+  "allowScripts": {
+    "esbuild": false,
+    "unrs-resolver": false
+  },
   "browserslist": [
     "chrome >= 109",
     "edge >= 109",
