@@ -14,6 +14,7 @@ import { isPublicInternetAddress } from "../../lib/admin/provider-network";
 import { isVercelSsoLabTrustMode } from "../../lib/admin/lab-sso";
 import {
   getConfiguredAdminRole,
+  getAdminRoleForEmail,
   getVerifiedGoogleAdminRole,
   hasConfiguredAdminUsers,
   hasAdminPermission,
@@ -75,6 +76,21 @@ test("Google sign-in requires a verified allowlisted identity", () => {
     getVerifiedGoogleAdminRole({
       provider: "google",
       email: "unknown@example.com",
+      emailVerified: true,
+    }),
+    null,
+  );
+});
+
+test("an email assigned to multiple Admin roles fails closed", () => {
+  process.env.CCPUN_ADMIN_OWNER_EMAILS = "ambiguous@example.com";
+  process.env.CCPUN_ADMIN_VIEWER_EMAILS = "ambiguous@example.com";
+
+  assert.equal(getAdminRoleForEmail("ambiguous@example.com"), null);
+  assert.equal(
+    getVerifiedGoogleAdminRole({
+      provider: "google",
+      email: "ambiguous@example.com",
       emailVerified: true,
     }),
     null,

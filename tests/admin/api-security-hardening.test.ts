@@ -44,6 +44,18 @@ test("approve and apply validate bounded Sanity document IDs before data access"
   assert.match(applyRoute, /INVALID_SUGGESTION_ID[\s\S]*?invalid-suggestion-id[\s\S]*?status: 400/);
 });
 
+test("SEO audit and proposal routes validate bounded article IDs before data access", () => {
+  const source = read("lib/admin/seo-audit.ts");
+  const auditRoute = read("app/api/snt-admin/seo/audit/[id]/route.ts");
+  const proposalRoute = read("app/api/snt-admin/seo/audit/[id]/proposals/route.ts");
+
+  assert.match(source, /const articleDocumentIdSchema = z\.string\(\)\.min\(1\)\.max\(200\)\.regex\(\/\^\[A-Za-z0-9_\.\-\]\+\$\/\)/);
+  assert.match(source, /runSeoAudit[\s\S]*?const cleanId = parseArticleDocumentId\(articleId\);[\s\S]*?readClient\.fetch/);
+  assert.match(source, /getSeoProposalContext[\s\S]*?const cleanId = parseArticleDocumentId\(articleId\);[\s\S]*?readClient\.fetch/);
+  assert.match(auditRoute, /INVALID_ARTICLE_ID[\s\S]*?invalid-article-id[\s\S]*?status: 400/);
+  assert.match(proposalRoute, /INVALID_ARTICLE_ID[\s\S]*?invalid-article-id[\s\S]*?status: 400/);
+});
+
 test("Preview disable is a same-origin POST and every current caller uses POST", () => {
   const route = read("app/api/preview/disable/route.ts");
   const proxy = read("proxy.ts");

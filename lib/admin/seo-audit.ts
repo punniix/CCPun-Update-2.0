@@ -15,6 +15,13 @@ const projectId = process.env.NEXT_PUBLIC_SANITY_PROJECT_ID?.trim();
 const dataset = process.env.NEXT_PUBLIC_SANITY_DATASET?.trim();
 const readToken = getAdminSanityReadToken();
 const writeToken = getAdminSanityWriteToken();
+const articleDocumentIdSchema = z.string().min(1).max(200).regex(/^[A-Za-z0-9_.-]+$/);
+
+function parseArticleDocumentId(value: string) {
+  const parsed = articleDocumentIdSchema.safeParse(value);
+  if (!parsed.success) throw new Error("INVALID_ARTICLE_ID");
+  return parsed.data.replace(/^drafts\./, "");
+}
 
 const portableChildSchema = z.object({ text: z.string().optional() }).passthrough();
 const markDefSchema = z.object({ href: z.string().optional() }).passthrough();
@@ -224,10 +231,10 @@ export async function runSeoAudit(
   persist = true,
   context?: SeoAuditMutationContext,
 ): Promise<SeoAuditResult> {
+  const cleanId = parseArticleDocumentId(articleId);
   const readClient = clientForRead();
   if (!readClient) throw new Error("SANITY_READ_NOT_CONFIGURED");
 
-  const cleanId = articleId.replace(/^drafts\./, "");
   const draftId = `drafts.${cleanId}`;
   const articleRaw = await readClient.fetch(groq`coalesce(*[_type == "article" && _id == $draftId][0], *[_type == "article" && _id == $publishedId][0]){
     "id": _id,
@@ -346,9 +353,9 @@ const proposalResearchSchema = z.object({
 });
 
 export async function getSeoProposalContext(articleId: string) {
+  const cleanId = parseArticleDocumentId(articleId);
   const readClient = clientForRead();
   if (!readClient) throw new Error("SANITY_READ_NOT_CONFIGURED");
-  const cleanId = articleId.replace(/^drafts\./, "");
   const draftId = `drafts.${cleanId}`;
   const raw = await readClient.fetch(groq`coalesce(*[_type == "article" && _id == $draftId][0], *[_type == "article" && _id == $publishedId][0]){
     "revision": _rev,

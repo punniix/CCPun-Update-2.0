@@ -106,14 +106,8 @@ export function getAdminRoleForEmail(email: string | null | undefined): AdminRol
   if (!email) return null;
 
   const normalized = normalizeEmail(email);
-
-  for (const role of ADMIN_ROLES) {
-    if (parseEmailList(process.env[ROLE_ENV_KEYS[role]]).has(normalized)) {
-      return role;
-    }
-  }
-
-  return null;
+  const matches = ADMIN_ROLES.filter((role) => parseEmailList(process.env[ROLE_ENV_KEYS[role]]).has(normalized));
+  return matches.length === 1 ? matches[0] : null;
 }
 
 export function getConfiguredAdminRole(

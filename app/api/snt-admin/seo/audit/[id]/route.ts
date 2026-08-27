@@ -33,6 +33,9 @@ export async function POST(_request: Request, context: RouteContext) {
     });
     return NextResponse.json({ ...result, requestId });
   } catch (error) {
+    if (error instanceof Error && error.message === "INVALID_ARTICLE_ID") {
+      return NextResponse.json({ error: "invalid-article-id", requestId }, { status: 400 });
+    }
     if (error instanceof Error && error.message === "ARTICLE_NOT_FOUND") {
       return NextResponse.json({ error: "article-not-found", requestId }, { status: 404 });
     }
