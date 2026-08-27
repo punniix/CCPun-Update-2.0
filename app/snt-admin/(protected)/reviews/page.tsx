@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import ApproveSuggestionButton from "@/components/admin/ApproveSuggestionButton";
 import ApplySuggestionButton from "@/components/admin/ApplySuggestionButton";
+import ReviewDecisionControls from "@/components/admin/ReviewDecisionControls";
 import { connectionLabel, proposalStatusLabel, proposalTypeLabel, riskLabel } from "@/lib/admin/presentation";
 import { requireAdminPermission } from "@/lib/admin/require-permission";
 import { hasAdminPermission } from "@/lib/admin/rbac";
@@ -78,6 +79,8 @@ export default async function AdminReviewsPage() {
           const articleId = (usesFrozenApproval ? item.approvedTargetId : item.articleId)?.replace(/^drafts\./, "");
           const seoHref = articleId ? `/snt-admin/seo/${encodeURIComponent(articleId)}/` : "/snt-admin/seo/";
           const canApprove = hasAdminPermission(identity.role, "reviews:approve") && result.status.writeReady && item.status === "needs-human-review" && !isStale;
+          const canEdit = hasAdminPermission(identity.role, "reviews:edit") && result.status.writeReady && item.status === "needs-human-review" && !isStale;
+          const canReject = hasAdminPermission(identity.role, "reviews:reject") && result.status.writeReady && item.status === "needs-human-review" && !isStale;
           const canApply = hasAdminPermission(identity.role, "draft:apply") && result.status.writeReady && item.status === "approved" && !isApprovedStale && Boolean(effectiveType && getApplyableFieldPath(effectiveType)) && effectiveRiskLevel !== "high" && effectiveRiskLevel !== "critical";
           const approveDisabledReason = isStale
             ? "ข้อเสนอนี้อ้างอิงฉบับร่างรุ่นเก่า กรุณาสร้างข้อเสนอใหม่จากหน้า ตรวจ SEO"
@@ -133,6 +136,13 @@ export default async function AdminReviewsPage() {
                   ) : item.status === "needs-human-review" ? (
                     <div className="max-w-sm text-right">
                       <ApproveSuggestionButton id={item.id} disabled={!canApprove} />
+                      <ReviewDecisionControls
+                        id={item.id}
+                        initialAfter={item.after ?? ""}
+                        initialReason={item.reason ?? ""}
+                        canEdit={canEdit}
+                        canReject={canReject}
+                      />
                       {approveDisabledReason ? <p className="mt-2 text-sm leading-6 text-white/65">{approveDisabledReason}</p> : null}
                     </div>
                   ) : item.status === "applied" && studioPreviewHref && studioReady ? (

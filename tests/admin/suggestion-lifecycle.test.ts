@@ -4,6 +4,8 @@ import {
   approvedBaseIsCurrent,
   canApplySuggestion,
   canApproveSuggestion,
+  canEditSuggestion,
+  canRejectSuggestion,
   deterministicAuditSuggestionId,
   frozenControlsForApply,
   isHumanReviewActor,
@@ -21,7 +23,11 @@ test("approval and apply accept human actors only", () => {
 
 test("proposal lifecycle never moves a replayed state backward", () => {
   assert.equal(canApproveSuggestion("needs-human-review"), true);
+  assert.equal(canEditSuggestion("needs-human-review"), true);
+  assert.equal(canRejectSuggestion("needs-human-review"), true);
   assert.equal(canApproveSuggestion("approved"), false);
+  assert.equal(canEditSuggestion("approved"), false);
+  assert.equal(canRejectSuggestion("applied"), false);
   assert.equal(canApproveSuggestion("applied"), false);
   assert.equal(canApplySuggestion("approved"), true);
   assert.equal(canApplySuggestion("needs-human-review"), false);

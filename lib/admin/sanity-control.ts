@@ -10,6 +10,8 @@ import {
   approvedBaseIsCurrent,
   canApplySuggestion,
   canApproveSuggestion,
+  canEditSuggestion,
+  canRejectSuggestion,
   deterministicAuditSuggestionId,
   frozenControlsForApply,
   getApplyableFieldPath,
@@ -486,6 +488,78 @@ export async function approveSeoSuggestion(input: {
   }
 
   return { id, status: "approved", reviewedAt };
+}
+
+const reviewDecisionSchema = z.discriminatedUnion("decision", [
+  z.object({ decision: z.literal("edit"), after: z.string().min(1).max(12000), reason: z.string().min(1).max(8000) }),
+  z.object({ decision: z.literal("reject"), reason: z.string().min(1).max(2000) }),
+]);
+
+const pendingSuggestionSchema = z.object({
+  _id: z.string(),
+  _rev: z.string(),
+  status: z.string(),
+});
+
+export async function reviewSeoSuggestion(input: {
+  id: string;
+  decision: "edit" | "reject";
+  after?: string;
+  reason: string;
+  reviewedBy: string;
+  actorType: "human" | "ai" | "system";
+  requestId: string;
+}) {
+  const id = privateAdminDocumentId(parseSuggestionDocumentId(input.id));
+  const decision = reviewDecisionSchema.parse(input);
+  const reviewer = z.string().min(1).max(320).parse(input.reviewedBy);
+  const context = mutationContextSchema.parse(input);
+  if (!isHumanReviewActor(context.actorType)) throw new Error("HUMAN_REVIEW_REQUIRED");
+
+  const client = requireWriteClient();
+  if (!client) throw new Error("SANITY_WRITE_NOT_CONFIGURED");
+  const rawClient = client.withConfig({ perspective: "raw" });
+  const raw = await rawClient.fetch(
+    groq`*[_id == $id && _type == "seoSuggestion"][0]{ _id, _rev, status }`,
+    { id },
+  );
+  if (!raw) throw new Error("SUGGESTION_NOT_FOUND");
+  const suggestion = pendingSuggestionSchema.parse(raw);
+  if (decision.decision === "edit" ? !canEditSuggestion(suggestion.status) : !canRejectSuggestion(suggestion.status)) {
+    throw new Error("SUGGESTION_STATUS_CONFLICT");
+  }
+
+  const decidedAt = new Date().toISOString();
+  const nextStatus = decision.decision === "reject" ? "rejected" : "needs-human-review";
+  const values = decision.decision === "edit"
+    ? { after: decision.after, reason: decision.reason, editedBy: reviewer, editedAt: decidedAt }
+    : { status: nextStatus, rejectionReason: decision.reason, reviewedBy: reviewer, reviewedAt: decidedAt };
+  const auditDocument = buildAuditLogDocument({
+    id: `auditLog.${randomUUID()}`,
+    actor: reviewer,
+    actorType: context.actorType,
+    action: decision.decision === "edit" ? "seo-suggestion:edit" : "seo-suggestion:reject",
+    objectType: "seoSuggestion",
+    objectId: id,
+    before: { status: suggestion.status },
+    after: { status: nextStatus, valuePresent: decision.decision === "edit", reasonPresent: true },
+    requestId: context.requestId,
+    timestamp: decidedAt,
+  });
+
+  try {
+    await rawClient.transaction()
+      .patch(id, (patch) => patch.ifRevisionId(suggestion._rev).set(values))
+      .create(auditDocument)
+      .commit();
+  } catch (error) {
+    if (isRevisionConflict(error)) throw new Error("SUGGESTION_CONFLICT");
+    throw error;
+  }
+
+  return decision.decision === "edit"
+    ? { id, status: nextStatus, editedAt: decidedAt }
+    : { id, status: nextStatus, reviewedAt: decidedAt };
 }
 
 const applyableSuggestionSchema = z.object({

@@ -28,6 +28,7 @@ test("audit before/after keeps only approved fields and drops credential-shaped 
   });
   assert.equal(safeAuditJson({ unknown: "raw", token: "secret" }), undefined);
   assert.equal(safeAuditJson("raw unknown payload"), undefined);
+  assert.deepEqual(JSON.parse(safeAuditJson({ reasonPresent: true, reason: "private reviewer note" }) ?? "null"), { reasonPresent: true });
 });
 
 test("approve and apply validate bounded Sanity document IDs before data access", () => {
@@ -74,4 +75,25 @@ test("all current Admin-only Sanity documents use the authenticated Draft namesp
   assert.match(dashboard, /accountId = privateAdminDocumentId\(/);
   assert.match(dashboard, /geoId = privateAdminDocumentId\(/);
   assert.doesNotMatch(seoAudit, /workflowDocumentId/);
+});
+
+test("human edit and reject decisions are validated, authorized, revision-guarded, and audited", () => {
+  const control = read("lib/admin/sanity-control.ts");
+  const editRoute = read("app/api/snt-admin/reviews/[id]/edit/route.ts");
+  const rejectRoute = read("app/api/snt-admin/reviews/[id]/reject/route.ts");
+  const page = read("app/snt-admin/(protected)/reviews/page.tsx");
+  const schema = read("cms/sanity/adminTypes.ts");
+
+  assert.match(control, /reviewDecisionSchema = z\.discriminatedUnion/);
+  assert.match(control, /privateAdminDocumentId\(parseSuggestionDocumentId\(input\.id\)\)/);
+  assert.match(control, /ifRevisionId\(suggestion\._rev\)/);
+  assert.match(control, /seo-suggestion:edit/);
+  assert.match(control, /seo-suggestion:reject/);
+  assert.match(editRoute, /bodySchema\.safeParse/);
+  assert.match(editRoute, /action: "review:edit"/);
+  assert.match(rejectRoute, /bodySchema\.safeParse/);
+  assert.match(rejectRoute, /action: "review:reject"/);
+  assert.match(page, /ReviewDecisionControls/);
+  assert.match(schema, /value: "rejected"/);
+  assert.match(schema, /name: "rejectionReason"/);
 });

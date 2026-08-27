@@ -9,6 +9,7 @@ const ALLOWED_AUDIT_FIELDS = new Set([
   "geoPrompts",
   "provider",
   "quotaCount",
+  "reasonPresent",
   "riskLevel",
   "score",
   "status",

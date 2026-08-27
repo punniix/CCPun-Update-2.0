@@ -16,14 +16,24 @@ afterEach(() => {
 test("email allowlist maps to the configured role", () => {
   process.env.CCPUN_ADMIN_OWNER_EMAILS = "owner@example.com";
   process.env.CCPUN_ADMIN_EDITOR_EMAILS = "editor@example.com";
+  process.env.CCPUN_ADMIN_SEO_MANAGER_EMAILS = "seo@example.com";
+  process.env.CCPUN_ADMIN_REVIEWER_EMAILS = "reviewer@example.com";
 
   assert.equal(getAdminRoleForEmail("OWNER@example.com"), "owner");
   assert.equal(getAdminRoleForEmail("editor@example.com"), "editor");
+  assert.equal(getAdminRoleForEmail("seo@example.com"), "seo-manager");
+  assert.equal(getAdminRoleForEmail("reviewer@example.com"), "reviewer");
   assert.equal(getAdminRoleForEmail("unknown@example.com"), null);
 });
 
 test("owner has apply permission but viewer does not", () => {
   assert.equal(hasAdminPermission("owner", "draft:apply"), true);
+  assert.equal(hasAdminPermission("reviewer", "reviews:approve"), true);
+  assert.equal(hasAdminPermission("reviewer", "reviews:edit"), true);
+  assert.equal(hasAdminPermission("reviewer", "reviews:reject"), true);
+  assert.equal(hasAdminPermission("reviewer", "draft:apply"), false);
+  assert.equal(hasAdminPermission("seo-manager", "research:provider-query"), true);
+  assert.equal(hasAdminPermission("seo-manager", "reviews:approve"), false);
   assert.equal(hasAdminPermission("viewer", "draft:apply"), false);
 });
 
@@ -36,6 +46,15 @@ test("AI cannot approve its own proposal", () => {
   });
 
   assert.equal(decision.allowed, false);
+});
+
+test("only a human reviewer may edit or reject a proposal", () => {
+  for (const action of ["review:edit", "review:reject"] as const) {
+    assert.equal(evaluateAdminAction({ actorType: "human", role: "reviewer", action, environment: "lab" }).allowed, true);
+    assert.equal(evaluateAdminAction({ actorType: "ai", role: "reviewer", action, environment: "lab" }).allowed, false);
+    assert.equal(evaluateAdminAction({ actorType: "system", role: "owner", action, environment: "lab" }).allowed, false);
+  }
+  assert.equal(evaluateAdminAction({ actorType: "human", role: "reviewer", action: "draft:apply", environment: "lab" }).allowed, false);
 });
 
 test("AI cannot apply a draft mutation", () => {

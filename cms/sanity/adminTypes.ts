@@ -6,6 +6,7 @@ const suggestionStatuses = [
   { title: "Needs human review", value: "needs-human-review" },
   { title: "Approved", value: "approved" },
   { title: "Applied to Draft", value: "applied" },
+  { title: "Rejected", value: "rejected" },
   { title: "Published", value: "published" },
 ];
 
@@ -115,9 +116,12 @@ export const seoSuggestion = defineType({
     }),
     defineField({ name: "createdBy", title: "Created by", type: "string", readOnly: true }),
     defineField({ name: "reviewedBy", title: "Reviewed by", type: "string", readOnly: true }),
+    defineField({ name: "editedBy", title: "Edited by", type: "string", readOnly: true }),
+    defineField({ name: "rejectionReason", title: "Rejection reason", type: "text", rows: 4, readOnly: true }),
     defineField({ name: "appliedBy", title: "Applied by", type: "string", readOnly: true }),
     defineField({ name: "createdAt", title: "Created at", type: "datetime", readOnly: true }),
     defineField({ name: "reviewedAt", title: "Reviewed at", type: "datetime", readOnly: true }),
+    defineField({ name: "editedAt", title: "Edited at", type: "datetime", readOnly: true }),
     defineField({ name: "appliedAt", title: "Applied at", type: "datetime", readOnly: true }),
     defineField({ name: "publishedAt", title: "Published at", type: "datetime", readOnly: true }),
   ],

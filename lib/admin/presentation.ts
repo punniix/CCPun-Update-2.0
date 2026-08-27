@@ -3,6 +3,8 @@ import type { AdminRole } from "./rbac";
 const ROLE_LABELS: Record<AdminRole, string> = {
   owner: "เจ้าของระบบ",
   editor: "ผู้ดูแลเนื้อหา",
+  "seo-manager": "ผู้จัดการ SEO",
+  reviewer: "ผู้ตรวจทาน",
   analyst: "ผู้วิเคราะห์",
   viewer: "ผู้ดูข้อมูล",
 };

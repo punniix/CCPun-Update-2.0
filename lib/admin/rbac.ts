@@ -1,6 +1,6 @@
 import { getAdminEnvironment, type AdminEnvironment } from "./environment";
 
-export const ADMIN_ROLES = ["owner", "editor", "analyst", "viewer"] as const;
+export const ADMIN_ROLES = ["owner", "editor", "seo-manager", "reviewer", "analyst", "viewer"] as const;
 
 export type AdminRole = (typeof ADMIN_ROLES)[number];
 
@@ -15,6 +15,8 @@ export const ADMIN_PERMISSIONS = [
   "research:provider-query",
   "reviews:read",
   "reviews:approve",
+  "reviews:edit",
+  "reviews:reject",
   "audit:read",
   "settings:read",
   "draft:apply",
@@ -33,6 +35,27 @@ const ROLE_PERMISSIONS: Record<AdminRole, ReadonlySet<AdminPermission>> = {
     "research:read",
     "research:create",
     "reviews:read",
+  ]),
+  "seo-manager": new Set([
+    "dashboard:read",
+    "content:read",
+    "content:propose",
+    "seo:read",
+    "seo:propose",
+    "research:read",
+    "research:create",
+    "research:provider-query",
+    "reviews:read",
+  ]),
+  reviewer: new Set([
+    "dashboard:read",
+    "content:read",
+    "seo:read",
+    "research:read",
+    "reviews:read",
+    "reviews:approve",
+    "reviews:edit",
+    "reviews:reject",
   ]),
   analyst: new Set([
     "dashboard:read",
@@ -54,6 +77,8 @@ const ROLE_PERMISSIONS: Record<AdminRole, ReadonlySet<AdminPermission>> = {
 const ROLE_ENV_KEYS: Record<AdminRole, string> = {
   owner: "CCPUN_ADMIN_OWNER_EMAILS",
   editor: "CCPUN_ADMIN_EDITOR_EMAILS",
+  "seo-manager": "CCPUN_ADMIN_SEO_MANAGER_EMAILS",
+  reviewer: "CCPUN_ADMIN_REVIEWER_EMAILS",
   analyst: "CCPUN_ADMIN_ANALYST_EMAILS",
   viewer: "CCPUN_ADMIN_VIEWER_EMAILS",
 };

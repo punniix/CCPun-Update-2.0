@@ -17,6 +17,14 @@ export function canApproveSuggestion(status: string) {
   return status === "needs-human-review";
 }
 
+export function canEditSuggestion(status: string) {
+  return status === "needs-human-review";
+}
+
+export function canRejectSuggestion(status: string) {
+  return status === "needs-human-review";
+}
+
 export function canApplySuggestion(status: string) {
   return status === "approved";
 }
