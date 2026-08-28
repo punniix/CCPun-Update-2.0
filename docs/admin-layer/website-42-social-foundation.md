@@ -55,9 +55,11 @@ Later, the COO must complete these external steps in the Neon/Vercel UI:
 6. Add the non-secret feature flags to that exact Preview branch only.
 7. Redeploy the Preview and verify the readiness booleans. Do not paste the connection string into chat, shell commands, screenshots, Sanity, or source control.
 
-## Threaded Comment Series blocker
+## Threaded Comment Series readiness
 
-The Phase 1 database prevents self-parenting and cross-publication parent links, but a relational foreign key alone does not prevent a longer cycle such as A → B → C → A. A bounded cycle-detection rule and transaction-level tests are mandatory before any threaded Comment Series executor can be enabled. Until then, the schema is a storage contract only and no comment executor may consume threaded relationships.
+The Phase 1 database prevents self-parenting and cross-publication parent links. The server-side planner additionally rejects duplicate IDs/order values, missing parents, longer cycles such as A → B → C → A, invalid top-level/threaded relationships, unpublished parents, and comments that have not passed human review. Its regression test covers the bounded cycle path.
+
+Provider execution remains disabled. A real executor still requires an approved Meta connection, per-comment idempotent writes, retry/audit persistence, and authenticated UAT verification before any comment is sent.
 
 ## Rollback
 
