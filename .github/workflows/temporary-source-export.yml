@@ -1,0 +1,23 @@
+name: Temporary source export
+
+on:
+  push:
+    branches:
+      - refactor/repository-architecture-v42-20260828
+
+permissions:
+  contents: read
+
+jobs:
+  export-source:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Package source tree
+        run: tar --exclude=.git -czf /tmp/ccpun-source.tar.gz .
+      - name: Upload source archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: ccpun-source
+          path: /tmp/ccpun-source.tar.gz
+          retention-days: 1
