@@ -16,13 +16,16 @@ cms/sanity/migration-contract.md @punniix
 # Analytics / consent ownership
 lib/analytics.ts @punniix
 lib/cookie-consent.ts @punniix
-components/GoogleAnalytics.tsx @punniix
-components/GoogleTagManager.tsx @punniix
-components/MetaPixel.tsx @punniix
-components/CookieConsent.tsx @punniix
+features/analytics/components/GoogleAnalytics.tsx @punniix
+features/analytics/components/GoogleTagManager.tsx @punniix
+features/analytics/components/MetaPixel.tsx @punniix
+features/analytics/components/CookieConsent.tsx @punniix
 qa/tracking-consent-regression.mjs @punniix
 tests/analytics-regression.ts @punniix
 
 # Sanity environment / publishing safety
-cms/sanity/studio-policy.ts @punniix
+cms/sanity/policy/studio-policy.ts @punniix
+cms/sanity/config/ @punniix
+cms/sanity/schema/ @punniix
+cms/sanity/admin/schema/ @punniix
 lib/admin/environment.ts @punniix

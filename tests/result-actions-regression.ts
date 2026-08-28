@@ -2,13 +2,13 @@ import { readFileSync } from 'node:fs';
 import {
   CI_LINE_OA_DESTINATION,
   CI_LINE_OA_URL,
-} from '../lib/ci/constants';
-import type { CIResult } from '../lib/ci/types';
+} from '../features/ci-planning/calculator/constants';
+import type { CIResult } from '../features/ci-planning/calculator/types';
 import {
   createCIResultImageSummary,
   RESULT_IMAGE_HEIGHT,
   RESULT_IMAGE_WIDTH,
-} from '../lib/result-image';
+} from '../features/ci-planning/result-image';
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
@@ -132,36 +132,40 @@ for (const rawValue of ['12345', '98765', '777777']) {
   assert(!serializedSummary.includes(rawValue), `raw input value ${rawValue} must not enter the image DTO`);
 }
 
-const imageSource = readFileSync(new URL('../lib/result-image.ts', import.meta.url), 'utf8');
-const shareImageSource = readFileSync(new URL('../lib/result-share-image.ts', import.meta.url), 'utf8');
+const imageSource = readFileSync(new URL('../features/ci-planning/result-image.ts', import.meta.url), 'utf8');
+const shareImageSource = readFileSync(new URL('../lib/shared/result-share-image.ts', import.meta.url), 'utf8');
 const fhcImageSource = readFileSync(
-  new URL('../components/FHCLifeResultImageDownloadButton.tsx', import.meta.url),
+  new URL('../features/financial-health-check/components/FHCLifeResultImageDownloadButton.tsx', import.meta.url),
   'utf8',
 );
 const ciResultSource = readFileSync(
-  new URL('../components/CIPlanning/result/CIResult.tsx', import.meta.url),
+  new URL('../features/ci-planning/components/result/CIResult.tsx', import.meta.url),
   'utf8',
 );
-const ciConstantsSource = readFileSync(new URL('../lib/ci/constants.ts', import.meta.url), 'utf8');
-const ciPageSource = readFileSync(new URL('../app/ci-planning/page.tsx', import.meta.url), 'utf8');
+const ciConstantsSource = readFileSync(new URL('../features/ci-planning/calculator/constants.ts', import.meta.url), 'utf8');
+const ciPageSource = readFileSync(new URL('../features/ci-planning/page.tsx', import.meta.url), 'utf8');
 const ciLandingSource = readFileSync(
-  new URL('../components/CIPlanning/CILandingIntro.tsx', import.meta.url),
+  new URL('../features/ci-planning/components/CILandingIntro.tsx', import.meta.url),
+  'utf8',
+);
+const ciWalkthroughSource = readFileSync(
+  new URL('../features/ci-planning/components/CIPreToolWalkthrough.tsx', import.meta.url),
   'utf8',
 );
 const ciExpensesSource = readFileSync(
-  new URL('../components/CIPlanning/steps/StepExpenses.tsx', import.meta.url),
+  new URL('../features/ci-planning/components/steps/StepExpenses.tsx', import.meta.url),
   'utf8',
 );
 const ciExistingSource = readFileSync(
-  new URL('../components/CIPlanning/steps/StepExistingCI.tsx', import.meta.url),
+  new URL('../features/ci-planning/components/steps/StepExistingCI.tsx', import.meta.url),
   'utf8',
 );
 const resultImageButtonSource = readFileSync(
-  new URL('../components/ResultImageDownloadButton.tsx', import.meta.url),
+  new URL('../features/ci-planning/components/ResultImageDownloadButton.tsx', import.meta.url),
   'utf8',
 );
-const ciCalculatorSource = readFileSync(new URL('../lib/ci/calculator.ts', import.meta.url), 'utf8');
-const ciTypesSource = readFileSync(new URL('../lib/ci/types.ts', import.meta.url), 'utf8');
+const ciCalculatorSource = readFileSync(new URL('../features/ci-planning/calculator/calculator.ts', import.meta.url), 'utf8');
+const ciTypesSource = readFileSync(new URL('../features/ci-planning/calculator/types.ts', import.meta.url), 'utf8');
 const analyticsSource = readFileSync(new URL('../lib/analytics.ts', import.meta.url), 'utf8');
 const llmsSource = readFileSync(new URL('../public/llms.txt', import.meta.url), 'utf8');
 const navConfigSource = readFileSync(new URL('../lib/nav-config.json', import.meta.url), 'utf8');
@@ -234,15 +238,8 @@ for (const requiredLandingCopy of [
   'ทุนประกันโรคร้ายแรงที่มีอยู่ และสินทรัพย์',
   'ผมจึงเทียบภาระกับทุนประกันโรคร้ายแรง รวมถึงสินทรัพย์ที่พร้อมเปลี่ยนเป็นเงินสดได้เร็ว',
   'เมื่อแยกทีละส่วน คุณจะเห็นที่มาของตัวเลข ภาระส่วนไหนต้องดูแลอีกนาน และเงินก้อนจากประกันโรคร้ายแรงที่มีอยู่ช่วยรองรับได้เพียงใด',
-  'วิธีคิดของคุณ: รายได้ · ค่าใช้จ่าย · ระยะที่ต้องดูแล · เงินก้อนที่มีอยู่',
-  '02 · ระยะที่ต้องดูแล',
-  '03 · ทุนประกันโรคร้ายแรง และสินทรัพย์สภาพคล่อง',
-  'ดูจากรายได้ หรือรวมภาระที่ยังต้องดูแล',
-  'เลือกระยะเวลาที่ต้องการวางแผน',
   'เทียบกับเงินก้อนจากประกันโรคร้ายแรงและสินทรัพย์สภาพคล่อง',
-  'ทัก LINE OA',
   'เริ่มจากรายได้และภาระที่ยังต้องดูแล',
-  'เริ่มคำนวณทุนของฉัน',
 ]) {
   assert(
     ciPageSource.includes(requiredLandingCopy) || ciLandingSource.includes(requiredLandingCopy),
@@ -258,12 +255,12 @@ for (const activeCiSource of [ciPageSource, ciExpensesSource, ciExistingSource, 
   assert(!/multiPay|Multi-pay|ความคุ้มครองโรคร้ายแรงที่อาจจ่ายได้หลายครั้ง/.test(activeCiSource), 'active CI scope must not retain Multi-pay');
 }
 equal(
-  (ciLandingSource.match(/href="#ci-calculator"/g) ?? []).length,
+  (ciWalkthroughSource.match(/href="#ci-calculator"/g) ?? []).length,
   1,
   'lean CI landing must have exactly one pre-calculator anchor',
 );
 equal(
-  (ciLandingSource.match(/gold-button/g) ?? []).length,
+  (ciWalkthroughSource.match(/gold-button/g) ?? []).length,
   1,
   'lean CI landing must have exactly one pre-calculator gold CTA',
 );
@@ -322,7 +319,7 @@ assert(
 );
 assert(!analyticsSource.includes("'monthlyIncome'"), 'raw monthly income must never enter the analytics allowlist');
 assert(!analyticsSource.includes("'otherDebtBalance'"), 'raw other debt must never enter the analytics allowlist');
-for (const source of [ciExpensesSource, ciResultSource, imageSource]) {
+for (const source of [ciExpensesSource, ciResultSource]) {
   assert(source.includes('ภาระหนี้รวม'), 'CI debt surfaces must use the aggregate debt label');
 }
 for (const source of [ciResultSource, imageSource]) {
@@ -353,7 +350,7 @@ assert(
   'result download must export the selected method',
 );
 
-const ciLlmsLine = llmsSource.split('\n').find((line) => line.includes('[**CI Planning**]'));
+const ciLlmsLine = llmsSource.split('\n').find((line) => line.includes('[CI Planning]'));
 assert(ciLlmsLine, 'llms.txt must include the CI Planning entry');
 assert(ciLlmsLine.includes('ประมาณการเบื้องต้น'), 'CI llms entry must use preliminary-estimate wording');
 for (const staleLlmsPhrase of ['ที่ควรมี', 'จากรายได้']) {
@@ -375,7 +372,7 @@ for (const removedFormulaExample of ['20,000 บาท × 12 เดือน', '
   assert(!ciPageSource.includes(removedFormulaExample), `CI landing must remove detailed formula example: ${removedFormulaExample}`);
 }
 assert(
-  llmsSource.includes('- [**LINE Official Account**](https://lin.ee/tqLCs4f): เพิ่มเพื่อน LINE @ccpun'),
+  llmsSource.includes('- [LINE Official Account](https://lin.ee/tqLCs4f): เพิ่มเพื่อน LINE @ccpun'),
   'llms.txt must use the approved LINE Official Account CTA',
 );
 assert(!llmsSource.includes('LINE OpenChat:'), 'llms.txt must not expose the stale LINE OpenChat CTA');

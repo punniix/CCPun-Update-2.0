@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { buildArticleSchemaGraph, buildBlogTopicHubSchema } from "../../lib/content/schema";
+import { buildArticleSchemaGraph, buildBlogTopicHubSchema } from "../../lib/content/structured-data/article-schema";
 import {
   BLOG_TOPIC_HUBS,
   getArticleSemanticTopic,
@@ -114,7 +114,7 @@ test("hub ItemList links to the final Health canonical URL", () => {
 });
 
 test("hub route resolves real hubs before any legacy one-segment redirect fallback", () => {
-  const categoryPage = source("app/blog/[category]/page.tsx");
+  const categoryPage = source("features/blog/pages/BlogCategoryPage.tsx");
   const hubLookup = categoryPage.indexOf("const hub = getBlogTopicHub(slug)");
   const legacyFallback = categoryPage.indexOf("getLegacyCategoryRedirectPath(slug)");
   assert.ok(hubLookup >= 0, "topic hub lookup is missing");
@@ -126,8 +126,8 @@ test("hub route resolves real hubs before any legacy one-segment redirect fallba
 });
 
 test("visible and JSON-LD article breadcrumbs never use query-filter URLs as SEO nodes", () => {
-  const articlePage = source("app/blog/[category]/[slug]/page.tsx");
-  const schemaSource = source("lib/content/schema.ts");
+  const articlePage = source("features/blog/pages/ArticlePage.tsx");
+  const schemaSource = source("lib/content/structured-data/article-schema.ts");
   assert.doesNotMatch(articlePage, /\/blog\/\?category=/);
   assert.doesNotMatch(schemaSource, /\/blog\/\?category=/);
   assert.match(articlePage, /href=\{topicHref\}/);
@@ -138,9 +138,9 @@ test("visible and JSON-LD article breadcrumbs never use query-filter URLs as SEO
 
 test("Blog sitemap and navigation expose only useful indexable hub nodes", () => {
   const sitemap = source("app/sitemaps/blog.xml/route.ts");
-  const blogPage = source("app/blog/page.tsx");
-  const blogArchive = source("components/Blog/BlogArchive.tsx");
-  const articleCard = source("components/Blog/ArticleCard.tsx");
+  const blogPage = source("features/blog/pages/BlogArchivePage.tsx");
+  const blogArchive = source("features/blog/components/BlogArchive.tsx");
+  const articleCard = source("features/blog/components/ArticleCard.tsx");
 
   assert.match(sitemap, /articles\.filter\(isArticleCanonicalAligned\)/);
   assert.match(sitemap, /canonicalArticles\.filter/);
@@ -153,7 +153,7 @@ test("Blog sitemap and navigation expose only useful indexable hub nodes", () =>
   assert.match(blogPage, /hub\.indexable/);
   assert.match(blogPage, /isArticleCanonicalAligned\(article\)/);
   assert.match(blogPage, /aria-label="หัวข้อบทความหลัก"/);
-  assert.doesNotMatch(blogArchive, /BLOG_TOPIC_HUBS/, "SEO hub navigation should be server-rendered by app/blog/page.tsx, not owned by the client filter component");
+  assert.doesNotMatch(blogArchive, /BLOG_TOPIC_HUBS/, "SEO hub navigation should be server-rendered by features/blog/pages/BlogArchivePage.tsx, not owned by the client filter component");
 
   assert.match(articleCard, /const href = getArticlePath\(article\)/);
   assert.match(articleCard, /getArticleSemanticTopic/);

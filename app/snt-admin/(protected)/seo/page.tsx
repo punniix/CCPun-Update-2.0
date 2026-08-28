@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import RunSeoAuditButton from "@/components/admin/RunSeoAuditButton";
+import RunSeoAuditButton from "@/features/admin/components/RunSeoAuditButton";
 import { requireAdminPermission } from "@/lib/admin/require-permission";
 import { listAdminArticles } from "@/lib/admin/sanity-control";
 import { isStudioDataPlaneAllowed } from "@/lib/admin/environment";

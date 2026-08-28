@@ -6,13 +6,13 @@ const taxonomy = await read('lib/content/taxonomy.ts');
 const types = await read('lib/content/types.ts');
 const sanity = await read('lib/content/sanity.ts');
 const urls = await read('lib/content/url.ts');
-const schema = await read('lib/content/schema.ts');
-const blogPage = await read('app/blog/page.tsx');
-const categoryPage = await read('app/blog/[category]/page.tsx');
-const articlePage = await read('app/blog/[category]/[slug]/page.tsx');
+const schema = await read('lib/content/structured-data/article-schema.ts');
+const blogPage = await read('features/blog/pages/BlogArchivePage.tsx');
+const categoryPage = await read('features/blog/pages/BlogCategoryPage.tsx');
+const articlePage = await read('features/blog/pages/ArticlePage.tsx');
 const sitemap = await read('app/sitemaps/blog.xml/route.ts');
-const archive = await read('components/Blog/BlogArchive.tsx');
-const card = await read('components/Blog/ArticleCard.tsx');
+const archive = await read('features/blog/components/BlogArchive.tsx');
+const card = await read('features/blog/components/ArticleCard.tsx');
 
 for (const slug of ['personal-finance', 'life-insurance', 'health-insurance', 'critical-illness', 'investment']) {
   assert.match(taxonomy, new RegExp(`slug: ["']${slug}["']`));

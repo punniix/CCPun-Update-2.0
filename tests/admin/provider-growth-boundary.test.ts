@@ -9,8 +9,8 @@ const growthPage = readFileSync(new URL("../../app/snt-admin/(protected)/growth/
 const growthLoading = readFileSync(new URL("../../app/snt-admin/(protected)/growth/loading.tsx", import.meta.url), "utf8");
 const research = readFileSync(new URL("../../lib/admin/research.ts", import.meta.url), "utf8");
 const geoPage = readFileSync(new URL("../../app/snt-admin/(protected)/seo/[id]/page.tsx", import.meta.url), "utf8");
-const researchPage = readFileSync(new URL("../../app/snt-admin/(protected)/research/page.tsx", import.meta.url), "utf8");
-const researchForm = readFileSync(new URL("../../components/admin/UbersuggestResearchForm.tsx", import.meta.url), "utf8");
+const researchPage = readFileSync(new URL("../../features/admin/research/page.tsx", import.meta.url), "utf8");
+const researchForm = readFileSync(new URL("../../features/admin/components/UbersuggestResearchForm.tsx", import.meta.url), "utf8");
 
 test("Ubersuggest credentials stay local and OAuth uses state plus PKCE", () => {
   assert.match(ubersuggest, /\.ccpun-local/);

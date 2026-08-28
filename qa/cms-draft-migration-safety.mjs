@@ -67,7 +67,7 @@ try {
     readFile(importerPath, 'utf8'),
     readFile(exporterPath, 'utf8'),
     readFile(path.join(root, 'sanity.config.ts'), 'utf8'),
-    readFile(path.join(root, 'cms/sanity/schema.ts'), 'utf8'),
+    readFile(path.join(root, 'cms/sanity/schema/documents/article.ts'), 'utf8'),
     readFile(path.join(root, '.gitignore'), 'utf8'),
   ]);
   assert.doesNotMatch(importer, /createOrReplace/);

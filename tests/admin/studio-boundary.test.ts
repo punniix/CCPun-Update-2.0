@@ -6,9 +6,9 @@ import {
   filterStudioDocumentActions,
   filterStudioNewDocumentOptions,
   filterStudioStructureItems,
-  getStudioPublishingOptions,
   protectProductionContentLifecycleActions,
-} from "../../cms/sanity/studio-policy";
+} from "../../cms/sanity/policy/studio-policy";
+import { getStudioPublishingOptions } from "../../cms/sanity/config/publishing";
 import { CCPUN_LEGACY_VERCEL_PROJECT_IDS, CCPUN_VERCEL_PROJECT_IDS } from "../../lib/admin/environment";
 
 const PRODUCTION_ADMIN_PROJECT_ID = CCPUN_VERCEL_PROJECT_IDS.adminProduction;
@@ -22,7 +22,8 @@ const originalLocalProductionDraftWrites = process.env.CCPUN_LOCAL_PRODUCTION_DR
 const studioPage = readFileSync(new URL("../../app/studio/[[...tool]]/page.tsx", import.meta.url), "utf8");
 const studioClient = readFileSync(new URL("../../app/studio/[[...tool]]/studio-client.tsx", import.meta.url), "utf8");
 const studioConfig = readFileSync(new URL("../../sanity.config.ts", import.meta.url), "utf8");
-const adminDataRefresh = readFileSync(new URL("../../components/admin/AdminDataRefresh.tsx", import.meta.url), "utf8");
+const studioStructure = readFileSync(new URL("../../cms/sanity/config/structure.ts", import.meta.url), "utf8");
+const adminDataRefresh = readFileSync(new URL("../../features/admin/components/AdminDataRefresh.tsx", import.meta.url), "utf8");
 const adminContentPage = readFileSync(new URL("../../app/snt-admin/(protected)/content/page.tsx", import.meta.url), "utf8");
 
 afterEach(() => {
@@ -200,11 +201,12 @@ test("Studio keeps identified owner content and hides system/category management
     newDocumentOptions[3],
   ]);
 
-  const schemaSource = readFileSync(new URL("../../cms/sanity/schema.ts", import.meta.url), "utf8");
+  const schemaSource = readFileSync(new URL("../../cms/sanity/schema/documents/article.ts", import.meta.url), "utf8");
   assert.match(schemaSource, /to: \[\{ type: "category" \}\]/);
   assert.match(schemaSource, /disableNew: true/);
   assert.match(schemaSource, /filter: "slug\.current in \$activeSlugs"/);
-  assert.match(studioConfig, /S\.list\(\)\.id\("content"\)\.title\("เนื้อหา"\)/);
+  assert.match(studioConfig, /createStudioStructurePlugin/);
+  assert.match(studioStructure, /S\.list\(\)\.id\("content"\)\.title\("เนื้อหา"\)/);
 });
 
 test("Safari-safe admin routes avoid the stuck streaming boundary", () => {

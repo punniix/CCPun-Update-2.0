@@ -2,10 +2,10 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-const schema = readFileSync(new URL("../../cms/sanity/schema.ts", import.meta.url), "utf8");
+const schema = readFileSync(new URL("../../cms/sanity/schema/objects/seo-metadata.ts", import.meta.url), "utf8");
 const sanityContent = readFileSync(new URL("../../lib/content/sanity.ts", import.meta.url), "utf8");
 const articleType = readFileSync(new URL("../../lib/content/types.ts", import.meta.url), "utf8");
-const articleRoute = readFileSync(new URL("../../app/blog/[category]/[slug]/page.tsx", import.meta.url), "utf8");
+const articleRoute = readFileSync(new URL("../../features/blog/pages/ArticlePage.tsx", import.meta.url), "utf8");
 const adminPage = readFileSync(new URL("../../app/snt-admin/(protected)/seo/[id]/page.tsx", import.meta.url), "utf8");
 
 test("SEO governance includes keyword cluster and dedicated social fields", () => {

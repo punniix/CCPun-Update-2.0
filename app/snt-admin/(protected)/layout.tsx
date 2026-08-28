@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { auth, signOut } from "@/auth";
-import AdminDataRefresh from "@/components/admin/AdminDataRefresh";
-import AdminNavigation from "@/components/admin/AdminNavigation";
+import AdminDataRefresh from "@/features/admin/components/AdminDataRefresh";
+import AdminNavigation from "@/features/admin/components/AdminNavigation";
 import { getAdminEnvironment } from "@/lib/admin/environment";
 import { environmentLabel, roleLabel } from "@/lib/admin/presentation";
 import { hasAdminPermission, type AdminPermission, type AdminRole } from "@/lib/admin/rbac";

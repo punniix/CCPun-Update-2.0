@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import { IS_REVIEW_ENVIRONMENT } from "@/lib/deployment-environment";
 import Link from "next/link";
 import { ArrowLeft, Shield } from "lucide-react";
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
+import Navbar from "@/components/layout/Navbar";
+import Footer from "@/components/layout/Footer";
 
 export const metadata: Metadata = {
   title: "นโยบายความเป็นส่วนตัว | CCPun ที่ปรึกษาทางการเงิน",

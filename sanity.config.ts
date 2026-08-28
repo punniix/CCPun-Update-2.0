@@ -1,18 +1,16 @@
 "use client";
 
 import { defineConfig } from "sanity";
-import { defineLocations, presentationTool } from "sanity/presentation";
-import { structureTool } from "sanity/structure";
 import { schemaTypes } from "./cms/sanity/schema";
-import { ubersuggestSchemaTypes } from "./cms/sanity/ubersuggestTypes";
+import { createStudioPresentationPlugin } from "./cms/sanity/config/presentation";
+import { getStudioPublishingOptions } from "./cms/sanity/config/publishing";
+import { createStudioStructurePlugin } from "./cms/sanity/config/structure";
 import {
   filterStudioAuthProviders,
   filterStudioDocumentActions,
   filterStudioNewDocumentOptions,
-  filterStudioStructureItems,
-  getStudioPublishingOptions,
   protectProductionContentLifecycleActions,
-} from "./cms/sanity/studio-policy";
+} from "./cms/sanity/policy/studio-policy";
 import { isStudioDataPlaneAllowed, resolveSanityConfigEnvironment } from "./lib/admin/environment";
 
 const projectId = process.env.SANITY_STUDIO_PROJECT_ID ?? process.env.NEXT_PUBLIC_SANITY_PROJECT_ID;
@@ -40,35 +38,10 @@ export const sanityStudioConfig =
         },
         ...getStudioPublishingOptions(dataset, environment, projectId),
         plugins: [
-          structureTool({
-            structure: (S) =>
-              S.list().id("content").title("เนื้อหา").items(filterStudioStructureItems(S.documentTypeListItems())),
-          }),
-          presentationTool({
-            previewUrl: {
-              initial: "/",
-              previewMode: {
-                enable: "/api/preview/enable",
-              },
-            },
-            resolve: {
-              locations: {
-                article: defineLocations({
-                  select: { title: "title", slug: "slug.current", categorySlug: "category.slug.current" },
-                  resolve: (document) => ({
-                    locations: document?.slug
-                      ? [
-                          { title: document.title || "Untitled article", href: `/blog/${document.categorySlug || "personal-finance"}/${document.slug}/` },
-                          { title: "Blog hub", href: "/blog/" },
-                        ]
-                      : [{ title: "Blog hub", href: "/blog/" }],
-                  }),
-                }),
-              },
-            },
-          }),
+          createStudioStructurePlugin(),
+          createStudioPresentationPlugin(),
         ],
-        schema: { types: [...schemaTypes, ...ubersuggestSchemaTypes] },
+        schema: { types: schemaTypes },
         document: {
           actions: (previousActions, context) =>
             protectProductionContentLifecycleActions(

@@ -3,7 +3,10 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 test("SEO Control Center keeps semantic topic separate from protected published URL fields", () => {
-  const schema = readFileSync("cms/sanity/schema.ts", "utf8");
+  const schema = [
+    readFileSync("cms/sanity/schema/documents/article.ts", "utf8"),
+    readFileSync("cms/sanity/schema/objects/seo-metadata.ts", "utf8"),
+  ].join("\n");
   const input = readFileSync("cms/sanity/components/SeoScoreInput.tsx", "utf8");
   const adminPage = readFileSync("app/snt-admin/(protected)/seo/page.tsx", "utf8");
   const detailPage = readFileSync("app/snt-admin/(protected)/seo/[id]/page.tsx", "utf8");
