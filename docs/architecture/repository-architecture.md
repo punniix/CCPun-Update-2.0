@@ -108,6 +108,7 @@ Editorial documents and system intelligence documents are different product surf
 The architecture baseline is shared by both Vercel survivors. A repository-structure change is ready only after both Public Web and Admin builds pass from the same commit.
 
 - Website 4.2 (Content, Social and SEO Operating System) starts from the settled refactored baseline. Admin UI belongs under `features/admin/`; route handlers stay under `app/api/snt-admin/`; security/provider infrastructure belongs under `lib/admin/`; Master Content and channel-variant editorial documents go under `cms/sanity/schema/documents/`; operational jobs/tokens/platform IDs belong in the relational data plane under `db/`, not Sanity.
+- The Social foundation keeps one required `socialVariant.masterContent` reference and derives reverse relationships. Editorial copy/review stays in Sanity; execution status, platform IDs, locks, idempotency, and audit stay in Postgres. UAT-only schema types must remain hidden and actionless in Production Studio.
 - Website 4.3 (Public UX/UI) starts as a fresh active branch from the same settled baseline. Historical UX work is selectively ported and visually revalidated; the old branch is lineage evidence, not a branch to merge wholesale.
 - Neither version creates another Vercel project. Preview/UAT lanes live inside `ccpun-web` and `ccpun-admin` with fail-closed branch routing.
 

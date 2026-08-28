@@ -1,0 +1,69 @@
+import "server-only";
+
+import { neon } from "@neondatabase/serverless";
+import {
+  classifySocialDatabaseError,
+  isSocialDatabaseSchemaCurrent,
+  isSocialDatabaseConnectionString,
+  SOCIAL_SCHEMA_MIGRATION_CHECKSUM,
+  SOCIAL_SCHEMA_MIGRATION_VERSION,
+  type SocialDatabaseReadiness,
+} from "./foundation";
+
+export async function getSocialDatabaseReadiness(
+  connectionString = process.env.CCPUN_SOCIAL_DATABASE_URL?.trim(),
+): Promise<SocialDatabaseReadiness> {
+  if (!connectionString) {
+    return { configured: false, reachable: false, migrationCurrent: false, errorCategory: "not-configured" };
+  }
+  if (!isSocialDatabaseConnectionString(connectionString)) {
+    return { configured: true, reachable: false, migrationCurrent: false, errorCategory: "invalid-configuration" };
+  }
+
+  try {
+    const sql = neon(connectionString, { fetchOptions: { signal: AbortSignal.timeout(3_000) } });
+    const rows = await sql.query(
+      `SELECT
+       EXISTS (
+        SELECT 1
+        FROM ccpun_social.schema_migration
+        WHERE version = $1 AND checksum = $2
+       ) AS ledger_current,
+       to_regclass('ccpun_social.social_media_asset') IS NOT NULL AS media_asset_exists,
+       to_regclass('ccpun_social.social_variant_link') IS NOT NULL AS variant_link_exists,
+       to_regclass('ccpun_social.social_publication') IS NOT NULL AS publication_exists,
+       to_regclass('ccpun_social.social_publication_job') IS NOT NULL AS publication_job_exists,
+       to_regclass('ccpun_social.social_comment_item') IS NOT NULL AS comment_item_exists,
+       to_regclass('ccpun_social.social_execution_audit') IS NOT NULL AS execution_audit_exists`,
+      [SOCIAL_SCHEMA_MIGRATION_VERSION, SOCIAL_SCHEMA_MIGRATION_CHECKSUM],
+    ) as Array<{
+      ledger_current: boolean;
+      media_asset_exists: boolean;
+      variant_link_exists: boolean;
+      publication_exists: boolean;
+      publication_job_exists: boolean;
+      comment_item_exists: boolean;
+      execution_audit_exists: boolean;
+    }>;
+    const row = rows[0];
+    const migrationCurrent = Boolean(row && isSocialDatabaseSchemaCurrent({
+      ledgerCurrent: row.ledger_current,
+      tables: {
+        social_media_asset: row.media_asset_exists,
+        social_variant_link: row.variant_link_exists,
+        social_publication: row.publication_exists,
+        social_publication_job: row.publication_job_exists,
+        social_comment_item: row.comment_item_exists,
+        social_execution_audit: row.execution_audit_exists,
+      },
+    }));
+    return {
+      configured: true,
+      reachable: true,
+      migrationCurrent,
+      errorCategory: migrationCurrent ? null : "migration-missing",
+    };
+  } catch (error) {
+    return classifySocialDatabaseError(error);
+  }
+}

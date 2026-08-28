@@ -37,6 +37,8 @@ test("Vercel Lab perimeter never grants an in-application Admin identity", () =>
 });
 
 test("review actions require explicit role permissions", () => {
+  assert.equal(hasAdminPermission("owner", "social:read"), true);
+  assert.equal(hasAdminPermission("viewer", "social:read"), false);
   assert.equal(hasAdminPermission("owner", "reviews:approve"), true);
   assert.equal(hasAdminPermission("owner", "draft:apply"), true);
   assert.equal(hasAdminPermission("viewer", "reviews:approve"), false);

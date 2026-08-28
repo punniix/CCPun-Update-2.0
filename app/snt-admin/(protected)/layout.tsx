@@ -18,6 +18,7 @@ const NAV_ITEMS: Array<{ href: string; label: string; permission: AdminPermissio
   { href: "/snt-admin/seo/", label: "ตรวจ SEO", permission: "seo:read" },
   { href: "/snt-admin/research/", label: "Research Intelligence", permission: "research:read" },
   { href: "/snt-admin/growth/", label: "ภาพรวมการเติบโต", permission: "dashboard:read" },
+  { href: "/snt-admin/distribution/", label: "Distribution UAT", permission: "social:read" },
   { href: "/snt-admin/reviews/", label: "ข้อเสนอที่รอตรวจ", permission: "reviews:read" },
   { href: "/snt-admin/audit/", label: "ประวัติการทำงาน", permission: "audit:read" },
 ];
