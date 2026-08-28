@@ -1,0 +1,42 @@
+diff --git a/core/security/policy.ts b/core/security/policy.ts
+index 644d216..440ad8d 100644
+--- a/core/security/policy.ts
++++ b/core/security/policy.ts
+@@ -1,4 +1,4 @@
+-import { IS_REVIEW_ENVIRONMENT } from "@/core/environment/deployment";
++import { IS_REVIEW_ENVIRONMENT } from "../environment/deployment";
+ 
+ const IS_DEVELOPMENT = process.env.NODE_ENV === "development";
+ export function shouldEnforceHttps(environment = process.env.CCPUN_APP_ENV): boolean {
+diff --git a/tests/repository-architecture-regression.mjs b/tests/repository-architecture-regression.mjs
+index 48d1e29..ed67963 100644
+--- a/tests/repository-architecture-regression.mjs
++++ b/tests/repository-architecture-regression.mjs
+@@ -86,6 +86,27 @@ assert.deepEqual(
+   'public/nav-config.json is a compatibility mirror and must match core/config/navigation.json',
+ );
+ 
++const configRuntimeClosure = [
++  'next.config.ts',
++  'sanity.config.ts',
++  'sanity.cli.ts',
++  'core/security/policy.ts',
++  'core/environment/deployment.ts',
++  'core/environment/admin.ts',
++];
++
++for (const file of configRuntimeClosure) {
++  const source = readFileSync(path.join(root, file), 'utf8');
++  for (const specifier of importSpecifiers(source)) {
++    assert.equal(
++      specifier.startsWith('@/'),
++      false,
++      `${file} uses ${specifier}; configuration runtime dependencies must use relative imports`,
++    );
++    resolveLocalImport(file, specifier);
++  }
++}
++
+ const sourceFiles = ['app', 'features', 'core', 'shared', 'cms']
+   .flatMap(walk)
+   .filter((file) => sourceExtensions.has(path.extname(file)));
