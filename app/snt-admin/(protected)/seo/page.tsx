@@ -5,6 +5,7 @@ import { requireAdminPermission } from "@/lib/admin/require-permission";
 import { listAdminArticles } from "@/lib/admin/sanity-control";
 import { isStudioDataPlaneAllowed } from "@/lib/admin/environment";
 import { SEO_AUDIT_VERSION } from "@/lib/admin/seo-heuristics";
+import { getSeoIntelligenceRuntimeStatus } from "@/lib/admin/seo-intelligence/foundation";
 
 export const metadata: Metadata = { title: "SEO Control Center" };
 
@@ -27,6 +28,7 @@ export default async function AdminSeoPage() {
   const audited = result.rows.filter((row) => row.seoScore != null && row.seoAuditVersion === SEO_AUDIT_VERSION);
   const average = audited.length ? Math.round(audited.reduce((sum, row) => sum + (row.seoScore ?? 0), 0) / audited.length) : null;
   const studioReady = isStudioDataPlaneAllowed(result.status.dataset ?? undefined);
+  const intelligenceReady = getSeoIntelligenceRuntimeStatus().enabled;
 
   return (
     <div>
@@ -39,6 +41,7 @@ export default async function AdminSeoPage() {
           </p>
         </div>
         <div className="flex gap-2">
+          {intelligenceReady ? <Link href="/snt-admin/seo/opportunities/" className="inline-flex min-h-11 items-center rounded-xl border border-[#e0c985]/30 bg-[#e0c985]/10 px-4 py-2.5 text-sm text-[#f4df9b] hover:bg-[#e0c985]/15">ดู Opportunities UAT</Link> : null}
           <Link href="/snt-admin/research/" className="inline-flex min-h-11 items-center rounded-xl border border-white/10 px-4 py-2.5 text-sm text-white/70 hover:bg-white/5">ดูข้อมูลงานวิจัย</Link>
           <Link href="/snt-admin/reviews/" className="inline-flex min-h-11 items-center rounded-xl border border-white/10 px-4 py-2.5 text-sm text-white/70 hover:bg-white/5">ดูข้อเสนอที่รอตรวจ</Link>
         </div>
