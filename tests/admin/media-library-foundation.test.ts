@@ -43,6 +43,10 @@ test("Media Library requires the exact Admin UAT branch and data plane", () => {
     { environment: "production-admin" as const },
     { projectId: CCPUN_VERCEL_PROJECT_IDS.web },
     { gitBranch: "v4-production" },
+    { gitBranch: "codex/website-42-media-library-foundation-20260828" },
+    { gitBranch: "codex/website-42-social-foundation-v2-20260828" },
+    { gitBranch: "codex/website-42-social-operations-core-20260828" },
+    { gitBranch: "codex/unknown-preview" },
     { sanityProjectId: "kyfxgjnq" },
     { sanityDataset: "production" },
   ]) {

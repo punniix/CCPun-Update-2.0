@@ -4,9 +4,13 @@ import {
   parseAdminEnvironment,
   type AdminEnvironment,
 } from "../environment";
-import { mediaAssetMetadataSchema, mediaAssetReferenceSchema } from "../media/foundation";
+import {
+  MEDIA_OPERATIONAL_TABLES,
+  mediaAssetMetadataSchema,
+  mediaAssetReferenceSchema,
+} from "../media/foundation";
 
-export const WEBSITE_42_SOCIAL_BRANCH = "codex/website-42-social-foundation-v2-20260828";
+export const WEBSITE_42_SOCIAL_BRANCH = "codex/website-42-social-media-integration-20260829";
 export const WEBSITE_42_SANITY_PROJECT_ID = "ccb9lnw5";
 export const WEBSITE_42_SANITY_DATASET = "uat";
 
@@ -25,6 +29,11 @@ export const SOCIAL_OPERATIONAL_TABLES = [
 ] as const;
 
 export type SocialOperationalTable = (typeof SOCIAL_OPERATIONAL_TABLES)[number];
+export const SOCIAL_REQUIRED_OPERATIONAL_TABLES = [
+  ...SOCIAL_OPERATIONAL_TABLES,
+  ...MEDIA_OPERATIONAL_TABLES,
+] as const;
+export type SocialRequiredOperationalTable = (typeof SOCIAL_REQUIRED_OPERATIONAL_TABLES)[number];
 
 export const socialPlatformSchema = z.enum([
   "facebook",
@@ -168,9 +177,14 @@ export type SocialDatabaseReadiness = {
 
 export function isSocialDatabaseSchemaCurrent(input: {
   ledgerCurrent: boolean;
-  tables: Record<SocialOperationalTable, boolean>;
+  formatLedgerCurrent: boolean;
+  mediaLedgerCurrent: boolean;
+  tables: Record<SocialRequiredOperationalTable, boolean>;
 }): boolean {
-  return input.ledgerCurrent && SOCIAL_OPERATIONAL_TABLES.every((table) => input.tables[table]);
+  return input.ledgerCurrent
+    && input.formatLedgerCurrent
+    && input.mediaLedgerCurrent
+    && SOCIAL_REQUIRED_OPERATIONAL_TABLES.every((table) => input.tables[table]);
 }
 
 export function isSocialDatabaseConnectionString(value: string): boolean {
