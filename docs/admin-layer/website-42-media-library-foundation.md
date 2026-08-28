@@ -41,6 +41,31 @@ Browser
 
 The current provider state is `not-connected`. The upload-intent endpoint returns a deterministic blocked session and `503 storage-not-configured`; it never returns a signed URL or credential. A real provider adapter must be a separate reviewed task after cost and security approval.
 
+## Cost-minimized Drive-first boundary
+
+The approved target design uses Google Drive as the long-lived source archive and object storage only as temporary publishing staging when a platform requires a retrievable URL.
+
+```text
+Google Drive / CCPun folder
+  -> select approved source file
+  -> stage only when a provider needs it
+  -> native platform handoff
+  -> delete staging after confirmed handoff and retry window
+```
+
+- Google Drive access is restricted to the one owner-selected folder whose exact immutable folder ID is recorded as the CCPUN root. Folder name matching is never an authorization control.
+- Request only `https://www.googleapis.com/auth/drive.file`. Do not request broad `drive` or `drive.readonly` scopes.
+- Every file operation must verify that the file is the configured root or descends from that root. Unknown, moved, shortcut-escaped, trashed, or unverifiable items fail closed.
+- Use a short-lived owner access token only during an interactive import/preparation session. Do not persist a Google Drive refresh token in Sanity, Neon, logs, or client storage.
+- Keep Drive bytes out of Next.js request bodies. The browser performs approved resumable/direct transfers; Vercel remains the metadata and orchestration plane.
+- Neon stores only metadata, immutable Drive file ID, provider handoff state, platform object IDs, and audit references.
+- No CCPUN CDN is required for social distribution. Facebook, Instagram, YouTube, and TikTok deliver accepted media through their own networks.
+- Temporary object storage is created only when a provider needs a pullable URL or durable retry source. Reuse one staging object across eligible platform handoffs, then delete it seven days after all handoffs succeed, with a 30-day lifecycle fallback.
+- YouTube should use its native resumable upload and scheduler where practical. Do not stage a duplicate merely for architectural uniformity.
+- Do not add Google service accounts for a personal My Drive folder, a second database, Vercel Blob, a dedicated CDN, or multiple storage adapters without a demonstrated need and separate approval.
+
+This design keeps the expected early incremental cost at zero while usage remains inside the owner's existing Drive allowance, Neon Free allowance, Google API quota, and any future object-storage free tier. It does not authorize a Google connection, bucket, billing account, or provider secret.
+
 ## API and authorization
 
 - `GET /api/snt-admin/media/` requires Auth.js, `social:read`, the configured Admin origin, and the exact UAT feature gate.
