@@ -18,6 +18,8 @@ export const researchInputSchema = z.object({
   keyword: z.string().trim().min(1).max(300),
   provider: providerSchema,
   scope: z.string().trim().min(1).max(120).optional(),
+  location: z.string().trim().min(1).max(120).optional(),
+  language: z.string().trim().min(1).max(80).optional(),
   volume: z.number().min(0).optional(),
   difficulty: z.number().min(0).max(100).optional(),
   intent: z.enum(["informational", "commercial", "transactional", "navigational", "mixed"]).optional(),

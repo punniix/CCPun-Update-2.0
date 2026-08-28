@@ -20,7 +20,12 @@ import { z } from "zod";
 import { getLocalAdminOrigin, isSafeExternalAuthorizationUrl } from "./auth-config";
 import { getAdminEnvironment } from "./environment";
 import { isPublicInternetAddress } from "./provider-network";
-import { researchInputSchema, type ResearchInput } from "./research-input";
+import {
+  hasUbersuggestCredentials,
+  isUbersuggestAuthorizationStateValid,
+  normalizeUbersuggestResearch,
+} from "./ubersuggest-contracts";
+import type { ResearchInput } from "./research-input";
 
 const SERVER_URL = new URL("https://ubersuggest-mcp.neilpatelapi.com/mcp");
 const PROVIDER_ORIGIN = SERVER_URL.origin;
@@ -28,7 +33,6 @@ const CALLBACK_PATH = "/api/snt-admin/providers/ubersuggest/callback";
 const STORE_DIR = path.join(process.cwd(), ".ccpun-local");
 const STORE_PATH = path.join(STORE_DIR, "ubersuggest-oauth.json");
 const STORE_TMP_PATH = `${STORE_PATH}.tmp`;
-const AUTH_MAX_AGE_MS = 10 * 60 * 1000;
 const PROVIDER_MAX_RESPONSE_BYTES = 2 * 1024 * 1024;
 const PROVIDER_TOOL_TIMEOUT_MS = 45_000;
 const PROVIDER_BATCH_MAX = 8;
@@ -48,25 +52,6 @@ export type UbersuggestToolCall = {
   arguments?: Record<string, unknown>;
   timeoutMs?: number;
 };
-
-const overviewSchema = z.object({
-  search_volume: z.number().min(0).nullish(),
-  seo_difficulty: z.number().min(0).max(100).nullish(),
-  search_intent: z.string().trim().max(80).nullish(),
-  language: z.string().trim().max(80).nullish(),
-  location: z.string().trim().max(120).nullish(),
-}).passthrough();
-
-const serpSchema = z.object({
-  updated_at: z.string().max(40).optional(),
-  serpEntries: z.array(z.object({
-    position: z.number().int().positive().nullish(),
-    title: z.string().trim().max(500).nullish(),
-    url: z.string().url().nullish(),
-    domain: z.string().trim().max(255).nullish(),
-    type: z.string().trim().max(80).nullish(),
-  }).passthrough()).max(100).default([]),
-}).passthrough();
 
 function providerLaneAllowed() {
   return ["development", "local-uat", "local-production"].includes(getAdminEnvironment());
@@ -221,7 +206,7 @@ export async function getUbersuggestConnectionStatus() {
   if (!providerLaneAllowed()) return { connected: false, localOnly: true };
   const store = await loadStore();
   const token = store.tokensByIssuer?.[store.lastIssuer ?? ""];
-  return { connected: Boolean(token?.access_token || token?.refresh_token), localOnly: true };
+  return { connected: hasUbersuggestCredentials(token), localOnly: true };
 }
 
 export async function beginUbersuggestAuthorization() {
@@ -247,8 +232,7 @@ export async function beginUbersuggestAuthorization() {
 export async function finishUbersuggestAuthorization(params: URLSearchParams) {
   const store = await loadStore();
   const pending = store.pending;
-  const createdAt = pending ? Date.parse(pending.createdAt) : Number.NaN;
-  if (!pending || params.get("state") !== pending.state || !Number.isFinite(createdAt) || Date.now() - createdAt > AUTH_MAX_AGE_MS) {
+  if (!isUbersuggestAuthorizationStateValid(pending, params.get("state"))) {
     throw new Error("UBERSUGGEST_AUTH_STATE_INVALID");
   }
   const { transport, client } = createConnection();
@@ -289,15 +273,6 @@ export async function callUbersuggestTools(calls: UbersuggestToolCall[]): Promis
   }
 }
 
-function normalizedIntent(value: string | null | undefined): ResearchInput["intent"] {
-  const normalized = value?.toLowerCase();
-  if (normalized?.includes("inform")) return "informational";
-  if (normalized?.includes("transact")) return "transactional";
-  if (normalized?.includes("navig")) return "navigational";
-  if (normalized?.includes("commercial")) return "commercial";
-  return normalized ? "mixed" : undefined;
-}
-
 export async function fetchUbersuggestResearch(keyword: string): Promise<ResearchInput> {
   const cleanKeyword = keyword.replace(/\s+/g, " ").trim();
   if (!cleanKeyword || cleanKeyword.length > 300) throw new Error("UBERSUGGEST_KEYWORD_INVALID");
@@ -306,25 +281,7 @@ export async function fetchUbersuggestResearch(keyword: string): Promise<Researc
       { key: "overview", name: "keyword_overview", arguments: { keyword: cleanKeyword } },
       { key: "serp", name: "serp_analysis", arguments: { keyword: cleanKeyword, limit: 10 } },
     ]);
-    const overview = overviewSchema.parse(results.overview);
-    const serp = serpSchema.parse(results.serp);
-    const entries = serp.serpEntries.filter((entry) => entry.url).slice(0, 10);
-    return researchInputSchema.parse({
-      keyword: cleanKeyword,
-      provider: "ubersuggest",
-      scope: overview.location ?? "Global",
-      volume: overview.search_volume ?? undefined,
-      difficulty: overview.seo_difficulty ?? undefined,
-      intent: normalizedIntent(overview.search_intent),
-      serp: entries.map((entry) => ({
-        position: entry.position ?? undefined,
-        title: entry.title ?? undefined,
-        url: entry.url ?? undefined,
-        domain: entry.domain ?? undefined,
-      })),
-      competitors: [...new Set(entries.map((entry) => entry.domain).filter((value): value is string => Boolean(value)))],
-      checkedAt: new Date().toISOString(),
-    });
+    return normalizeUbersuggestResearch({ keyword: cleanKeyword, overview: results.overview, serp: results.serp });
   } catch (error) {
     if (error instanceof z.ZodError) throw new Error("UBERSUGGEST_INVALID_RESPONSE");
     throw error;

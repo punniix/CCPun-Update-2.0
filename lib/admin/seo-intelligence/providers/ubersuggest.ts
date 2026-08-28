@@ -41,6 +41,8 @@ export function adaptUbersuggestResearch(
   if (state === "stale") limitations.push(`ข้อมูลเก่ากว่า ${staleAfterHours} ชั่วโมง`);
   if (parsed.volume == null) limitations.push("ไม่มี Search volume");
   if (parsed.difficulty == null) limitations.push("ไม่มี Keyword difficulty");
+  if (!parsed.location) limitations.push("ไม่มีพื้นที่ของข้อมูล");
+  if (!parsed.language) limitations.push("ไม่มีภาษาของข้อมูล");
   if (!parsed.serp?.length) limitations.push("ไม่มี SERP snapshot");
 
   return marketProviderSnapshotSchema.parse({
@@ -51,6 +53,8 @@ export function adaptUbersuggestResearch(
     evidence: {
       keyword: parsed.keyword,
       scope: parsed.scope ?? null,
+      location: parsed.location ?? null,
+      language: parsed.language ?? null,
       volume: parsed.volume ?? null,
       difficulty: parsed.difficulty ?? null,
       intent: parsed.intent ?? null,
@@ -76,6 +80,8 @@ const syntheticReady = adaptUbersuggestResearch({
   keyword: "ประกันสุขภาพ ระยะรอคอย",
   provider: "ubersuggest",
   scope: "Thailand · Thai",
+  location: "Thailand",
+  language: "Thai",
   volume: 1_300,
   difficulty: 42,
   intent: "informational",

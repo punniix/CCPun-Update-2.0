@@ -10,6 +10,8 @@ test("Ubersuggest adapter maps validated evidence without a provider call", () =
   const snapshot = ubersuggestMarketDataProvider.normalize({
     keyword: "ประกันสุขภาพ",
     provider: "ubersuggest",
+    location: "Thailand",
+    language: "Thai",
     volume: 900,
     difficulty: 38,
     checkedAt: "2026-08-28T08:00:00.000Z",
@@ -17,6 +19,8 @@ test("Ubersuggest adapter maps validated evidence without a provider call", () =
   }, { now: "2026-08-28T12:00:00.000Z" });
   assert.equal(snapshot.state, "ready");
   assert.equal(snapshot.evidence?.volume, 900);
+  assert.equal(snapshot.evidence?.location, "Thailand");
+  assert.equal(snapshot.evidence?.language, "Thai");
   assert.equal(snapshot.evidence?.serp[0]?.position, 1);
   assert.equal(snapshot.evidenceTrust, "untrusted-external-data");
   const source = read("lib/admin/seo-intelligence/providers/ubersuggest.ts");

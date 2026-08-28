@@ -168,6 +168,8 @@ export const researchSnapshot = defineType({
       validation: (Rule) => Rule.required(),
     }),
     defineField({ name: "scope", title: "Location / scope", type: "string", readOnly: true }),
+    defineField({ name: "location", title: "Location", type: "string", readOnly: true }),
+    defineField({ name: "language", title: "Language", type: "string", readOnly: true }),
     defineField({ name: "volume", title: "Search volume", type: "number", readOnly: true, validation: (Rule) => Rule.min(0) }),
     defineField({ name: "difficulty", title: "Difficulty", type: "number", readOnly: true, validation: (Rule) => Rule.min(0).max(100) }),
     defineField({

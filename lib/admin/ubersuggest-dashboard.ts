@@ -7,6 +7,7 @@ import { isAdminDataPlaneAllowed, isAdminReadDataPlaneAllowed } from "./environm
 import { getAdminSanityReadToken, getAdminSanityResearchWriteToken } from "./sanity-credentials";
 import { buildAuditLogDocument } from "./sanity-control";
 import { privateAdminDocumentId } from "./suggestion-lifecycle";
+import { isUbersuggestSnapshotFresh } from "./ubersuggest-contracts";
 import type { UbersuggestDashboardSync } from "./ubersuggest-dashboard-provider";
 
 const projectId = process.env.NEXT_PUBLIC_SANITY_PROJECT_ID?.trim();
@@ -118,9 +119,7 @@ export function isUbersuggestSyncWriteReady() {
 }
 
 export function isSnapshotFresh(value: string | null | undefined, maxAgeHours: number, now = Date.now()) {
-  if (!value) return false;
-  const checkedAt = Date.parse(value);
-  return Number.isFinite(checkedAt) && checkedAt <= now && now - checkedAt <= maxAgeHours * 60 * 60 * 1000;
+  return isUbersuggestSnapshotFresh(value, maxAgeHours, now);
 }
 
 export async function persistUbersuggestDashboardSync(
