@@ -71,6 +71,20 @@ export const socialOperationsSnapshotSchema = z.object({
   }
 });
 
+export const socialCalendarItemSchema = z.object({
+  id: boundedId,
+  masterContentId: boundedId,
+  masterContentTitle: z.string().trim().min(1).max(200),
+  variantId: boundedId,
+  platform: socialPlatformSchema,
+  format: z.string().trim().min(1).max(80),
+  publishingMode: publishingModeSchema,
+  status: publicationStatusSchema,
+  scheduledAt: z.string().datetime().nullable(),
+  analyticsAvailable: z.boolean(),
+  providerWriteAllowed: z.literal(false),
+});
+
 export function buildSyntheticPublicationPlans(
   foundation = socialFoundationSnapshotSchema.parse(SYNTHETIC_SOCIAL_FOUNDATION),
 ) {
@@ -185,6 +199,30 @@ export const SYNTHETIC_SOCIAL_OPERATIONS = socialOperationsSnapshotSchema.parse(
   publications: SYNTHETIC_PUBLISHED_SOCIAL_RECORDS,
   analytics: SYNTHETIC_SOCIAL_ANALYTICS,
 });
+
+export function buildSyntheticContentCalendar(
+  foundation = socialFoundationSnapshotSchema.parse(SYNTHETIC_SOCIAL_FOUNDATION),
+  operations = SYNTHETIC_SOCIAL_OPERATIONS,
+) {
+  const publications = new Map(operations.publications.map((item) => [item.variantId, item]));
+  const analytics = new Set(operations.analytics.map((item) => item.publicationId));
+  return foundation.variants.map((variant) => {
+    const publication = publications.get(variant.id);
+    return socialCalendarItemSchema.parse({
+      id: `uat-calendar:${variant.id}`,
+      masterContentId: variant.masterContentId,
+      masterContentTitle: foundation.masterContent.title,
+      variantId: variant.id,
+      platform: variant.platform,
+      format: variant.format,
+      publishingMode: variant.publishingMode,
+      status: variant.status,
+      scheduledAt: publication?.scheduledAt ?? null,
+      analyticsAvailable: Boolean(publication && analytics.has(publication.publicationId)),
+      providerWriteAllowed: false,
+    });
+  });
+}
 
 export function isSocialOperationsEnabled(input: {
   flag: string | undefined;

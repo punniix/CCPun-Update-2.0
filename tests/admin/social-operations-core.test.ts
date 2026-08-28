@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import { CCPUN_VERCEL_PROJECT_IDS } from "../../lib/admin/environment";
 import {
+  buildSyntheticContentCalendar,
   buildSyntheticPublicationPlans,
   isSocialOperationsEnabled,
   socialOperationsSnapshotSchema,
@@ -67,6 +68,20 @@ test("Social analytics preserves native metrics and never creates a cross-platfo
   invalid.publications[0]!.publishedAt = null;
   invalid.publications[0]!.platformObjectId = null;
   assert.equal(socialOperationsSnapshotSchema.safeParse(invalid).success, false);
+});
+
+test("Content Calendar derives one read-only item per variant without provider execution", () => {
+  const items = buildSyntheticContentCalendar();
+  assert.equal(items.length, 4);
+  assert.deepEqual(items.map((item) => item.status), ["approved", "awaiting-native-finish", "draft", "approved"]);
+  assert.equal(items.every((item) => item.masterContentId === "synthetic-master-001" && item.providerWriteAllowed === false), true);
+  assert.equal(items.every((item) => typeof item.analyticsAvailable === "boolean"), true);
+  const page = read("features/admin/social/calendar-page.tsx");
+  const route = read("app/snt-admin/(protected)/distribution/calendar/page.tsx");
+  assert.match(page, /requireAdminPermission\("social:read"\)/);
+  assert.match(page, /getSocialOperationsRuntimeStatus\(\)\.enabled/);
+  assert.match(page, /ไม่มีคำสั่งส่งโพสต์/);
+  assert.equal(route.trim(), 'export { metadata, default } from "@/features/admin/social/calendar-page";');
 });
 
 test("Social operations API is authenticated, exact-origin and GET-only", () => {
