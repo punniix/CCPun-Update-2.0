@@ -11,6 +11,8 @@ import {
   isSocialFoundationEnabled,
   SOCIAL_SCHEMA_MIGRATION_CHECKSUM,
   SOCIAL_SCHEMA_MIGRATION_VERSION,
+  SOCIAL_FORMAT_MIGRATION_CHECKSUM,
+  SOCIAL_FORMAT_MIGRATION_VERSION,
   SOCIAL_OPERATIONAL_TABLES,
   SOCIAL_SELECTABLE_FORMATS,
   socialFormatSchema,
@@ -108,9 +110,26 @@ test("Database readiness is read-only and returns sanitized categories", () => {
   const source = read("lib/admin/social/database.ts");
   assert.match(source, /import "server-only"/);
   assert.match(source, /FROM ccpun_social\.schema_migration/);
+  assert.match(source, /format_ledger_current/);
   for (const table of SOCIAL_OPERATIONAL_TABLES) assert.match(source, new RegExp(table));
   assert.doesNotMatch(source, /\b(?:INSERT|UPDATE|DELETE|ALTER|DROP)\b/i);
   assert.doesNotMatch(source, /console\./);
+});
+
+test("Post-format migration is additive and preserves legacy Comment Series rows", () => {
+  const sql = read("db/migrations/20260829_website_42_social_post_formats.sql");
+  const body = sql.split("-- checksum-source-begin\n")[1]?.split("-- checksum-source-end")[0];
+  assert.ok(body);
+  const checksum = `sha256:${createHash("sha256").update(body).digest("hex")}`;
+  assert.equal(checksum, SOCIAL_FORMAT_MIGRATION_CHECKSUM);
+  assert.match(sql, new RegExp(SOCIAL_FORMAT_MIGRATION_VERSION));
+  assert.match(sql, new RegExp(SOCIAL_FORMAT_MIGRATION_CHECKSUM));
+  assert.match(sql, /website_42_social_foundation_v2/);
+  assert.match(sql, /DROP CONSTRAINT social_variant_link_format_check/);
+  assert.match(sql, /'album'/);
+  assert.match(sql, /'live'/);
+  assert.match(sql, /'comment-series'/);
+  assert.doesNotMatch(sql, /DROP TABLE|DELETE FROM|TRUNCATE/i);
 });
 
 test("Migration checksum covers the reviewed DDL and operational constraints", () => {

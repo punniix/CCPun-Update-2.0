@@ -41,7 +41,7 @@ The readiness probe runs one bounded read-only HTTPS query through the official 
 
 The current migration is `db/migrations/20260828_website_42_social_foundation_v2.sql`. It uses an advisory transaction lock, a version/checksum ledger, and refuses to mark the migration current if pre-existing Social tables have unknown lineage.
 
-The reviewed v2 database constraint predates `album` and `live`. Those formats remain read-only foundation contracts until a separate additive migration is reviewed and applied; no operational write lane may store them yet.
+The applied v2 database constraint predates `album` and `live`. The additive, backward-compatible migration is `db/migrations/20260829_website_42_social_post_formats.sql`; it preserves the legacy `comment-series` value and does not rewrite rows. Until that migration is separately approved and applied to UAT, readiness fails closed and no operational write lane may store the new formats.
 
 ## Manual Neon UAT handoff
 

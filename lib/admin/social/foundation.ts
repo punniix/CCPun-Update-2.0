@@ -12,6 +12,8 @@ export const WEBSITE_42_SANITY_DATASET = "uat";
 
 export const SOCIAL_SCHEMA_MIGRATION_VERSION = "20260828_website_42_social_foundation_v2";
 export const SOCIAL_SCHEMA_MIGRATION_CHECKSUM = "sha256:b6ad0b823775df1dcfc06e0da896dfcc477cfbeae897b70e228c18a051712acb";
+export const SOCIAL_FORMAT_MIGRATION_VERSION = "20260829_website_42_social_post_formats";
+export const SOCIAL_FORMAT_MIGRATION_CHECKSUM = "sha256:64d8471247fa28a08fcb99cda5b4df87e73f7ed1dc497250da26d01119ade977";
 
 export const SOCIAL_OPERATIONAL_TABLES = [
   "social_media_asset",
