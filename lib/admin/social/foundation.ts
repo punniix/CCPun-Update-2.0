@@ -4,6 +4,7 @@ import {
   parseAdminEnvironment,
   type AdminEnvironment,
 } from "../environment";
+import { mediaAssetMetadataSchema, mediaAssetReferenceSchema } from "../media/foundation";
 
 export const WEBSITE_42_SOCIAL_BRANCH = "codex/website-42-social-foundation-v2-20260828";
 export const WEBSITE_42_SANITY_PROJECT_ID = "ccb9lnw5";
@@ -83,37 +84,6 @@ export function canTransitionPublicationStatus(from: PublicationStatus, to: Publ
 }
 
 const boundedId = z.string().trim().min(1).max(120).regex(/^[A-Za-z0-9_.:-]+$/);
-
-export const mediaAssetMetadataSchema = z.object({
-  id: boundedId,
-  kind: z.enum(["image", "video", "caption"]),
-  originalFilename: z.string().trim().min(1).max(255),
-  mimeType: z.enum(["image/jpeg", "image/png", "image/webp", "video/mp4", "text/vtt"]),
-  byteSize: z.number().int().min(1).max(5_000_000_000),
-  widthPx: z.number().int().min(1).max(32_768).nullable(),
-  heightPx: z.number().int().min(1).max(32_768).nullable(),
-  durationMs: z.number().int().min(1).max(86_400_000).nullable(),
-  checksumSha256: z.string().regex(/^[0-9a-f]{64}$/),
-  lifecycleState: z.enum(["registered", "ready", "archived"]),
-}).superRefine((asset, context) => {
-  const validShape =
-    (asset.kind === "image" && asset.mimeType.startsWith("image/") && asset.widthPx !== null && asset.heightPx !== null && asset.durationMs === null) ||
-    (asset.kind === "video" && asset.mimeType === "video/mp4" && asset.widthPx !== null && asset.heightPx !== null && asset.durationMs !== null) ||
-    (asset.kind === "caption" && asset.mimeType === "text/vtt" && asset.widthPx === null && asset.heightPx === null && asset.durationMs === null);
-  if (!validShape) {
-    context.addIssue({ code: z.ZodIssueCode.custom, message: "Media metadata must match its asset kind" });
-  }
-});
-
-export const mediaAssetReferenceSchema = z.object({
-  assetId: boundedId,
-  role: z.enum(["primary", "carousel-item", "cover", "thumbnail", "caption"]),
-  order: z.number().int().min(1).max(20).nullable(),
-}).superRefine((reference, context) => {
-  if ((reference.role === "carousel-item") !== (reference.order !== null)) {
-    context.addIssue({ code: z.ZodIssueCode.custom, message: "Only carousel items use an explicit order" });
-  }
-});
 
 export const commentSeriesItemSchema = z.object({
   id: boundedId,

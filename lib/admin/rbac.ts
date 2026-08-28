@@ -20,6 +20,7 @@ export const ADMIN_PERMISSIONS = [
   "audit:read",
   "settings:read",
   "social:read",
+  "media:upload",
   "draft:apply",
 ] as const;
 
