@@ -91,7 +91,7 @@ The additive migration requires the reviewed Social Foundation v2 ledger first a
 - `media_upload_session` stores direct-upload state, idempotency, actor/request references, expected file metadata, expiry, and sanitized failure category.
 - `social_variant_media` connects one reusable media asset to channel variants without duplicating the file.
 
-The migration contains no token, credential, signed URL, or provider-specific secret. It is code-only in this phase and must not be applied without a separate approval and least-privilege role review.
+The migration contains no token, credential, signed URL, or provider-specific secret. Under a separate owner-approved UAT batch, it was applied to the existing `neon-canary-candle` resource only after an empty-schema and Social-ledger preflight. Postflight confirmed the frozen checksum, all three tables, the required index, and zero rows. This UAT schema readiness does not authorize runtime writes, provider access, Production binding, or Production migration; each remains a separate reviewed gate.
 
 ## Rollback
 
