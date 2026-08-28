@@ -1,0 +1,68 @@
+name: Temporary apply repository architecture refactor
+
+on:
+  push:
+    branches:
+      - refactor/repository-architecture-v42-20260828
+    paths:
+      - .github/refactor/repository-architecture-v42.patch
+
+permissions:
+  contents: write
+
+jobs:
+  apply-verify-and-commit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout refactor branch
+        uses: actions/checkout@v4
+        with:
+          ref: refactor/repository-architecture-v42-20260828
+          fetch-depth: 0
+
+      - name: Use Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Apply the reviewed binary-safe patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git apply --index --binary .github/refactor/repository-architecture-v42.patch
+          git rm -f --ignore-unmatch .github/refactor/repository-architecture-v42.patch
+          git rm -f --ignore-unmatch .github/workflows/temporary-apply-repository-architecture.yml
+          git status --short
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Full foundation, architecture, SEO, analytics and Admin contracts
+        run: npm run check:foundation
+
+      - name: Additional static product contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tests/home-lcp-regression.mjs
+          node tests/seo-topic-hubs-regression.mjs
+          node tests/fhc-seo-geo-regression.mjs
+
+      - name: Production-parity build on the non-production content lane
+        run: npm run build
+        env:
+          CCPUN_APP_ENV: development
+          NEXT_PUBLIC_CCPUN_APP_ENV: development
+          NEXT_PUBLIC_SANITY_PROJECT_ID: ccb9lnw5
+          NEXT_PUBLIC_SANITY_DATASET: uat
+
+      - name: Commit the verified architecture refactor
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "CCPun Architecture Bot"
+          git config user.email "actions@users.noreply.github.com"
+          git commit -m "refactor: establish AI-friendly repository architecture"
+          git push origin HEAD:refactor/repository-architecture-v42-20260828
