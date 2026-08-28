@@ -1,6 +1,10 @@
 import { z } from "zod";
 
 const isoDate = z.iso.date();
+const externalHttpUrl = z.string().url().refine((value) => {
+  const protocol = new URL(value).protocol;
+  return protocol === "https:" || protocol === "http:";
+}, "Only HTTP(S) market URLs are accepted");
 
 export const gscDimensionSchema = z.enum(["query", "page", "device", "country", "searchAppearance"]);
 
@@ -65,6 +69,38 @@ export type Ga4LandingPageRow = {
   engagedSessions: number;
   engagementRate: number;
 };
+
+export const marketProviderStateSchema = z.enum(["ready", "unavailable", "stale", "missing"]);
+
+export const marketProviderSnapshotSchema = z.object({
+  provider: z.string().trim().min(1).max(60),
+  state: marketProviderStateSchema,
+  fetchedAt: z.string().datetime().nullable(),
+  evidenceTrust: z.literal("untrusted-external-data"),
+  evidence: z.object({
+    keyword: z.string().trim().min(1).max(300),
+    scope: z.string().trim().min(1).max(120).nullable(),
+    volume: z.number().nonnegative().nullable(),
+    difficulty: z.number().min(0).max(100).nullable(),
+    intent: z.enum(["informational", "commercial", "transactional", "navigational", "mixed"]).nullable(),
+    serp: z.array(z.object({
+      position: z.number().int().positive().nullable(),
+      title: z.string().trim().max(500).nullable(),
+      url: externalHttpUrl.nullable(),
+      domain: z.string().trim().max(255).nullable(),
+      snippet: z.string().trim().max(3000).nullable(),
+    })).max(30),
+    competitors: z.array(z.string().trim().min(1).max(255)).max(50),
+  }).strict().nullable(),
+  limitations: z.array(z.string().trim().min(1).max(500)).min(1).max(12),
+}).strict().superRefine((snapshot, context) => {
+  const hasEvidence = snapshot.evidence !== null && snapshot.fetchedAt !== null;
+  if ((snapshot.state === "ready" || snapshot.state === "stale") !== hasEvidence) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ["evidence"], message: "Ready/stale state requires timestamped evidence" });
+  }
+});
+
+export type MarketProviderSnapshot = z.infer<typeof marketProviderSnapshotSchema>;
 
 export function normalizeGa4LandingPageReport(raw: unknown): {
   rows: Ga4LandingPageRow[];

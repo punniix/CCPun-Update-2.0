@@ -15,6 +15,13 @@ const typeLabel: Record<SeoOpportunityType, string> = {
   cannibalization: "Cannibalization",
 };
 
+const providerStateLabel = {
+  ready: "พร้อมใช้",
+  unavailable: "Provider ไม่พร้อม",
+  stale: "ข้อมูลเก่า",
+  missing: "ข้อมูลไม่ครบ",
+} as const;
+
 function bangkokDate(daysAgo: number) {
   const date = new Date(Date.now() - daysAgo * 86_400_000);
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Bangkok", year: "numeric", month: "2-digit", day: "2-digit" }).format(date);
@@ -44,6 +51,26 @@ export default async function SeoOpportunitiesUatPage() {
 
       <GscManualSync defaultStartDate={bangkokDate(27)} defaultEndDate={bangkokDate(0)} />
       <Ga4ManualSync defaultStartDate={bangkokDate(27)} defaultEndDate={bangkokDate(0)} />
+
+      <section className="mt-6 rounded-3xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold">Market provider states</h2>
+            <p className="mt-1 text-sm text-white/55">สถานะจำลองสำหรับทดสอบ fallback เท่านั้น ไม่มีการเรียก Ubersuggest หรือ provider แบบเสียเงิน</p>
+          </div>
+          <span className="rounded-full border border-amber-200/20 px-3 py-1 text-xs text-amber-100/75">untrusted external data</span>
+        </div>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {snapshot.marketProviderStates.map((provider, index) => (
+            <article key={`${provider.provider}:${provider.state}:${index}`} className="rounded-2xl border border-white/10 bg-black/10 p-4">
+              <div className="text-xs font-semibold tracking-wide text-[#e0c985]">{provider.provider}</div>
+              <div className="mt-2 font-semibold">{providerStateLabel[provider.state]}</div>
+              <p className="mt-2 text-xs leading-5 text-white/55">{provider.evidence?.keyword ?? "ไม่มีหลักฐานที่ใช้ได้"}</p>
+              <p className="mt-2 text-xs leading-5 text-white/45">{provider.limitations[0]}</p>
+            </article>
+          ))}
+        </div>
+      </section>
 
       <section className="mt-6 grid gap-4 xl:grid-cols-2">
         {snapshot.opportunities.map((opportunity) => (
