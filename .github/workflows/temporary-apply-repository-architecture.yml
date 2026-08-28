@@ -27,7 +27,7 @@ jobs:
           node-version: 24
           cache: npm
 
-      - name: Reassemble and apply the reviewed binary-safe patch
+      - name: Reassemble and verify the reviewed binary-safe patch
         shell: bash
         run: |
           set -euo pipefail
@@ -35,6 +35,14 @@ jobs:
             | base64 --decode \
             | gzip --decompress \
             > /tmp/repository-architecture-v42.patch
+          echo "ca57d460e708f7dda055705039c4750ab15eb8aa3a9cad81da7e7b2260f865bc  /tmp/repository-architecture-v42.patch" \
+            | sha256sum --check --strict
+          test "$(wc -c < /tmp/repository-architecture-v42.patch)" -eq 237118
+
+      - name: Apply the verified architecture refactor
+        shell: bash
+        run: |
+          set -euo pipefail
           git apply --index --binary /tmp/repository-architecture-v42.patch
           git rm -f --ignore-unmatch .github/refactor/repository-architecture-v42.patch.gz.b64.part-*
           git rm -f --ignore-unmatch .github/refactor/repository-architecture-v42.ready
