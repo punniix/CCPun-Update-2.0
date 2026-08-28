@@ -18,6 +18,8 @@ Read `docs/engineering-workflow-v1.md` before making repository-wide, SEO, analy
 
 Read `docs/architecture/repository-architecture.md` before adding significant files or features.
 
+Runtime baseline: Public Web and Admin both use Node.js 24.x. Do not introduce Node 22-only dependencies or configuration; keep local, CI and Vercel builds on Node 24.
+
 Before creating a source file:
 
 1. Identify its feature/domain owner and prefer an existing directory.
