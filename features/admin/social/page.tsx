@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { requireAdminPermission } from "@/lib/admin/require-permission";
+import MediaLibraryUatSection from "@/features/admin/media/MediaLibraryUatSection";
+import { getMediaLibraryRuntimeStatus } from "@/lib/admin/media/foundation";
 import { getSocialDatabaseReadiness } from "@/lib/admin/social/database";
 import {
   getSocialFoundationRuntimeStatus,
@@ -8,7 +10,7 @@ import {
   SYNTHETIC_SOCIAL_FOUNDATION,
 } from "@/lib/admin/social/foundation";
 
-export const metadata: Metadata = { title: "Social Foundation UAT" };
+export const metadata: Metadata = { title: "Distribution UAT" };
 
 const platformLabel = {
   facebook: "Facebook",
@@ -36,7 +38,10 @@ function readinessLabel(readiness: Awaited<ReturnType<typeof getSocialDatabaseRe
 export default async function SocialFoundationUatPage() {
   await requireAdminPermission("social:read");
   const runtime = getSocialFoundationRuntimeStatus();
-  if (!runtime.enabled) notFound();
+  const mediaRuntime = getMediaLibraryRuntimeStatus();
+  if (!runtime.enabled && !mediaRuntime.enabled) notFound();
+
+  if (mediaRuntime.enabled) return <MediaLibraryUatSection />;
 
   const snapshot = socialFoundationSnapshotSchema.parse(SYNTHETIC_SOCIAL_FOUNDATION);
   const database = await getSocialDatabaseReadiness();
