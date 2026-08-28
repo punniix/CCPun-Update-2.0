@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const ubersuggest = readFileSync(new URL("../../lib/admin/ubersuggest.ts", import.meta.url), "utf8");
+const ubersuggestContracts = readFileSync(new URL("../../lib/admin/ubersuggest-contracts.ts", import.meta.url), "utf8");
 const researchRoute = readFileSync(new URL("../../app/api/snt-admin/research/ubersuggest/route.ts", import.meta.url), "utf8");
 const growth = readFileSync(new URL("../../lib/admin/growth.ts", import.meta.url), "utf8");
 const growthPage = readFileSync(new URL("../../app/snt-admin/(protected)/growth/page.tsx", import.meta.url), "utf8");
@@ -15,7 +16,9 @@ const researchForm = readFileSync(new URL("../../features/admin/components/Ubers
 test("Ubersuggest credentials stay local and OAuth uses state plus PKCE", () => {
   assert.match(ubersuggest, /\.ccpun-local/);
   assert.match(ubersuggest, /mode: 0o600/);
-  assert.match(ubersuggest, /params\.get\("state"\) !== pending\.state/);
+  assert.match(ubersuggest, /isUbersuggestAuthorizationStateValid\(pending, params\.get\("state"\)\)/);
+  assert.match(ubersuggestContracts, /receivedState !== pending\.state/);
+  assert.match(ubersuggestContracts, /age >= 0 && age <= UBERSUGGEST_AUTH_MAX_AGE_MS/);
   assert.match(ubersuggest, /saveCodeVerifier/);
   assert.match(ubersuggest, /isSafeExternalAuthorizationUrl/);
   assert.match(ubersuggest, /fetch: providerFetch/);

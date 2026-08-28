@@ -7,6 +7,11 @@ import { getAdminEnvironment, isAdminDataPlaneAllowed, isAdminReadDataPlaneAllow
 import { safeAuditJson } from "./audit-sanitizer";
 import { getAdminSanityReadToken, getAdminSanityWriteToken } from "./sanity-credentials";
 import {
+  appliedSuggestionReplay,
+  commitSuggestionApplication,
+  commitSuggestionApproval,
+} from "./sanity-review-mutations";
+import {
   approvedBaseIsCurrent,
   canApplySuggestion,
   canApproveSuggestion,
@@ -15,7 +20,6 @@ import {
   deterministicAuditSuggestionId,
   frozenControlsForApply,
   getApplyableFieldPath,
-  isAppliedSuggestionReplay,
   isHumanReviewActor,
   isCompatibleReviewSuggestion,
   privateAdminDocumentId,
@@ -478,25 +482,22 @@ export async function approveSeoSuggestion(input: {
     timestamp: reviewedAt,
   });
 
-  try {
-    await rawClient.transaction()
-      .patch(id, (patch) => patch.ifRevisionId(suggestion._rev).set({
-        status: "approved",
-        reviewedBy,
-        reviewedAt,
-        approvedAfter: suggestion.after,
-        approvedBaseValue: storedFieldValue(currentValue),
-        approvedType: suggestion.type,
-        approvedRiskLevel: suggestion.riskLevel,
-        approvedTargetId: suggestion.targetId,
-        approvedTargetRevision: target._rev,
-      }))
-      .create(auditDocument)
-      .commit();
-  } catch (error) {
-    if (isRevisionConflict(error)) throw new Error("SUGGESTION_CONFLICT");
-    throw error;
-  }
+  await commitSuggestionApproval(rawClient, {
+    suggestionId: id,
+    suggestionRevision: suggestion._rev,
+    values: {
+      status: "approved",
+      reviewedBy,
+      reviewedAt,
+      approvedAfter: suggestion.after,
+      approvedBaseValue: storedFieldValue(currentValue),
+      approvedType: suggestion.type,
+      approvedRiskLevel: suggestion.riskLevel,
+      approvedTargetId: suggestion.targetId,
+      approvedTargetRevision: target._rev,
+    },
+    auditDocument,
+  });
 
   return { id, status: "approved", reviewedAt };
 }
@@ -621,23 +622,9 @@ export async function applyApprovedSeoSuggestion(input: {
   if (!suggestionRaw) throw new Error("SUGGESTION_NOT_FOUND");
   const suggestion = applyableSuggestionSchema.parse(suggestionRaw);
 
+  const replay = appliedSuggestionReplay({ suggestionId: id, ...suggestion });
+  if (replay) return replay;
   const controls = frozenControlsForApply(suggestion);
-  if (isAppliedSuggestionReplay(suggestion.status)) {
-    if (!controls || !suggestion.approvedAfter || !suggestion.appliedAt) {
-      throw new Error("SUGGESTION_APPROVAL_INCOMPLETE");
-    }
-    const fieldPath = getApplyableFieldPath(controls.type);
-    if (!fieldPath) throw new Error("SUGGESTION_TYPE_NOT_APPLYABLE");
-    return {
-      suggestionId: id,
-      draftId: controls.targetId.startsWith("drafts.") ? controls.targetId : `drafts.${controls.targetId}`,
-      fieldPath,
-      before: null,
-      after: suggestion.approvedAfter,
-      appliedAt: suggestion.appliedAt,
-      alreadyApplied: true,
-    };
-  }
   if (!canApplySuggestion(suggestion.status)) throw new Error("SUGGESTION_STATUS_CONFLICT");
   if (!controls || !suggestion.approvedAfter || !suggestion.approvedTargetRevision) {
     throw new Error("SUGGESTION_APPROVAL_INCOMPLETE");
@@ -685,16 +672,16 @@ export async function applyApprovedSeoSuggestion(input: {
     timestamp: appliedAt,
   });
 
-  try {
-    await rawClient.transaction()
-      .patch(draftId, (patch) => patch.ifRevisionId(target._rev).set({ [fieldPath]: suggestion.approvedAfter }))
-      .patch(id, (patch) => patch.ifRevisionId(suggestion.revision).set({ status: "applied", appliedAt, appliedBy }))
-      .create(auditDocument)
-      .commit();
-  } catch (error) {
-    if (isRevisionConflict(error)) throw new Error("SUGGESTION_CONFLICT");
-    throw error;
-  }
+  await commitSuggestionApplication(rawClient, {
+    draftId,
+    draftRevision: target._rev,
+    fieldPath,
+    value: suggestion.approvedAfter,
+    suggestionId: id,
+    suggestionRevision: suggestion.revision,
+    suggestionValues: { status: "applied", appliedAt, appliedBy },
+    auditDocument,
+  });
 
   return {
     suggestionId: id,
