@@ -7,9 +7,11 @@ import {
   classifySocialDatabaseError,
   canTransitionPublicationStatus,
   isSocialDatabaseConnectionString,
+  isSocialDatabaseSchemaCurrent,
   isSocialFoundationEnabled,
   SOCIAL_SCHEMA_MIGRATION_CHECKSUM,
   SOCIAL_SCHEMA_MIGRATION_VERSION,
+  SOCIAL_OPERATIONAL_TABLES,
   socialFoundationSnapshotSchema,
   SYNTHETIC_SOCIAL_FOUNDATION,
   WEBSITE_42_SANITY_DATASET,
@@ -44,12 +46,15 @@ test("Social foundation requires the exact Admin UAT code and data plane", () =>
   }
 });
 
-test("Synthetic fixtures validate and remain detached from real accounts and media", () => {
+test("Synthetic fixtures validate media metadata without storage or provider state", () => {
   const result = socialFoundationSnapshotSchema.parse(SYNTHETIC_SOCIAL_FOUNDATION);
   assert.equal(result.mode, "synthetic-uat");
   assert.equal(result.variants.every((variant) => variant.masterContentId === result.masterContent.id), true);
+  assert.equal(result.mediaAssets.length, 1);
+  assert.equal(result.variants[0]?.mediaReferences[0]?.assetId, result.mediaAssets[0]?.id);
   assert.equal(JSON.stringify(result).includes("accessToken"), false);
   assert.equal(JSON.stringify(result).includes("platformObjectId"), false);
+  assert.equal(JSON.stringify(result).includes("storageUrl"), false);
 });
 
 test("Publication state transitions are explicit and terminal states stay terminal", () => {
@@ -69,9 +74,18 @@ test("Database readiness is read-only and returns sanitized categories", () => {
   assert.equal(classifySocialDatabaseError({ code: "42P01", message: "raw schema detail" }).errorCategory, "migration-missing");
   assert.equal(classifySocialDatabaseError({ name: "TimeoutError", message: "raw timeout" }).errorCategory, "timeout");
 
+  const allTables = Object.fromEntries(SOCIAL_OPERATIONAL_TABLES.map((table) => [table, true])) as Record<(typeof SOCIAL_OPERATIONAL_TABLES)[number], boolean>;
+  assert.equal(isSocialDatabaseSchemaCurrent({ ledgerCurrent: true, tables: allTables }), true);
+  assert.equal(isSocialDatabaseSchemaCurrent({ ledgerCurrent: false, tables: allTables }), false);
+  assert.equal(isSocialDatabaseSchemaCurrent({
+    ledgerCurrent: true,
+    tables: { ...allTables, social_media_asset: false },
+  }), false);
+
   const source = read("lib/admin/social/database.ts");
   assert.match(source, /import "server-only"/);
   assert.match(source, /FROM ccpun_social\.schema_migration/);
+  for (const table of SOCIAL_OPERATIONAL_TABLES) assert.match(source, new RegExp(table));
   assert.doesNotMatch(source, /\b(?:INSERT|UPDATE|DELETE|ALTER|DROP)\b/i);
   assert.doesNotMatch(source, /console\./);
 });
@@ -86,10 +100,13 @@ test("Migration checksum covers the reviewed DDL and operational constraints", (
   assert.match(sql, new RegExp(SOCIAL_SCHEMA_MIGRATION_CHECKSUM));
   assert.match(sql, /schema_migration/);
   assert.match(sql, /social_variant_link/);
+  assert.match(sql, /social_media_asset/);
+  assert.match(sql, /UNIQUE \(checksum_sha256, byte_size\)/);
   assert.match(sql, /idempotency_key text NOT NULL UNIQUE/);
   assert.match(sql, /job_type text NOT NULL CHECK/);
   assert.match(sql, /lock_owner text/);
-  assert.match(sql, /lock_expires_at > locked_at/);
+  assert.match(sql, /status = 'processing'[\s\S]*lock_expires_at > locked_at/);
+  assert.match(sql, /status <> 'processing'[\s\S]*lock_owner IS NULL/);
   assert.match(sql, /FOREIGN KEY \(parent_item_id, publication_id\)/);
   assert.match(sql, /last_error_ref text CHECK/);
   assert.doesNotMatch(sql, /credential|refresh_token|access_token|encrypted_credentials/i);

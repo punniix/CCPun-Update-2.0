@@ -85,7 +85,7 @@ export default async function SocialFoundationUatPage() {
       </section>
 
       <section role="note" className="mt-6 rounded-3xl border border-amber-200/20 bg-amber-200/[0.05] p-5 text-sm leading-6 text-amber-50/80">
-        ขอบเขต Phase 1: ตรวจ schema, state machine, idempotency และ audit contract เท่านั้น OAuth, media, webhook และคำสั่ง publish ยังปิดอยู่
+        ขอบเขต Phase 1: ตรวจ schema, media metadata, state machine, idempotency และ audit contract เท่านั้น OAuth, media upload/storage, webhook และคำสั่ง publish ยังปิดอยู่
       </section>
     </div>
   );

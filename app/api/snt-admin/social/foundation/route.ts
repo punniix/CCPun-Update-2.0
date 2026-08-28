@@ -29,6 +29,7 @@ export async function GET(request: Request) {
       limitations: [
         "ข้อมูลทั้งหมดเป็น synthetic UAT",
         "ยังไม่เชื่อมบัญชี Social จริง",
+        "มีเฉพาะ media metadata contract โดยยังไม่มี upload หรือ storage",
         "ยังไม่มีการส่งงานไปยังแพลตฟอร์มหรือ Production",
       ],
     },

@@ -17,11 +17,12 @@ BEGIN
   FROM ccpun_social.schema_migration
   WHERE version = '20260828_website_42_social_foundation_v2';
 
-  IF current_checksum IS NOT NULL AND current_checksum <> 'sha256:9d6c4a57b7b7781135d64e32253618c4c949effa13d10e65034f2ff05c641806' THEN
+  IF current_checksum IS NOT NULL AND current_checksum <> 'sha256:b6ad0b823775df1dcfc06e0da896dfcc477cfbeae897b70e228c18a051712acb' THEN
     RAISE EXCEPTION 'CCPUN social migration checksum mismatch';
   END IF;
 
   IF current_checksum IS NULL AND (
+    to_regclass('ccpun_social.social_media_asset') IS NOT NULL OR
     to_regclass('ccpun_social.social_variant_link') IS NOT NULL OR
     to_regclass('ccpun_social.social_publication') IS NOT NULL OR
     to_regclass('ccpun_social.social_publication_job') IS NOT NULL OR
@@ -34,6 +35,29 @@ END
 $migration_guard$;
 
 -- checksum-source-begin
+CREATE TABLE IF NOT EXISTS ccpun_social.social_media_asset (
+  id text PRIMARY KEY,
+  kind text NOT NULL CHECK (kind IN ('image', 'video', 'caption')),
+  original_filename text NOT NULL,
+  mime_type text NOT NULL CHECK (mime_type IN ('image/jpeg', 'image/png', 'image/webp', 'video/mp4', 'text/vtt')),
+  byte_size bigint NOT NULL CHECK (byte_size BETWEEN 1 AND 5000000000),
+  width_px integer CHECK (width_px BETWEEN 1 AND 32768),
+  height_px integer CHECK (height_px BETWEEN 1 AND 32768),
+  duration_ms bigint CHECK (duration_ms BETWEEN 1 AND 86400000),
+  checksum_sha256 text NOT NULL CHECK (checksum_sha256 ~ '^[0-9a-f]{64}$'),
+  lifecycle_state text NOT NULL CHECK (lifecycle_state IN ('registered', 'ready', 'archived')),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  CHECK (length(id) BETWEEN 1 AND 120),
+  CHECK (length(original_filename) BETWEEN 1 AND 255),
+  CHECK (
+    (kind = 'image' AND mime_type IN ('image/jpeg', 'image/png', 'image/webp') AND width_px IS NOT NULL AND height_px IS NOT NULL AND duration_ms IS NULL) OR
+    (kind = 'video' AND mime_type = 'video/mp4' AND width_px IS NOT NULL AND height_px IS NOT NULL AND duration_ms IS NOT NULL) OR
+    (kind = 'caption' AND mime_type = 'text/vtt' AND width_px IS NULL AND height_px IS NULL AND duration_ms IS NULL)
+  ),
+  UNIQUE (checksum_sha256, byte_size)
+);
+
 CREATE TABLE IF NOT EXISTS ccpun_social.social_variant_link (
   variant_id text PRIMARY KEY,
   master_content_id text NOT NULL,
@@ -82,8 +106,8 @@ CREATE TABLE IF NOT EXISTS ccpun_social.social_publication_job (
   CHECK (length(idempotency_key) BETWEEN 16 AND 200),
   CHECK (lock_owner IS NULL OR lock_owner ~ '^[A-Za-z0-9_.:-]{1,120}$'),
   CHECK (
-    (lock_owner IS NULL AND locked_at IS NULL AND lock_expires_at IS NULL) OR
-    (lock_owner IS NOT NULL AND locked_at IS NOT NULL AND lock_expires_at > locked_at)
+    (status = 'processing' AND lock_owner IS NOT NULL AND locked_at IS NOT NULL AND lock_expires_at > locked_at) OR
+    (status <> 'processing' AND lock_owner IS NULL AND locked_at IS NULL AND lock_expires_at IS NULL)
   )
 );
 
@@ -114,7 +138,7 @@ CREATE TABLE IF NOT EXISTS ccpun_social.social_execution_audit (
   actor_type text NOT NULL CHECK (actor_type IN ('human', 'system')),
   actor_ref text NOT NULL CHECK (actor_ref ~ '^[A-Za-z0-9_.:-]{1,120}$'),
   action text NOT NULL CHECK (action ~ '^[a-z0-9:-]{1,80}$'),
-  object_type text NOT NULL CHECK (object_type IN ('variant-link', 'publication', 'job', 'comment')),
+  object_type text NOT NULL CHECK (object_type IN ('media-asset', 'variant-link', 'publication', 'job', 'comment')),
   object_id text NOT NULL CHECK (length(object_id) BETWEEN 1 AND 120),
   request_ref text CHECK (request_ref ~ '^[A-Za-z0-9_.:-]{1,120}$'),
   outcome text NOT NULL CHECK (outcome IN ('allowed', 'denied', 'succeeded', 'failed')),
@@ -125,7 +149,7 @@ CREATE TABLE IF NOT EXISTS ccpun_social.social_execution_audit (
 INSERT INTO ccpun_social.schema_migration (version, checksum)
 VALUES (
   '20260828_website_42_social_foundation_v2',
-  'sha256:9d6c4a57b7b7781135d64e32253618c4c949effa13d10e65034f2ff05c641806'
+  'sha256:b6ad0b823775df1dcfc06e0da896dfcc477cfbeae897b70e228c18a051712acb'
 )
 ON CONFLICT (version) DO NOTHING;
 

@@ -10,7 +10,18 @@ export const WEBSITE_42_SANITY_PROJECT_ID = "ccb9lnw5";
 export const WEBSITE_42_SANITY_DATASET = "uat";
 
 export const SOCIAL_SCHEMA_MIGRATION_VERSION = "20260828_website_42_social_foundation_v2";
-export const SOCIAL_SCHEMA_MIGRATION_CHECKSUM = "sha256:9d6c4a57b7b7781135d64e32253618c4c949effa13d10e65034f2ff05c641806";
+export const SOCIAL_SCHEMA_MIGRATION_CHECKSUM = "sha256:b6ad0b823775df1dcfc06e0da896dfcc477cfbeae897b70e228c18a051712acb";
+
+export const SOCIAL_OPERATIONAL_TABLES = [
+  "social_media_asset",
+  "social_variant_link",
+  "social_publication",
+  "social_publication_job",
+  "social_comment_item",
+  "social_execution_audit",
+] as const;
+
+export type SocialOperationalTable = (typeof SOCIAL_OPERATIONAL_TABLES)[number];
 
 export const socialPlatformSchema = z.enum([
   "facebook",
@@ -73,6 +84,37 @@ export function canTransitionPublicationStatus(from: PublicationStatus, to: Publ
 
 const boundedId = z.string().trim().min(1).max(120).regex(/^[A-Za-z0-9_.:-]+$/);
 
+export const mediaAssetMetadataSchema = z.object({
+  id: boundedId,
+  kind: z.enum(["image", "video", "caption"]),
+  originalFilename: z.string().trim().min(1).max(255),
+  mimeType: z.enum(["image/jpeg", "image/png", "image/webp", "video/mp4", "text/vtt"]),
+  byteSize: z.number().int().min(1).max(5_000_000_000),
+  widthPx: z.number().int().min(1).max(32_768).nullable(),
+  heightPx: z.number().int().min(1).max(32_768).nullable(),
+  durationMs: z.number().int().min(1).max(86_400_000).nullable(),
+  checksumSha256: z.string().regex(/^[0-9a-f]{64}$/),
+  lifecycleState: z.enum(["registered", "ready", "archived"]),
+}).superRefine((asset, context) => {
+  const validShape =
+    (asset.kind === "image" && asset.mimeType.startsWith("image/") && asset.widthPx !== null && asset.heightPx !== null && asset.durationMs === null) ||
+    (asset.kind === "video" && asset.mimeType === "video/mp4" && asset.widthPx !== null && asset.heightPx !== null && asset.durationMs !== null) ||
+    (asset.kind === "caption" && asset.mimeType === "text/vtt" && asset.widthPx === null && asset.heightPx === null && asset.durationMs === null);
+  if (!validShape) {
+    context.addIssue({ code: z.ZodIssueCode.custom, message: "Media metadata must match its asset kind" });
+  }
+});
+
+export const mediaAssetReferenceSchema = z.object({
+  assetId: boundedId,
+  role: z.enum(["primary", "carousel-item", "cover", "thumbnail", "caption"]),
+  order: z.number().int().min(1).max(20).nullable(),
+}).superRefine((reference, context) => {
+  if ((reference.role === "carousel-item") !== (reference.order !== null)) {
+    context.addIssue({ code: z.ZodIssueCode.custom, message: "Only carousel items use an explicit order" });
+  }
+});
+
 export const commentSeriesItemSchema = z.object({
   id: boundedId,
   order: z.number().int().min(1).max(20),
@@ -90,6 +132,7 @@ export const socialVariantSchema = z.object({
   version: z.number().int().min(1),
   publishingMode: publishingModeSchema,
   status: publicationStatusSchema,
+  mediaReferences: z.array(mediaAssetReferenceSchema).max(20),
   commentSeries: z.array(commentSeriesItemSchema).max(20),
 });
 
@@ -100,7 +143,21 @@ export const socialFoundationSnapshotSchema = z.object({
     title: z.string().trim().min(1).max(200),
     reviewStatus: z.literal("approved"),
   }),
+  mediaAssets: z.array(mediaAssetMetadataSchema).max(40),
   variants: z.array(socialVariantSchema).min(1).max(20),
+}).superRefine((snapshot, context) => {
+  const assetIds = new Set(snapshot.mediaAssets.map((asset) => asset.id));
+  for (const variant of snapshot.variants) {
+    for (const reference of variant.mediaReferences) {
+      if (!assetIds.has(reference.assetId)) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["variants", variant.id, "mediaReferences"],
+          message: "Media reference must resolve to snapshot metadata",
+        });
+      }
+    }
+  }
 });
 
 export type SocialFoundationSnapshot = z.infer<typeof socialFoundationSnapshotSchema>;
@@ -111,6 +168,13 @@ export type SocialDatabaseReadiness = {
   migrationCurrent: boolean;
   errorCategory: "not-configured" | "invalid-configuration" | "timeout" | "authentication" | "migration-missing" | "unavailable" | "unknown" | null;
 };
+
+export function isSocialDatabaseSchemaCurrent(input: {
+  ledgerCurrent: boolean;
+  tables: Record<SocialOperationalTable, boolean>;
+}): boolean {
+  return input.ledgerCurrent && SOCIAL_OPERATIONAL_TABLES.every((table) => input.tables[table]);
+}
 
 export function isSocialDatabaseConnectionString(value: string): boolean {
   try {
@@ -196,6 +260,20 @@ export const SYNTHETIC_SOCIAL_FOUNDATION: SocialFoundationSnapshot = {
     title: "ประกันสุขภาพทำตอนป่วยแล้วใช้ได้เลยไหม",
     reviewStatus: "approved",
   },
+  mediaAssets: [
+    {
+      id: "synthetic-media-001",
+      kind: "image",
+      originalFilename: "synthetic-health-cover.webp",
+      mimeType: "image/webp",
+      byteSize: 128_000,
+      widthPx: 1_080,
+      heightPx: 1_350,
+      durationMs: null,
+      checksumSha256: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      lifecycleState: "registered",
+    },
+  ],
   variants: [
     {
       id: "synthetic-facebook-001",
@@ -206,6 +284,7 @@ export const SYNTHETIC_SOCIAL_FOUNDATION: SocialFoundationSnapshot = {
       version: 1,
       publishingMode: "native-scheduled",
       status: "approved",
+      mediaReferences: [{ assetId: "synthetic-media-001", role: "primary", order: null }],
       commentSeries: [
         {
           id: "synthetic-comment-001",
@@ -225,6 +304,7 @@ export const SYNTHETIC_SOCIAL_FOUNDATION: SocialFoundationSnapshot = {
       version: 1,
       publishingMode: "native-finish",
       status: "awaiting-native-finish",
+      mediaReferences: [],
       commentSeries: [],
     },
     {
@@ -236,6 +316,7 @@ export const SYNTHETIC_SOCIAL_FOUNDATION: SocialFoundationSnapshot = {
       version: 1,
       publishingMode: "tiktok-draft",
       status: "draft",
+      mediaReferences: [],
       commentSeries: [],
     },
   ],
