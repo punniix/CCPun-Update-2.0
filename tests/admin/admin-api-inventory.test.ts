@@ -32,6 +32,14 @@ const contracts: Record<string, RouteContract> = {
     methods: ["GET"], identity: /getAdminIdentity\(\)/, authorization: /"content:read"/,
     validation: { file: "app/api/snt-admin/content/route.ts", pattern: /export async function GET\(\)/, exception: "No request input." },
   },
+  "app/api/snt-admin/media/route.ts": {
+    methods: ["GET"], identity: /getAdminIdentity\(\)/, authorization: /"social:read"/,
+    validation: { file: "app/api/snt-admin/media/route.ts", pattern: /isConfiguredAdminOrigin\(request\.url, process\.env\.AUTH_URL\)/, exception: "Sensitive GET adds an exact configured-origin check." },
+  },
+  "app/api/snt-admin/media/upload-intents/route.ts": {
+    methods: ["POST"], identity: /getAdminIdentity\(\)/, authorization: /"media:upload"/,
+    validation: { file: "app/api/snt-admin/media/upload-intents/route.ts", pattern: /validateMediaUploadIntentHttpRequest\(\{[\s\S]*body,[\s\S]*\}\)/, },
+  },
   "app/api/snt-admin/providers/ubersuggest/callback/route.ts": {
     methods: ["GET"], identity: /getAdminIdentity\(\)/, authorization: /identity\.actorType !== "human" \|\| identity\.role !== "owner"/,
     validation: { file: "lib/admin/ubersuggest.ts", pattern: /isUbersuggestAuthorizationStateValid/, exception: "OAuth callback GET uses state validation instead of the mutation Origin header." },
@@ -80,6 +88,10 @@ const contracts: Record<string, RouteContract> = {
     methods: ["POST"], identity: /getAdminIdentity\(\)/, authorization: /action: "seo:audit"/,
     validation: { file: "lib/admin/seo-audit.ts", pattern: /runSeoAudit[\s\S]*parseArticleDocumentId\(articleId\)/, },
   },
+  "app/api/snt-admin/seo/opportunities/route.ts": {
+    methods: ["GET"], identity: /getAdminIdentity\(\)/, authorization: /"seo:read"/,
+    validation: { file: "app/api/snt-admin/seo/opportunities/route.ts", pattern: /isConfiguredAdminOrigin\(request\.url, process\.env\.AUTH_URL\)/, exception: "Sensitive GET adds an exact configured-origin check." },
+  },
   "app/api/snt-admin/seo/suggestions/route.ts": {
     methods: ["POST"], identity: /getAdminIdentity\(\)/, authorization: /action: "proposal:create"/,
     validation: { file: "app/api/snt-admin/seo/suggestions/route.ts", pattern: /bodySchema\.safeParse\(await request\.json\(\)\.catch/, },
@@ -91,6 +103,10 @@ const contracts: Record<string, RouteContract> = {
   "app/api/snt-admin/social/foundation/route.ts": {
     methods: ["GET"], identity: /getAdminIdentity\(\)/, authorization: /"social:read"/,
     validation: { file: "app/api/snt-admin/social/foundation/route.ts", pattern: /isConfiguredAdminOrigin\(request\.url, process\.env\.AUTH_URL\)/, exception: "Sensitive GET adds an exact configured-origin check." },
+  },
+  "app/api/snt-admin/social/operations/route.ts": {
+    methods: ["GET"], identity: /getAdminIdentity\(\)/, authorization: /"social:read"/,
+    validation: { file: "app/api/snt-admin/social/operations/route.ts", pattern: /isConfiguredAdminOrigin\(request\.url, process\.env\.AUTH_URL\)/, exception: "Sensitive GET adds an exact configured-origin check." },
   },
 };
 
