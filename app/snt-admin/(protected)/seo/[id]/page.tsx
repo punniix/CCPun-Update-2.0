@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import GenerateSeoProposalButton from "@/components/admin/GenerateSeoProposalButton";
-import RunSeoAuditButton from "@/components/admin/RunSeoAuditButton";
+import GenerateSeoProposalButton from "@/features/admin/components/GenerateSeoProposalButton";
+import RunSeoAuditButton from "@/features/admin/components/RunSeoAuditButton";
 import { requireAdminPermission } from "@/lib/admin/require-permission";
 import { getSeoProposalContext, runSeoAudit } from "@/lib/admin/seo-audit";
 import { getAdminSanityStatus } from "@/lib/admin/sanity-control";

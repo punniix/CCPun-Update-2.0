@@ -112,7 +112,7 @@ Future automated proposals, if enabled in a later phase, must still require evid
 - Provider contract: `lib/content/types.ts`
 - Sanity provider: `lib/content/sanity.ts`
 - Local/no-CMS fallback: `lib/content/local.ts`
-- Sanity schemas: `cms/sanity/schema.ts`
+- Sanity schema entrypoint: `cms/sanity/schema.ts`; definitions: `cms/sanity/schema/`
 
 Normal public reads use the Published perspective. Authenticated Draft Mode is available only in an allowed Admin lane/dataset pair. Draft pages are `noindex,nofollow` and excluded from the sitemap.
 

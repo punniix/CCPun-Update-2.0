@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-const page = readFileSync(new URL('../app/tools/financial-health-check/page.tsx', import.meta.url), 'utf8');
-const intro = readFileSync(new URL('../components/FinancialHealthCheck/FHCLandingIntro.tsx', import.meta.url), 'utf8');
+const page = readFileSync(new URL('../features/financial-health-check/page.tsx', import.meta.url), 'utf8');
+const intro = readFileSync(new URL('../features/financial-health-check/components/FHCLandingIntro.tsx', import.meta.url), 'utf8');
 
 assert.match(intro, /export const FHC_FAQS = \[/, 'Visible FHC FAQ content must stay defined in the intro');
 assert.match(intro, /FHC_FAQS\.map\(/, 'Visible FHC FAQs must render from the schema source');

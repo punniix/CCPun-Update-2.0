@@ -7,11 +7,13 @@ const normalized = readFileSync("lib/admin/ubersuggest-dashboard-provider.ts", "
 const snapshots = readFileSync("lib/admin/ubersuggest-dashboard.ts", "utf8");
 const route = readFileSync("app/api/snt-admin/providers/ubersuggest/sync/route.ts", "utf8");
 const legacyPage = readFileSync("app/snt-admin/(protected)/ubersuggest/page.tsx", "utf8");
-const researchPage = readFileSync("app/snt-admin/(protected)/research/page.tsx", "utf8");
+const researchPage = readFileSync("features/admin/research/page.tsx", "utf8");
 const layout = readFileSync("app/snt-admin/(protected)/layout.tsx", "utf8");
-const schema = readFileSync("cms/sanity/ubersuggestTypes.ts", "utf8");
-const studioPolicy = readFileSync("cms/sanity/studio-policy.ts", "utf8");
+const schema = readFileSync("cms/sanity/admin/schema/ubersuggest-types.ts", "utf8");
+const studioPolicy = readFileSync("cms/sanity/policy/studio-policy.ts", "utf8");
 const studioConfig = readFileSync("sanity.config.ts", "utf8");
+const schemaIndex = readFileSync("cms/sanity/schema/index.ts", "utf8");
+const adminSchemaIndex = readFileSync("cms/sanity/admin/schema/index.ts", "utf8");
 
 test("Ubersuggest provider remains local-authenticated and quota-conscious", () => {
   assert.match(provider, /\["development", "local-uat", "local-production"\]/);
@@ -37,7 +39,9 @@ test("Ubersuggest snapshots contain no OAuth credentials and stay hidden from St
   assert.match(schema, /name: "ubersuggestAccountSnapshot"/);
   assert.match(schema, /name: "ubersuggestGeoSnapshot"/);
   assert.doesNotMatch(schema, /accessToken|refreshToken|access_token|refresh_token|clientSecret|client_secret/);
-  assert.match(studioConfig, /\.\.\.ubersuggestSchemaTypes/);
+  assert.match(studioConfig, /schema:\s*\{ types: schemaTypes \}/);
+  assert.match(schemaIndex, /\.\.\.adminIntelligenceSchemaTypes/);
+  assert.match(adminSchemaIndex, /\.\.\.ubersuggestSchemaTypes/);
   assert.match(studioPolicy, /"ubersuggestAccountSnapshot"/);
   assert.match(studioPolicy, /"ubersuggestGeoSnapshot"/);
 });

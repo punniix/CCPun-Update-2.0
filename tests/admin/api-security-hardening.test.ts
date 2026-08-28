@@ -59,7 +59,7 @@ test("SEO audit and proposal routes validate bounded article IDs before data acc
 test("Preview disable is a same-origin POST and every current caller uses POST", () => {
   const route = read("app/api/preview/disable/route.ts");
   const proxy = read("proxy.ts");
-  const article = read("app/blog/[category]/[slug]/page.tsx");
+  const article = read("features/blog/pages/ArticlePage.tsx");
   const qa = read("qa/blog-uat-regression.mjs");
   const sanityConfig = read("sanity.config.ts");
 
@@ -94,7 +94,7 @@ test("human edit and reject decisions are validated, authorized, revision-guarde
   const editRoute = read("app/api/snt-admin/reviews/[id]/edit/route.ts");
   const rejectRoute = read("app/api/snt-admin/reviews/[id]/reject/route.ts");
   const page = read("app/snt-admin/(protected)/reviews/page.tsx");
-  const schema = read("cms/sanity/adminTypes.ts");
+  const schema = read("cms/sanity/admin/schema/admin-types.ts");
 
   assert.match(control, /reviewDecisionSchema = z\.discriminatedUnion/);
   assert.match(control, /privateAdminDocumentId\(parseSuggestionDocumentId\(input\.id\)\)/);

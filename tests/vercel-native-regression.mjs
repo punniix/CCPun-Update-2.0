@@ -54,6 +54,9 @@ for (const requiredRoute of [
   'app/blog/page.tsx',
   'app/blog/[category]/page.tsx',
   'app/blog/[category]/[slug]/page.tsx',
+  'features/blog/pages/BlogArchivePage.tsx',
+  'features/blog/pages/BlogCategoryPage.tsx',
+  'features/blog/pages/ArticlePage.tsx',
   'lib/content/url.ts',
   'app/api/preview/enable/route.ts',
   'app/api/snt-admin/content/[id]/preview/route.ts',
@@ -61,6 +64,9 @@ for (const requiredRoute of [
   'app/studio/[[...tool]]/studio-client.tsx',
   'sanity.config.ts',
   'cms/sanity/schema.ts',
+  'cms/sanity/schema/index.ts',
+  'cms/sanity/schema/documents/article.ts',
+  'cms/sanity/schema/objects/portable-text.ts',
   'lib/content/sanity.ts',
   'app/sitemap.xml/route.ts',
   'app/sitemaps/core.xml/route.ts',
@@ -104,9 +110,15 @@ assert.match(disablePreviewRoute, /getAdminIdentity/);
 assert.match(disablePreviewRoute, /hasAdminPermission\(identity\.role, ["']draft:apply["']\)/);
 
 const sanityConfig = read('sanity.config.ts');
+const sanityPresentation = read('cms/sanity/config/presentation.ts');
+const sanityStructure = read('cms/sanity/config/structure.ts');
 assert.match(sanityConfig, /basePath:\s*["']\/studio["']/);
-assert.match(sanityConfig, /presentationTool/);
-assert.match(sanityConfig, /\/api\/preview\/enable/);
+assert.match(sanityConfig, /createStudioPresentationPlugin/);
+assert.match(sanityConfig, /createStudioStructurePlugin/);
+assert.match(sanityPresentation, /presentationTool/);
+assert.match(sanityPresentation, /\/api\/preview\/enable/);
+assert.match(sanityStructure, /structureTool/);
+assert.match(sanityStructure, /filterStudioStructureItems/);
 assert.doesNotMatch(sanityConfig, /SANITY_API_(READ|WRITE)_TOKEN/);
 
 const sanityProvider = read('lib/content/sanity.ts');
@@ -131,7 +143,7 @@ assert.match(blogSitemap, /includeDrafts:\s*false/);
 assert.match(blogSitemap, /getArticleCanonical/);
 assert.match(blogSitemap, /filter\(isArticleCanonicalAligned\)/);
 
-const articlePage = read('app/blog/[category]/[slug]/page.tsx');
+const articlePage = read('features/blog/pages/ArticlePage.tsx');
 assert.match(articlePage, /index:\s*false,\s*follow:\s*false/);
 assert.match(articlePage, /isArticleCanonicalAligned\(article\) \? buildArticleSchemaGraph\(article\) : null/);
 assert.match(articlePage, /blog\.ccpun\.com|blog-article-hero|Financial/);
@@ -153,7 +165,7 @@ assert.match(articlePage, /permanentRedirect\(getArticlePath\(article\)\)/);
 assert.match(articlePage, /getMovedArticleRedirectPath/);
 
 assert.equal(existsSync(new URL('../app/blog/[slug]/page.tsx', import.meta.url)), false, 'blog first-level dynamic segment must use one name');
-const legacyArticlePage = read('app/blog/[category]/page.tsx');
+const legacyArticlePage = read('features/blog/pages/BlogCategoryPage.tsx');
 assert.match(legacyArticlePage, /permanentRedirect\(getArticlePath\(article\)\)/);
 assert.match(legacyArticlePage, /category: slug/);
 assert.doesNotMatch(legacyArticlePage, /blog-article-hero/);
@@ -164,7 +176,7 @@ assert.match(articleUrl, /getArticleCanonical/);
 assert.match(articleUrl, /isArticleCanonicalAligned/);
 assert.match(articleUrl, /getLegacyCategoryRedirectPath/);
 const articleTaxonomy = read('lib/content/taxonomy.ts');
-const blogArchive = read('components/Blog/BlogArchive.tsx');
+const blogArchive = read('features/blog/components/BlogArchive.tsx');
 for (const [slug, title] of [
   ['personal-finance', 'การเงินส่วนบุคคล'],
   ['life-insurance', 'ประกันชีวิต'],
@@ -186,17 +198,17 @@ assert.match(legacyArticles, /id: "legacy-wp-financial-pyramid"[\s\S]*?categoryS
 assert.match(publishedWordPressPreparer, /'life-insurance': 'ccpun-wp-category-4'/);
 assert.doesNotMatch(publishedWordPressPreparer, /ccpun-category-(?:health-insurance|critical-illness)/);
 
-const fhcPage = read('app/tools/financial-health-check/page.tsx');
+const fhcPage = read('features/financial-health-check/page.tsx');
 const fhcDescription = fhcPage.match(/const FHC_DESCRIPTION = '([^']+)'/)?.[1] ?? '';
 const fhcDescriptionLength = [...new Intl.Segmenter('th', { granularity: 'grapheme' }).segment(fhcDescription)].length;
 assert.ok(fhcDescriptionLength >= 140 && fhcDescriptionLength <= 155, `FHC description must be 140-155 Thai graphemes, received ${fhcDescriptionLength}`);
 assert.match(fhcDescription, /เฉพาะความคุ้มครองชีวิต/);
-assert.match(read('components/FHCLifeResultImageDownloadButton.tsx'), /ประกันไม่ใช่เงินฝาก/);
-assert.match(read('components/FinancialHealthCheck/FHCLandingIntro.tsx'), /7 เรื่องใน 3 กลุ่มที่ควรทบทวนให้เชื่อมกัน/);
+assert.match(read('features/financial-health-check/components/FHCLifeResultImageDownloadButton.tsx'), /ประกันไม่ใช่เงินฝาก/);
+assert.match(read('features/financial-health-check/components/FHCLandingIntro.tsx'), /7 เรื่องใน 3 กลุ่มที่ควรทบทวนให้เชื่อมกัน/);
 
 const cookiePolicy = read('app/cookie-policy/page.tsx');
 const privacyPolicy = read('app/privacy/page.tsx');
-const consentUi = read('components/CookieConsent.tsx');
+const consentUi = read('features/analytics/components/CookieConsent.tsx');
 for (const disclosure of [cookiePolicy, privacyPolicy, consentUi]) {
   assert.match(disclosure, /Google Analytics/);
   assert.match(disclosure, /Meta Pixel/);
@@ -225,18 +237,18 @@ assert.match(cookiePolicy, /หากล้างข้อมูลเว็บ�
 assert.doesNotMatch(cookiePolicy, /ไม่ได้ — จำเป็นต่อการทำงานของเว็บไซต์|ปิดไม่ได้ — จำเป็นต่อการทำงานของเว็บไซต์/);
 assert.doesNotMatch(consentUi, /ตกลงการตั้งค่า/);
 
-const navbar = read('components/Navbar.tsx');
+const navbar = read('components/layout/Navbar.tsx');
 assert.match(navbar, /href="\/blog\/"/);
 
 
-const articleSchema = read('lib/content/schema.ts');
+const articleSchema = read('lib/content/structured-data/article-schema.ts');
 assert.match(articleSchema, /article\.status !== "published"/);
 assert.match(articleSchema, /"@type": "BlogPosting"/);
 assert.match(articleSchema, /"@type": "BreadcrumbList"/);
 assert.match(articleSchema, /getArticleCanonical/);
 assert.match(articleSchema, /"@type": "FAQPage"/);
 
-const articleFaq = read('components/Blog/ArticleFaq.tsx');
+const articleFaq = read('features/blog/components/ArticleFaq.tsx');
 assert.match(articleFaq, /คำถามที่พบบ่อย/);
 assert.match(articlePage, /<ArticleFaq items=\{article\.faq \?\? \[\]\} \/>/);
 
@@ -247,16 +259,28 @@ assert.match(sanityModel, /reviewMetadata/);
 assert.match(sanityModel, /FAQPage structured data may only be emitted/);
 
 const sanitySchema = read('cms/sanity/schema.ts');
-assert.match(sanitySchema, /defineArrayMember\(\{ type: "imageWithAlt" \}\)/);
-assert.match(sanitySchema, /rankMathFocusKeyword/);
-assert.match(sanitySchema, /name: "contentUpdatedAt"/);
+const sanityDocuments = [
+  'cms/sanity/schema/documents/article.ts',
+  'cms/sanity/schema/documents/author.ts',
+  'cms/sanity/schema/documents/category.ts',
+].map(read).join('\n');
+const sanityObjects = [
+  'faq-item', 'source-reference', 'review-metadata', 'migration-source', 'seo-metadata',
+  'geo-metadata', 'image-with-alt', 'migrated-image', 'table', 'divider', 'callout',
+  'image-gallery', 'cta-block', 'pdf-download', 'details-block', 'portable-text',
+].map((name) => read(`cms/sanity/schema/objects/${name}.ts`)).join('\n');
+const sanityDefinitions = `${sanityDocuments}\n${sanityObjects}`;
+assert.match(sanitySchema, /export \{ schemaTypes \} from "\.\/schema\/index"/);
+assert.match(sanityDefinitions, /defineArrayMember\(\{ type: "imageWithAlt" \}\)/);
+assert.match(sanityDefinitions, /rankMathFocusKeyword/);
+assert.match(sanityDefinitions, /name: "contentUpdatedAt"/);
 assert.match(sanityProvider, /coalesce\(contentUpdatedAt, migration\.sourceModifiedAt, _updatedAt\)/);
 for (const schemaType of ['article', 'author', 'category', 'faqItem', 'sourceReference', 'reviewMetadata', 'seoMetadata', 'geoMetadata', 'imageWithAlt', 'portableText']) {
-  assert.match(sanitySchema, new RegExp(`name: ["']${schemaType}["']`));
+  assert.match(sanityDefinitions, new RegExp(`name: ["']${schemaType}["']`));
 }
 
 // Block Contract gate: every Studio body block must have a data parser and a public renderer.
-const portableTextDefinition = sanitySchema.match(/const portableText = defineType\(\{[\s\S]*?\n\}\);\n\nconst author/)?.[0] ?? '';
+const portableTextDefinition = read('cms/sanity/schema/objects/portable-text.ts');
 const portableTextMembers = [...portableTextDefinition.matchAll(/defineArrayMember\(\{\s*type:\s*["']([^"']+)["']/g)].map((match) => match[1]);
 assert.deepEqual(portableTextMembers, [
   'block',
@@ -270,7 +294,7 @@ assert.deepEqual(portableTextMembers, [
   'simpleTable',
   'divider',
 ]);
-const articleBodyRenderer = read('components/Blog/ArticleBody.tsx');
+const articleBodyRenderer = read('features/blog/components/ArticleBody.tsx');
 assert.match(articleBodyRenderer, /ArticleTableOfContents/);
 assert.match(articleBodyRenderer, /id=\{headingId\(index\)\}/);
 for (const [schemaType, publicType] of [
@@ -357,7 +381,7 @@ assert.match(rootLayout, /SanityLive includeDrafts=\{IS_DRAFT_PREVIEW_ALLOWED &&
 assert.match(rootLayout, /IS_DRAFT_PREVIEW_ALLOWED && isDraftMode \? <VisualEditing \/> : null/);
 assert.match(deploymentEnvironment, /IS_DRAFT_PREVIEW_ALLOWED = isAdminReadDataPlaneAllowed/);
 
-const clientWidgets = read('components/ClientWidgets.tsx');
+const clientWidgets = read('features/analytics/components/ClientWidgets.tsx');
 assert.match(clientWidgets, /import \{ usePathname \} from ['"]next\/navigation['"]/);
 assert.match(clientWidgets, /pathname === ['"]\/snt-admin['"]/);
 assert.match(clientWidgets, /pathname\.startsWith\(['"]\/snt-admin\/['"]\)/);
@@ -365,7 +389,7 @@ assert.match(clientWidgets, /pathname === ['"]\/studio['"]/);
 assert.match(clientWidgets, /pathname\.startsWith\(['"]\/studio\/['"]\)/);
 assert.match(clientWidgets, /if \(isPrivateSurface\) return null/);
 
-const gtmSource = read('components/GoogleTagManager.tsx');
+const gtmSource = read('features/analytics/components/GoogleTagManager.tsx');
 for (const deniedSignal of ['ad_storage', 'analytics_storage', 'ad_user_data', 'ad_personalization']) {
   assert.match(gtmSource, new RegExp(`${deniedSignal}: 'denied'`));
 }
@@ -384,8 +408,8 @@ assert.match(analyticsRegression, /discard calculator values/);
 assert.match(analyticsRegression, /semantic event layer must fail closed without consent/);
 
 for (const landingSource of [
-  read('components/CIPlanning/CILandingIntro.tsx'),
-  read('components/FinancialHealthCheck/LifeCoverageWizard.tsx'),
+  read('features/ci-planning/components/CILandingIntro.tsx'),
+  read('features/financial-health-check/components/LifeCoverageWizard.tsx'),
 ]) {
   assert.match(landingSource, /landingTrackedRef/);
   assert.match(landingSource, /landingTrackedRef\.current \|\| !getConsentData\(\)\?\.analytics/);
@@ -425,7 +449,7 @@ for (const tablePage of [
 }
 
 const publicDiscoverySurface = [
-  read('components/Navbar.tsx'),
+  read('components/layout/Navbar.tsx'),
   read('lib/nav-config.json'),
   read('public/nav-config.json'),
   read('app/sitemap.xml/route.ts'),

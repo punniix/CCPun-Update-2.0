@@ -14,6 +14,29 @@ This repository powers `ccpun.com`. Treat SEO continuity, consent, analytics con
 
 Read `docs/engineering-workflow-v1.md` before making repository-wide, SEO, analytics, Sanity, routing, or deployment changes.
 
+## Repository architecture
+
+Read `docs/architecture/repository-architecture.md` before adding significant files or features.
+
+Before creating a source file:
+
+1. Identify its feature/domain owner and prefer an existing directory.
+2. Keep `app/` focused on routes and composition.
+3. Put feature-specific UI/logic under `features/`.
+4. Put cross-feature UI under `components/` and shared infrastructure under a named `lib/` domain.
+5. Do not create a new top-level directory or a second naming convention without architectural justification.
+6. Do not recreate legacy paths merely because old code used them.
+7. Run `npm run test:architecture` after structural changes.
+
+Before modifying Sanity:
+
+1. Treat schema type and field names as persisted data contracts; never rename a schema `name` casually.
+2. Put editorial documents in `cms/sanity/schema/documents/`, reusable objects in `cms/sanity/schema/objects/`, and system intelligence records in `cms/sanity/admin/schema/`.
+3. Preserve environment/project/dataset isolation, Article URL locks, review/publish guards, and Studio lifecycle restrictions.
+4. Keep URL/taxonomy ownership in `lib/content/`, not CMS schema.
+5. Never modify Production content without explicit task-specific approval.
+6. Validate the schema and Admin/environment boundaries after changes.
+
 ## 1. Delivery workflow
 
 - Production branch: `v4-production`.
@@ -29,7 +52,7 @@ Read `docs/engineering-workflow-v1.md` before making repository-wide, SEO, analy
 - Use Sanity UAT for drafts, schema experiments, and content experiments unless Production write/publish is explicitly approved.
 - Importing or staging content is not publication.
 - Never publish, unpublish, delete, bulk-migrate, or rewrite Production content unless the user explicitly asks for that exact Production action.
-- Preserve the existing environment boundaries in `lib/admin/environment.ts`, `cms/sanity/studio-policy.ts`, and their tests.
+- Preserve the existing environment boundaries in `lib/admin/environment.ts`, `cms/sanity/policy/studio-policy.ts`, and their tests.
 - Never commit tokens, API keys, OAuth secrets, Vercel secrets, Sanity tokens, or private credentials.
 
 ## 3. SEO and URL safety
@@ -75,10 +98,10 @@ Protected tracking surfaces include, at minimum:
 
 - `lib/analytics.ts`
 - `lib/cookie-consent.ts`
-- `components/GoogleAnalytics.tsx`
-- `components/GoogleTagManager.tsx`
-- `components/MetaPixel.tsx`
-- `components/CookieConsent.tsx`
+- `features/analytics/components/GoogleAnalytics.tsx`
+- `features/analytics/components/GoogleTagManager.tsx`
+- `features/analytics/components/MetaPixel.tsx`
+- `features/analytics/components/CookieConsent.tsx`
 - `qa/tracking-consent-regression.mjs`
 - `tests/analytics-regression.ts`
 

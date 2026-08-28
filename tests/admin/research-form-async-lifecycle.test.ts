@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-const manualForm = readFileSync("components/admin/ResearchSnapshotForm.tsx", "utf8");
-const ubersuggestForm = readFileSync("components/admin/UbersuggestResearchForm.tsx", "utf8");
+const manualForm = readFileSync("features/admin/components/ResearchSnapshotForm.tsx", "utf8");
+const ubersuggestForm = readFileSync("features/admin/components/UbersuggestResearchForm.tsx", "utf8");
 
 test("manual research form retains the form element across async save", () => {
   assert.match(manualForm, /const formElement = event\.currentTarget/);

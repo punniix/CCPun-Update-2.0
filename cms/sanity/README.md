@@ -17,7 +17,15 @@ The page layer must not depend directly on GROQ or Sanity document shapes.
 
 ## Content model
 
-`content-model.ts` remains the conceptual contract. `schema.ts` implements the real Sanity Article/Author/Category documents and reusable objects with `defineType` / `defineField`:
+`content-model.ts` remains the conceptual contract. `schema.ts` is the compatibility entrypoint; real definitions are organized by ownership:
+
+- `schema/documents/` — Article/Author/Category editorial documents
+- `schema/objects/` — reusable embedded editorial objects
+- `admin/schema/` — Admin intelligence, research, provider and audit records
+- `policy/` — Studio access and lifecycle restrictions
+- `config/` — Studio structure, Presentation and publishing composition
+
+The definitions use `defineType` / `defineField` and preserve:
 
 - featured image + required alt text
 - visible FAQ

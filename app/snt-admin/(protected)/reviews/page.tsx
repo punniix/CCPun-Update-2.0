@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import ApproveSuggestionButton from "@/components/admin/ApproveSuggestionButton";
-import ApplySuggestionButton from "@/components/admin/ApplySuggestionButton";
-import ReviewDecisionControls from "@/components/admin/ReviewDecisionControls";
+import ApproveSuggestionButton from "@/features/admin/components/ApproveSuggestionButton";
+import ApplySuggestionButton from "@/features/admin/components/ApplySuggestionButton";
+import ReviewDecisionControls from "@/features/admin/components/ReviewDecisionControls";
 import { connectionLabel, proposalStatusLabel, proposalTypeLabel, riskLabel } from "@/lib/admin/presentation";
 import { requireAdminPermission } from "@/lib/admin/require-permission";
 import { hasAdminPermission } from "@/lib/admin/rbac";

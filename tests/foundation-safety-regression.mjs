@@ -42,7 +42,7 @@ for (const destination of [
   expect(`legacy ledger retains approved winner destination ${destination}`, ledgerText.includes(`https://ccpun.com${destination}`));
 }
 
-const studioPolicy = read('cms/sanity/studio-policy.ts');
+const studioPolicy = read('cms/sanity/policy/studio-policy.ts');
 expect('non-production Studio blocks publish', /BLOCKED_NON_PRODUCTION_ACTIONS[^\n]*"publish"/.test(studioPolicy));
 expect(
   'production admin uses guarded article lifecycle',

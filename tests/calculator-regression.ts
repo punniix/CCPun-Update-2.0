@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { calculateCiPlanning, validateCiPlanning, type CiFormData } from '../lib/ci-planning/calculator';
+import { calculateCiPlanning, validateCiPlanning, type CiFormData } from '../features/ci-planning/legacy/calculator';
 import {
   calculateCI,
   calcDebtNeed,
@@ -7,12 +7,12 @@ import {
   calcHouseholdNeed,
   calcIncomeBasedNeed,
   calcOtherDebtNeed,
-} from '../lib/ci/calculator';
-import { INITIAL_CI_FORM_DATA } from '../lib/ci/constants';
-import { validateCIStep } from '../lib/ci/schemas';
-import { calculateFHC } from '../lib/fhc/calculator';
-import { validateStep } from '../lib/fhc/schemas';
-import type { FHCFormData } from '../lib/fhc/types';
+} from '../features/ci-planning/calculator/calculator';
+import { INITIAL_CI_FORM_DATA } from '../features/ci-planning/calculator/constants';
+import { validateCIStep } from '../features/ci-planning/calculator/schemas';
+import { calculateFHC } from '../features/financial-health-check/calculator/calculator';
+import { validateStep } from '../features/financial-health-check/calculator/schemas';
+import type { FHCFormData } from '../features/financial-health-check/calculator/types';
 
 const ciBase: CiFormData = {
   age: 35,
