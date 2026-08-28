@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import { CCPUN_VERCEL_PROJECT_IDS } from "../../lib/admin/environment";
 import { ga4QueryInputSchema, gscQueryInputSchema, normalizeGa4LandingPageReport, normalizeGscSearchAnalyticsPage, previousEqualDateRange } from "../../lib/admin/seo-intelligence/contracts";
+import { assembleGscObservations } from "../../lib/admin/seo-intelligence/gsc-observations";
 import {
   detectSeoOpportunities,
   getSyntheticSeoIntelligenceSnapshot,
@@ -80,6 +81,86 @@ test("GSC normalization follows requested dimension order and rejects malformed 
   assert.equal(gscQueryInputSchema.safeParse({ siteUrl: "sc-domain:ccpun.com", token: "fixture", startDate: "2026-02-30", endDate: "2026-03-01", dimensions: ["query"] }).success, false);
   assert.deepEqual(previousEqualDateRange("2026-08-01", "2026-08-28"), { startDate: "2026-07-04", endDate: "2026-07-31" });
   assert.throws(() => normalizeGscSearchAnalyticsPage({ rows: [{ keys: ["only-one"], clicks: 1, impressions: 10, ctr: 0.1, position: 2 }] }, ["query", "page"]), /GSC_DIMENSION_MISMATCH/);
+});
+
+test("GSC observation assembly joins exact current/previous dimensions and preserves provenance", () => {
+  const currentRows = normalizeGscSearchAnalyticsPage({ rows: [{
+    keys: ["ประกันสุขภาพ", "https://ccpun.com/blog/health-insurance/example/", "MOBILE", "tha"],
+    clicks: 12,
+    impressions: 600,
+    ctr: 0.02,
+    position: 7.5,
+  }] }, ["query", "page", "device", "country"]);
+  const previousRows = normalizeGscSearchAnalyticsPage({ rows: [{
+    keys: ["ประกันสุขภาพ", "https://ccpun.com/blog/health-insurance/example/", "MOBILE", "tha"],
+    clicks: 20,
+    impressions: 900,
+    ctr: 0.031,
+    position: 5,
+  }] }, ["query", "page", "device", "country"]);
+  const result = assembleGscObservations({
+    currentRows,
+    previousRows,
+    contexts: [{
+      id: "fixture-exact",
+      page: "https://ccpun.com/blog/health-insurance/example/",
+      query: "ประกันสุขภาพ",
+      device: "mobile",
+      country: "tha",
+      queryCluster: "ประกันสุขภาพ",
+      searchIntent: "informational",
+      intentAligned: true,
+      indexable: true,
+      businessValue: 4,
+      lastRelevantContentChangeAt: "2026-05-01T00:00:00.000Z",
+      seasonality: "none",
+    }],
+    fetchedAt: "2026-08-29T00:00:00.000Z",
+    comparisonFetchedAt: "2026-08-29T00:00:01.000Z",
+    dateRange: { start: "2026-08-01", end: "2026-08-28" },
+    comparisonDateRange: { start: "2026-07-04", end: "2026-07-31" },
+    currentLimitations: ["GSC may omit anonymized queries."],
+  });
+
+  assert.equal(result.skipped.length, 0);
+  assert.equal(result.observations[0]?.country, "tha");
+  assert.deepEqual(result.observations[0]?.previous, { clicks: 20, impressions: 900, position: 5 });
+  assert.deepEqual(result.observations[0]?.comparisonDateRange, { start: "2026-07-04", end: "2026-07-31" });
+  assert.equal(result.observations[0]?.comparisonFetchedAt, "2026-08-29T00:00:01.000Z");
+  assert.deepEqual(detectSeoOpportunities(result.observations).map((item) => item.type), ["content-decay"]);
+});
+
+test("GSC observation assembly fails closed instead of guessing URL or editorial context", () => {
+  const currentRows = normalizeGscSearchAnalyticsPage({ rows: [
+    { keys: ["ประกันสุขภาพ", "https://ccpun.com/exact/", "MOBILE", "tha"], clicks: 1, impressions: 600, ctr: 0.002, position: 5 },
+    { keys: ["ไม่มี context", "https://ccpun.com/missing/", "DESKTOP", "tha"], clicks: 1, impressions: 600, ctr: 0.002, position: 5 },
+  ] }, ["query", "page", "device", "country"]);
+  const result = assembleGscObservations({
+    currentRows,
+    previousRows: [],
+    contexts: [{
+      id: "wrong-url-shape",
+      page: "/exact/",
+      query: "ประกันสุขภาพ",
+      device: "mobile",
+      country: "tha",
+      queryCluster: "ประกันสุขภาพ",
+      searchIntent: "informational",
+      intentAligned: true,
+      indexable: true,
+      businessValue: 4,
+      lastRelevantContentChangeAt: "2026-05-01T00:00:00.000Z",
+      seasonality: "none",
+    }],
+    fetchedAt: "2026-08-29T00:00:00.000Z",
+    comparisonFetchedAt: "2026-08-29T00:00:01.000Z",
+    dateRange: { start: "2026-08-01", end: "2026-08-28" },
+    comparisonDateRange: { start: "2026-07-04", end: "2026-07-31" },
+  });
+
+  assert.equal(result.observations.length, 0);
+  assert.deepEqual(result.skipped.map((item) => item.reason), ["missing-context", "missing-context"]);
+  assert.throws(() => assembleGscObservations({ currentRows: [], previousRows: [], contexts: [], fetchedAt: "2026-08-29", comparisonFetchedAt: "2026-08-29T00:00:01.000Z", dateRange: { start: "2026-02-30", end: "2026-03-01" }, comparisonDateRange: { start: "2026-01-31", end: "2026-02-27" } }), /GSC_OBSERVATION_INVALID_PROVENANCE/);
 });
 
 test("GSC provider is server-only, paginated, bounded and never logs credentials", () => {
