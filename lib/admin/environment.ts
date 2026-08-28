@@ -18,11 +18,6 @@ export const CCPUN_VERCEL_PROJECT_IDS = {
   adminProduction: "prj_6tuUxJxYbQ4mpF7sMgNWx2p2jowN",
 } as const;
 
-export const CCPUN_LEGACY_VERCEL_PROJECT_IDS = {
-  adminLab: "prj_438M14AAob2nbf20q7Xa5L7A7aMo",
-  adminUat: "prj_OR7AlGsE8spGahQegDvd0JudaiEg",
-} as const;
-
 const EXPLICIT_ENVIRONMENTS = new Set<AdminEnvironment>([
   "development",
   "web-uat",
