@@ -1,6 +1,6 @@
 import { CCPUN_VERCEL_PROJECT_IDS, parseAdminEnvironment, type AdminEnvironment } from "../environment";
 
-export const WEBSITE_42_SEO_BRANCH = "codex/website-42-seo-gsc-manual-sync-20260828";
+export const WEBSITE_42_SEO_BRANCH = "codex/website-42-seo-ga4-manual-sync-20260828";
 export const WEBSITE_42_SEO_RULE_VERSION = "seo-intelligence-core-v1";
 export const WEBSITE_42_SEO_BASELINE_VERSION = "synthetic-uat-v1";
 export const WEBSITE_42_SEO_SANITY_PROJECT_ID = "ccb9lnw5";

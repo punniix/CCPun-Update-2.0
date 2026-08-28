@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import { CCPUN_VERCEL_PROJECT_IDS } from "../../lib/admin/environment";
-import { gscQueryInputSchema, normalizeGscSearchAnalyticsPage, previousEqualDateRange } from "../../lib/admin/seo-intelligence/contracts";
+import { ga4QueryInputSchema, gscQueryInputSchema, normalizeGa4LandingPageReport, normalizeGscSearchAnalyticsPage, previousEqualDateRange } from "../../lib/admin/seo-intelligence/contracts";
 import {
   detectSeoOpportunities,
   getSyntheticSeoIntelligenceSnapshot,
@@ -111,6 +111,60 @@ test("GSC manual sync is human-only, exact-origin, bounded and read-only", () =>
   assert.match(control, /type="date"/);
   assert.match(control, /กำลัง Sync/);
   assert.match(control, /role="alert"/);
+  assert.match(control, /ไม่บันทึก DB\/Sanity/);
+});
+
+test("GA4 landing-page normalization derives engagement and exposes report limitations", () => {
+  const report = normalizeGa4LandingPageReport({
+    dimensionHeaders: [{ name: "landingPage" }],
+    metricHeaders: [{ name: "sessions" }, { name: "engagedSessions" }],
+    rows: [
+      { dimensionValues: [{ value: "/blog/example/" }], metricValues: [{ value: "20" }, { value: "8" }] },
+      { dimensionValues: [{ value: "(not set)" }], metricValues: [{ value: "3" }, { value: "1" }] },
+      { dimensionValues: [{ value: "/zero/" }], metricValues: [{ value: "0" }, { value: "0" }] },
+    ],
+    rowCount: 3,
+    metadata: { samplingMetadatas: [{}], subjectToThresholding: true, dataLossFromOtherRow: true, timeZone: "Asia/Bangkok" },
+  });
+  assert.equal(report.rows.length, 2);
+  assert.equal(report.rows[0]?.engagementRate, 0.4);
+  assert.equal(report.rows[1]?.engagementRate, 0);
+  assert.equal(report.timeZone, "Asia/Bangkok");
+  assert.equal(report.limitations.length, 3);
+  assert.equal(ga4QueryInputSchema.safeParse({ propertyId: "not-a-number", token: "fixture", startDate: "2026-08-01", endDate: "2026-08-28" }).success, false);
+  assert.throws(() => normalizeGa4LandingPageReport({ dimensionHeaders: [{ name: "landingPage" }], metricHeaders: [{ name: "sessions" }], rows: [] }), /GA4_HEADER_MISMATCH/);
+  assert.throws(() => normalizeGa4LandingPageReport({ dimensionHeaders: [{ name: "landingPage" }], metricHeaders: [{ name: "sessions" }, { name: "engagedSessions" }], rows: [{ dimensionValues: [{ value: "/" }], metricValues: [{ value: "1" }, { value: "2" }] }] }), /GA4_VALUE_MISMATCH/);
+});
+
+test("GA4 provider requests bounded Organic Search landing outcomes without credential logging", () => {
+  const provider = read("lib/admin/seo-intelligence/providers/ga4.ts");
+  const contracts = read("lib/admin/seo-intelligence/contracts.ts");
+  assert.match(provider, /import "server-only"/);
+  assert.match(provider, /sessionDefaultChannelGroup/);
+  assert.match(provider, /value: "Organic Search"/);
+  assert.match(provider, /metrics: \[\{ name: "sessions" \}, \{ name: "engagedSessions" \}\]/);
+  assert.match(contracts, /max\(10_000\)/);
+  assert.match(provider, /AbortSignal\.timeout\(TIMEOUT_MS\)/);
+  assert.match(provider, /returnPropertyQuota: true/);
+  assert.doesNotMatch(provider, /console\.|eventCount|activeUsers|keyEvents/);
+});
+
+test("GA4 manual sync is human-only, exact-origin, branch-gated and read-only", () => {
+  const route = read("app/api/snt-admin/seo/opportunities/sync/ga4/route.ts");
+  const control = read("features/admin/seo/opportunities/Ga4ManualSync.tsx");
+  assert.match(route, /identity\.actorType !== "human"/);
+  assert.match(route, /research:provider-query/);
+  assert.match(route, /isConfiguredAdminOrigin/);
+  assert.match(route, /isSameOriginAdminMutation/);
+  assert.match(route, /getSeoIntelligenceRuntimeStatus\(\)\.enabled/);
+  assert.match(route, /CCPUN_GA4_ACCESS_TOKEN/);
+  assert.match(route, /current\.rows\.slice\(0, 100\)/);
+  assert.match(route, /state: comparison \? "ready" : "partial"/);
+  assert.match(route, /export async function POST\(request: Request\)/);
+  assert.doesNotMatch(route, /export async function (?:GET|PUT|PATCH|DELETE)/);
+  assert.doesNotMatch(route, /createClient|sanity|mutate|publish|console\./i);
+  assert.match(control, /type="date"/);
+  assert.match(control, /Organic Landing Pages/);
   assert.match(control, /ไม่บันทึก DB\/Sanity/);
 });
 

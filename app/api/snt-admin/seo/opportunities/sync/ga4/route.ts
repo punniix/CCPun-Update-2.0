@@ -1,0 +1,95 @@
+import { randomUUID } from "node:crypto";
+import { NextResponse } from "next/server";
+import { z } from "zod";
+import { isConfiguredAdminOrigin, isSameOriginAdminMutation } from "@/lib/admin/auth-config";
+import { getAdminIdentity } from "@/lib/admin/identity";
+import { hasAdminPermission } from "@/lib/admin/rbac";
+import { previousEqualDateRange } from "@/lib/admin/seo-intelligence/contracts";
+import { getSeoIntelligenceRuntimeStatus } from "@/lib/admin/seo-intelligence/foundation";
+import { fetchGa4LandingPages } from "@/lib/admin/seo-intelligence/providers/ga4";
+
+const inputSchema = z.object({ startDate: z.iso.date(), endDate: z.iso.date() }).superRefine((input, context) => {
+  const start = Date.parse(`${input.startDate}T00:00:00Z`);
+  const end = Date.parse(`${input.endDate}T00:00:00Z`);
+  if (!Number.isFinite(start) || !Number.isFinite(end) || start > end) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ["startDate"], message: "Invalid date range" });
+  } else if ((end - start) / 86_400_000 >= 90) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ["endDate"], message: "Date range exceeds 90 days" });
+  }
+});
+
+let syncInFlight = false;
+
+function totals(rows: Awaited<ReturnType<typeof fetchGa4LandingPages>>["rows"]) {
+  const sessions = rows.reduce((sum, row) => sum + row.sessions, 0);
+  const engagedSessions = rows.reduce((sum, row) => sum + row.engagedSessions, 0);
+  return { sessions, engagedSessions, engagementRate: sessions ? engagedSessions / sessions : 0 };
+}
+
+function providerError(error: unknown) {
+  const code = error instanceof Error ? error.message : "";
+  if (code === "GA4_AUTH_REQUIRED") return { error: "provider-auth-required", status: 409 };
+  if (code === "GA4_RATE_LIMITED") return { error: "provider-rate-limited", status: 429 };
+  if (code === "GA4_TIMEOUT") return { error: "provider-timeout", status: 504 };
+  if (code === "GA4_INVALID_RESPONSE") return { error: "provider-invalid-response", status: 502 };
+  return { error: "provider-unavailable", status: 502 };
+}
+
+export async function POST(request: Request) {
+  const identity = await getAdminIdentity();
+  if (!identity) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  if (identity.actorType !== "human" || !hasAdminPermission(identity.role, "research:provider-query")) {
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  }
+  if (
+    !isConfiguredAdminOrigin(request.url, process.env.AUTH_URL) ||
+    !isSameOriginAdminMutation(request.url, request.headers.get("origin"))
+  ) return NextResponse.json({ error: "forbidden-origin" }, { status: 403 });
+  if (!getSeoIntelligenceRuntimeStatus().enabled) return NextResponse.json({ error: "not-found" }, { status: 404 });
+
+  const parsed = inputSchema.safeParse(await request.json().catch(() => null));
+  if (!parsed.success) return NextResponse.json({ error: "invalid-input" }, { status: 400 });
+  const token = process.env.CCPUN_GA4_ACCESS_TOKEN?.trim();
+  const propertyId = process.env.CCPUN_GA4_PROPERTY_ID?.trim();
+  if (!token || !propertyId) return NextResponse.json({ error: "provider-not-connected" }, { status: 409 });
+  if (syncInFlight) return NextResponse.json({ error: "sync-in-progress" }, { status: 409 });
+
+  syncInFlight = true;
+  const requestId = randomUUID();
+  const comparisonRange = previousEqualDateRange(parsed.data.startDate, parsed.data.endDate);
+  try {
+    // ponytail: one owner and one manual sync at a time; add a durable lock only with scheduled sync.
+    const current = await fetchGa4LandingPages({ propertyId, token, ...parsed.data });
+    let comparison: Awaited<ReturnType<typeof fetchGa4LandingPages>> | null = null;
+    let comparisonError: string | null = null;
+    try {
+      comparison = await fetchGa4LandingPages({ propertyId, token, ...comparisonRange });
+    } catch (error) {
+      comparisonError = providerError(error).error;
+    }
+    return NextResponse.json({
+      requestId,
+      source: "ga4",
+      state: comparison ? "ready" : "partial",
+      channel: "Organic Search",
+      dateRange: parsed.data,
+      comparisonRange,
+      fetchedAt: current.fetchedAt,
+      timeZone: current.timeZone,
+      current: { rows: current.rows.length, ...totals(current.rows) },
+      comparison: comparison ? { rows: comparison.rows.length, ...totals(comparison.rows) } : null,
+      comparisonError,
+      sample: current.rows.slice(0, 100),
+      truncated: current.truncated || Boolean(comparison?.truncated),
+      limitations: [...new Set([...current.limitations, ...(comparison?.limitations ?? []), "ตัวอย่างหน้า Admin จำกัด 100 แถวและยังไม่บันทึกข้อมูล"])],
+    }, { headers: { "Cache-Control": "no-store" } });
+  } catch (error) {
+    const mapped = providerError(error);
+    return NextResponse.json({ error: mapped.error, requestId }, {
+      status: mapped.status,
+      ...(mapped.status === 429 ? { headers: { "Retry-After": "60" } } : {}),
+    });
+  } finally {
+    syncInFlight = false;
+  }
+}

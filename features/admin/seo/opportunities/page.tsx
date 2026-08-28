@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { requireAdminPermission } from "@/lib/admin/require-permission";
 import { getSeoIntelligenceRuntimeStatus, getSyntheticSeoIntelligenceSnapshot, type SeoOpportunityType } from "@/lib/admin/seo-intelligence/foundation";
 import GscManualSync from "./GscManualSync";
+import Ga4ManualSync from "./Ga4ManualSync";
 
 export const metadata: Metadata = { title: "SEO Opportunities UAT" };
 
@@ -42,6 +43,7 @@ export default async function SeoOpportunitiesUatPage() {
       </section>
 
       <GscManualSync defaultStartDate={bangkokDate(27)} defaultEndDate={bangkokDate(0)} />
+      <Ga4ManualSync defaultStartDate={bangkokDate(27)} defaultEndDate={bangkokDate(0)} />
 
       <section className="mt-6 grid gap-4 xl:grid-cols-2">
         {snapshot.opportunities.map((opportunity) => (
