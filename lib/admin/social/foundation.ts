@@ -319,5 +319,17 @@ export const SYNTHETIC_SOCIAL_FOUNDATION: SocialFoundationSnapshot = {
       mediaReferences: [],
       commentSeries: [],
     },
+    {
+      id: "synthetic-youtube-001",
+      masterContentId: "synthetic-master-001",
+      title: "YouTube Short ที่พร้อมส่งเข้า Native Scheduler",
+      platform: "youtube",
+      format: "short",
+      version: 1,
+      publishingMode: "native-scheduled",
+      status: "approved",
+      mediaReferences: [],
+      commentSeries: [],
+    },
   ],
 };

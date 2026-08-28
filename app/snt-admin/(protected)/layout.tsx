@@ -6,6 +6,8 @@ import AdminNavigation from "@/features/admin/components/AdminNavigation";
 import { getAdminEnvironment } from "@/lib/admin/environment";
 import { environmentLabel, roleLabel } from "@/lib/admin/presentation";
 import { hasAdminPermission, type AdminPermission, type AdminRole } from "@/lib/admin/rbac";
+import { getSocialFoundationRuntimeStatus } from "@/lib/admin/social/foundation";
+import { getSocialOperationsRuntimeStatus } from "@/lib/admin/social/operations";
 
 export const metadata: Metadata = {
   title: { default: "CCPun Control Plane", template: "%s | CCPun Control Plane" },
@@ -31,7 +33,11 @@ export default async function ProtectedAdminLayout({ children }: { children: Rea
 
   const environment = getAdminEnvironment();
   const currentEnvironmentLabel = environmentLabel(environment);
-  const navItems = NAV_ITEMS.filter((item) => hasAdminPermission(role, item.permission));
+  const socialEnabled = getSocialFoundationRuntimeStatus().enabled || getSocialOperationsRuntimeStatus().enabled;
+  const navItems = NAV_ITEMS.filter((item) => (
+    hasAdminPermission(role, item.permission)
+    && (item.href !== "/snt-admin/distribution/" || socialEnabled)
+  ));
   const identityLabel = session?.user?.email ?? session?.user?.name ?? "Admin";
 
   async function logout() {

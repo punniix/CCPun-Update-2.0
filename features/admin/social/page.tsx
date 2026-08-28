@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { requireAdminPermission } from "@/lib/admin/require-permission";
 import { getSocialDatabaseReadiness } from "@/lib/admin/social/database";
 import {
@@ -7,6 +7,7 @@ import {
   socialFoundationSnapshotSchema,
   SYNTHETIC_SOCIAL_FOUNDATION,
 } from "@/lib/admin/social/foundation";
+import { getSocialOperationsRuntimeStatus } from "@/lib/admin/social/operations";
 
 export const metadata: Metadata = { title: "Social Foundation UAT" };
 
@@ -36,6 +37,9 @@ function readinessLabel(readiness: Awaited<ReturnType<typeof getSocialDatabaseRe
 export default async function SocialFoundationUatPage() {
   await requireAdminPermission("social:read");
   const runtime = getSocialFoundationRuntimeStatus();
+  if (!runtime.enabled && getSocialOperationsRuntimeStatus().enabled) {
+    redirect("/snt-admin/distribution/operations/");
+  }
   if (!runtime.enabled) notFound();
 
   const snapshot = socialFoundationSnapshotSchema.parse(SYNTHETIC_SOCIAL_FOUNDATION);
