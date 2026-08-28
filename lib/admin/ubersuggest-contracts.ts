@@ -28,7 +28,7 @@ function normalizedIntent(value: string | null | undefined): ResearchInput["inte
   if (normalized?.includes("transact")) return "transactional";
   if (normalized?.includes("navig")) return "navigational";
   if (normalized?.includes("commercial")) return "commercial";
-  return normalized ? "mixed" : undefined;
+  return undefined;
 }
 
 export function isUbersuggestAuthorizationStateValid(
@@ -67,7 +67,9 @@ export function normalizeUbersuggestResearch(input: {
   return researchInputSchema.parse({
     keyword: input.keyword,
     provider: "ubersuggest",
-    scope: overview.location ?? "Global",
+    scope: overview.location ?? undefined,
+    location: overview.location ?? undefined,
+    language: overview.language ?? undefined,
     volume: overview.search_volume ?? undefined,
     difficulty: overview.seo_difficulty ?? undefined,
     intent: normalizedIntent(overview.search_intent),

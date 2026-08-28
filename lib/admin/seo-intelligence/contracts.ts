@@ -80,6 +80,8 @@ export const marketProviderSnapshotSchema = z.object({
   evidence: z.object({
     keyword: z.string().trim().min(1).max(300),
     scope: z.string().trim().min(1).max(120).nullable(),
+    location: z.string().trim().min(1).max(120).nullable(),
+    language: z.string().trim().min(1).max(80).nullable(),
     volume: z.number().nonnegative().nullable(),
     difficulty: z.number().min(0).max(100).nullable(),
     intent: z.enum(["informational", "commercial", "transactional", "navigational", "mixed"]).nullable(),

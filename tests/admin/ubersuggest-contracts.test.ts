@@ -19,7 +19,9 @@ test("partial provider payload remains usable without invented metrics", () => {
   }), {
     keyword: "ประกันสุขภาพ",
     provider: "ubersuggest",
-    scope: "Global",
+    scope: undefined,
+    location: undefined,
+    language: undefined,
     volume: undefined,
     difficulty: undefined,
     intent: "informational",
@@ -27,6 +29,19 @@ test("partial provider payload remains usable without invented metrics", () => {
     competitors: [],
     checkedAt: "2026-08-29T00:00:00.000Z",
   });
+});
+
+test("provider location, language and unknown intent remain explicit without guessing", () => {
+  const normalized = normalizeUbersuggestResearch({
+    keyword: "วางแผนเกษียณ",
+    overview: { location: "Thailand", language: "Thai", search_intent: "provider-new-label" },
+    serp: {},
+    checkedAt: "2026-08-29T00:00:00.000Z",
+  });
+  assert.equal(normalized.scope, "Thailand");
+  assert.equal(normalized.location, "Thailand");
+  assert.equal(normalized.language, "Thai");
+  assert.equal(normalized.intent, undefined);
 });
 
 test("OAuth state rejects mismatch, expiry, and future timestamps", () => {
