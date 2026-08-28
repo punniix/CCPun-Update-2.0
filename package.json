@@ -15,7 +15,7 @@
     "start": "next start",
     "lint": "eslint",
     "test:architecture": "node scripts/check-repository-architecture.mjs",
-    "test:vercel": "node tests/vercel-native-regression.mjs && node --test tests/vercel-build-routing.test.mjs && tsx tests/analytics-regression.ts",
+    "test:vercel": "node tests/vercel-native-regression.mjs && node --test tests/vercel-build-routing.test.mjs && node --import tsx tests/analytics-regression.ts",
     "test:search-intent-owners": "node tests/search-intent-owner-regression.mjs",
     "test:foundation-contracts": "node tests/foundation-safety-regression.mjs && node tests/search-intent-owner-regression.mjs",
     "check:foundation": "npm run lint && npx tsc --noEmit --incremental false && npm run test:architecture && npm run test:foundation-contracts && npm run test:vercel && npm run test:admin",
@@ -28,11 +28,11 @@
     "cms:import:wp-drafts": "CCPUN_UAT_MODE=1 node --env-file-if-exists=.env.local scripts/import-wordpress-drafts-to-sanity.mjs",
     "cms:seed:uat": "CCPUN_UAT_MODE=1 node --env-file-if-exists=.env.local scripts/create-sanity-uat-draft.mjs",
     "cms:remediate:wordpress": "CCPUN_APP_ENV=local-production NEXT_PUBLIC_SANITY_PROJECT_ID=kyfxgjnq NEXT_PUBLIC_SANITY_DATASET=production node --env-file-if-exists=.env.local scripts/remediate-wordpress-mapping.mjs --dry-run",
-    "cms:taxonomy:uat:dry-run": "CCPUN_APP_ENV=local-uat SANITY_API_PROJECT_ID=ccb9lnw5 SANITY_API_DATASET=uat tsx scripts/migrate-uat-taxonomy.ts --dry-run",
+    "cms:taxonomy:uat:dry-run": "CCPUN_APP_ENV=local-uat SANITY_API_PROJECT_ID=ccb9lnw5 SANITY_API_DATASET=uat node --import tsx scripts/migrate-uat-taxonomy.ts --dry-run",
     "cms:taxonomy:production:self-test": "node scripts/migrate-production-article-taxonomy.mjs --self-test",
     "guard:survivor": "node scripts/guard-survivor-deploy.mjs",
     "build:survivor": "npm run guard:survivor && next build",
-    "test:admin": "tsx --test tests/admin/*.test.ts"
+    "test:admin": "node --import tsx --test tests/admin/*.test.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/client": "^2.0.0",
