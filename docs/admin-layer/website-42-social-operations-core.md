@@ -18,6 +18,8 @@ Live is modeled as a main content format. Phase 1 stores only post-Live historic
 
 Provider snapshots pass through one normalization boundary that always records `manual-post-live`, keeps real-time polling disabled, and forbids provider writes. This is ingestion validation only; it does not connect an account or fetch analytics.
 
+Pure Meta, YouTube and TikTok adapters accept strict metric allowlists, reject unknown credential-shaped fields, and preserve native metric names instead of manufacturing a cross-platform total. They normalize already-fetched evidence only; OAuth, token refresh, API calls and durable analytics storage remain disconnected.
+
 No Social API, OAuth connection, database write, scheduled job, webhook, real account, real post, or real analytics sync exists in this phase. Native metrics are not summed across platforms. Disable the feature flag to roll back the Preview surface.
 
 `/snt-admin/distribution/calendar/` is read-only and uses the same exact-lane guard. It displays current variant state, publishing mode, any synthetic scheduled time and whether historical analytics fixtures exist. It does not create publication jobs or provider requests.

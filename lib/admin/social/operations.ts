@@ -29,7 +29,7 @@ export const socialPublicationPlanSchema = z.object({
 export const socialMetricSnapshotSchema = z.object({
   publicationId: boundedId,
   platform: socialPlatformSchema,
-  source: z.literal("synthetic-uat"),
+  source: z.enum(["synthetic-uat", "meta", "youtube", "tiktok"]),
   fetchedAt: z.string().datetime(),
   nativeMetrics: z.array(z.object({
     key: z.string().trim().min(1).max(80),

@@ -1,12 +1,12 @@
 import { z } from "zod";
 
-const providerConnectionSchema = z.object({
+export const providerConnectionSchema = z.object({
   provider: z.enum(["google-drive", "gsc", "ga4", "meta", "youtube", "tiktok"]),
   state: z.enum(["disconnected", "authorization-pending", "connected", "refresh-required", "revoked", "error"]),
   scopes: z.array(z.string().trim().min(1).max(200)).max(30),
   expiresAt: z.string().datetime().nullable(),
   lastErrorCategory: z.enum(["authorization", "revoked", "timeout", "rate-limit", "provider-unavailable", "invalid-response"]).nullable(),
-});
+}).strict();
 
 type ProviderConnection = z.infer<typeof providerConnectionSchema>;
 type ProviderConnectionEvent =
