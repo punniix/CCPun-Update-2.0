@@ -92,6 +92,76 @@ export type GoogleDriveBoundaryEvaluation =
 
 const MAX_ANCESTRY_DEPTH = 64;
 
+const googleDriveApiItemSchema = z.object({
+  id: googleDriveFileIdSchema,
+  mimeType: z.string().trim().min(1).max(200),
+  parents: z.array(googleDriveFileIdSchema).max(2).optional(),
+  trashed: z.boolean(),
+  shortcutDetails: z.object({
+    targetId: googleDriveFileIdSchema,
+    targetMimeType: z.string().trim().min(1).max(200),
+  }).nullable().optional(),
+});
+
+function driveMetadataUrl(fileId: string): string {
+  const url = new URL(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}`);
+  url.searchParams.set("fields", "id,mimeType,parents,trashed,shortcutDetails(targetId,targetMimeType)");
+  return url.toString();
+}
+
+export async function fetchGoogleDriveBoundaryEvidence(input: {
+  rootFolderId: unknown;
+  selectedItemId: unknown;
+  accessToken: string;
+  signal?: AbortSignal;
+  fetchImpl?: typeof fetch;
+}): Promise<GoogleDriveBoundaryEvaluation | { allowed: false; reason: "provider-unavailable" }> {
+  const rootFolderId = googleDriveFileIdSchema.safeParse(input.rootFolderId);
+  const selectedItemId = googleDriveFileIdSchema.safeParse(input.selectedItemId);
+  const accessToken = z.string().trim().min(1).max(8192).safeParse(input.accessToken);
+  if (!rootFolderId.success || !selectedItemId.success || !accessToken.success) {
+    return { allowed: false, reason: "invalid-boundary-input" };
+  }
+
+  const items: GoogleDriveNormalizedItem[] = [];
+  let currentId = selectedItemId.data;
+  const fetchImpl = input.fetchImpl ?? fetch;
+
+  for (let depth = 0; depth < MAX_ANCESTRY_DEPTH; depth += 1) {
+    let response: Response;
+    try {
+      response = await fetchImpl(driveMetadataUrl(currentId), {
+        headers: { Authorization: `Bearer ${accessToken.data}` },
+        signal: input.signal,
+      });
+    } catch {
+      return { allowed: false, reason: "provider-unavailable" };
+    }
+    if (!response.ok) return { allowed: false, reason: "provider-unavailable" };
+
+    const parsed = googleDriveApiItemSchema.safeParse(await response.json().catch(() => null));
+    if (!parsed.success || parsed.data.id !== currentId) {
+      return { allowed: false, reason: "ancestry-unverifiable" };
+    }
+    items.push({
+      id: parsed.data.id,
+      mimeType: parsed.data.mimeType,
+      parents: parsed.data.parents ?? [],
+      trashed: parsed.data.trashed,
+      shortcutDetails: parsed.data.shortcutDetails ?? null,
+    });
+    if (currentId === rootFolderId.data || !parsed.data.parents?.length) break;
+    if (parsed.data.parents.length !== 1) return { allowed: false, reason: "ancestry-unverifiable" };
+    currentId = parsed.data.parents[0]!;
+  }
+
+  return evaluateGoogleDriveRootBoundary({
+    rootFolderId: rootFolderId.data,
+    selectedItemId: selectedItemId.data,
+    items,
+  });
+}
+
 export function evaluateGoogleDriveRootBoundary(input: {
   rootFolderId: unknown;
   selectedItemId: unknown;

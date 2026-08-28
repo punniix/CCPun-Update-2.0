@@ -19,7 +19,7 @@ The runtime enables only when every condition matches:
 - flag is exactly `1`
 - `CCPUN_APP_ENV=admin-uat`
 - Vercel project is the Admin survivor
-- Git branch is exactly `codex/website-42-media-library-foundation-20260828`
+- Git branch is exactly `codex/website-42-social-media-integration-20260829`
 - Sanity is exactly `ccb9lnw5/uat`
 
 The default is disabled. Unknown environment, branch, project, or dataset values fail closed.
@@ -66,11 +66,13 @@ Google Drive / CCPun folder
 
 The runnable foundation is intentionally a pure server-only contract in `lib/admin/media/google-drive-foundation.ts`, with a fail-closed browser runtime guard. It accepts only normalized synthetic metadata and verifies the current parent chain against one exact immutable root folder ID. It denies shortcuts rather than resolving them, and denies moved/outside-root, trashed, cyclic, duplicate, missing, multi-parent, or otherwise unverifiable ancestry. Folder names never grant access.
 
-In a future real connection, trusted server code must fetch every current ancestry item directly from the Drive API using the short-lived interactive authorization and normalize that response before invoking this boundary. Client-asserted file IDs, parents, trashed state, MIME types, shortcut targets, or ancestry snapshots must never be treated as authorization evidence.
+The server-only adapter now fetches current file metadata and parent ancestry directly from the Drive API, validates every response with Zod, and then invokes this boundary. It never downloads media bytes. The access token remains an in-memory request value and is not returned, logged, written to disk, or stored in Sanity/Neon. Provider errors are reduced to the sanitized `provider-unavailable` state. Client-asserted file IDs, parents, trashed state, MIME types, shortcut targets, or ancestry snapshots are never treated as authorization evidence.
 
-The authorization contract accepts only `drive.file`, an owner-interactive session, a maximum one-hour lifetime, memory-only access-token handling, and explicitly forbidden refresh-token persistence. It models authorization claims only; it contains no token value and performs no Google API or OAuth call.
+The authorization contract accepts only `drive.file`, an owner-interactive session, a maximum one-hour lifetime, memory-only access-token handling, and explicitly forbidden refresh-token persistence. It does not implement OAuth, persist a provider connection, or authorize uploads.
 
 No route, UI, dependency, table, or migration change is added for Drive in this synthetic phase. The existing operational schema does not yet persist Drive source provenance. Adding immutable Drive file/root IDs and durable audit evidence is a blocked write-lane design/migration gate before any real import can be enabled; provenance is returned only by the in-memory boundary evaluation for now.
+
+Provider connection state is represented separately as metadata-only states (`disconnected`, `authorization-pending`, `connected`, `refresh-required`, `revoked`, `error`). This state machine contains no token fields and cannot perform OAuth or provider calls.
 
 This design keeps the expected early incremental cost at zero while usage remains inside the owner's existing Drive allowance, Neon Free allowance, Google API quota, and any future object-storage free tier. It does not authorize a Google connection, bucket, billing account, or provider secret.
 

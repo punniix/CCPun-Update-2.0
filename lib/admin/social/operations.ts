@@ -12,7 +12,7 @@ import {
   WEBSITE_42_SANITY_PROJECT_ID,
 } from "./foundation";
 
-export const WEBSITE_42_SOCIAL_OPERATIONS_BRANCH = "codex/website-42-social-operations-core-20260828";
+export const WEBSITE_42_SOCIAL_OPERATIONS_BRANCH = "codex/website-42-social-media-integration-20260829";
 
 const boundedId = z.string().trim().min(1).max(120).regex(/^[A-Za-z0-9_.:-]+$/);
 const metricDimensionSchema = z.enum(["discovery", "engagement", "deep-engagement", "retention", "business-intent"]);

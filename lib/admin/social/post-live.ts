@@ -52,6 +52,17 @@ export const postLiveReportSchema = z.object({
   snapshots: z.array(postLiveSnapshotSchema).min(1).max(20),
 });
 
+export function normalizePostLiveSnapshot(
+  input: Omit<z.input<typeof postLiveSnapshotSchema>, "collectionMode" | "realtimePollingAllowed" | "providerRequestAllowed">,
+) {
+  return postLiveSnapshotSchema.parse({
+    ...input,
+    collectionMode: "manual-post-live",
+    realtimePollingAllowed: false,
+    providerRequestAllowed: false,
+  });
+}
+
 export function buildSyntheticPostLiveReport() {
   const variant = SYNTHETIC_SOCIAL_FOUNDATION.variants.find((item) => item.format === "live");
   const publication = SYNTHETIC_PUBLISHED_SOCIAL_RECORDS.find((item) => item.variantId === variant?.id);

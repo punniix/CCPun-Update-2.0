@@ -4,6 +4,7 @@ import test from "node:test";
 import { SYNTHETIC_SOCIAL_FOUNDATION } from "../../lib/admin/social/foundation";
 import { SYNTHETIC_PUBLISHED_SOCIAL_RECORDS } from "../../lib/admin/social/operations";
 import {
+  normalizePostLiveSnapshot,
   postLiveSnapshotSchema,
   SYNTHETIC_POST_LIVE_REPORT,
 } from "../../lib/admin/social/post-live";
@@ -51,4 +52,24 @@ test("Post-Live preview route is authenticated, exact-origin and GET-only", () =
   assert.match(page, /Real-time polling, background sync/);
   assert.equal(entry.trim(), 'export { metadata, default } from "@/features/admin/social/post-live-page";');
   assert.match(operations, /distribution\/analytics\/post-live/);
+});
+
+test("Post-Live ingestion normalizes historical provider evidence without enabling provider calls", () => {
+  const source = SYNTHETIC_POST_LIVE_REPORT.snapshots[0]!;
+  const normalized = normalizePostLiveSnapshot({
+    snapshotId: "post-live-provider-adapter-001",
+    publicationId: source.publicationId,
+    masterContentId: source.masterContentId,
+    variantId: source.variantId,
+    platform: source.platform,
+    providerState: source.providerState,
+    liveEndedAt: source.liveEndedAt,
+    fetchedAt: source.fetchedAt,
+    nativeMetrics: source.nativeMetrics,
+    normalizedMetrics: source.normalizedMetrics,
+    limitations: source.limitations,
+  });
+  assert.equal(normalized.collectionMode, "manual-post-live");
+  assert.equal(normalized.realtimePollingAllowed, false);
+  assert.equal(normalized.providerRequestAllowed, false);
 });

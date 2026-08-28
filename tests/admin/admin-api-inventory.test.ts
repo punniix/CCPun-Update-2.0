@@ -112,9 +112,17 @@ const contracts: Record<string, RouteContract> = {
     methods: ["GET"], identity: /getAdminIdentity\(\)/, authorization: /"social:read"/,
     validation: { file: "app/api/snt-admin/social/foundation/route.ts", pattern: /isConfiguredAdminOrigin\(request\.url, process\.env\.AUTH_URL\)/, exception: "Sensitive GET adds an exact configured-origin check." },
   },
+  "app/api/snt-admin/social/analytics/post-live/route.ts": {
+    methods: ["GET"], identity: /getAdminIdentity\(\)/, authorization: /"social:read"/,
+    validation: { file: "app/api/snt-admin/social/analytics/post-live/route.ts", pattern: /isConfiguredAdminOrigin\(request\.url, process\.env\.AUTH_URL\)/, exception: "Sensitive GET adds an exact configured-origin check." },
+  },
   "app/api/snt-admin/social/operations/route.ts": {
     methods: ["GET"], identity: /getAdminIdentity\(\)/, authorization: /"social:read"/,
     validation: { file: "app/api/snt-admin/social/operations/route.ts", pattern: /isConfiguredAdminOrigin\(request\.url, process\.env\.AUTH_URL\)/, exception: "Sensitive GET adds an exact configured-origin check." },
+  },
+  "app/api/snt-admin/social/providers/meta/connection/route.ts": {
+    methods: ["GET"], identity: /getAdminIdentity\(\)/, authorization: /"social:read"/,
+    validation: { file: "app/api/snt-admin/social/providers/meta/connection/route.ts", pattern: /isConfiguredAdminOrigin\(request\.url, process\.env\.AUTH_URL\)/, exception: "Sensitive GET adds an exact configured-origin check." },
   },
 };
 

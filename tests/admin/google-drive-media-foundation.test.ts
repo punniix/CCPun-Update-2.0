@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   evaluateGoogleDriveInteractiveAuthorization,
+  fetchGoogleDriveBoundaryEvidence,
   evaluateGoogleDriveRootBoundary,
   GOOGLE_DRIVE_FILE_SCOPE,
   GOOGLE_DRIVE_FOLDER_MIME_TYPE,
@@ -140,4 +141,25 @@ test("Synthetic Drive contract contains IDs and metadata only", () => {
   const serialized = JSON.stringify({ validAuthorization, items: SYNTHETIC_GOOGLE_DRIVE_ITEMS });
   assert.equal(/"(?:accessToken|refreshToken|clientSecret|signedUrl|downloadUrl)"\s*:/i.test(serialized), false);
   assert.equal(serialized.includes("Google Drive / CCPun"), false);
+});
+
+test("Drive adapter fetches current ancestry and never returns the access token", async () => {
+  const items = new Map(SYNTHETIC_GOOGLE_DRIVE_ITEMS.map((item) => [item.id, item]));
+  const seen: Array<{ url: string; authorization: string | null }> = [];
+  const result = await fetchGoogleDriveBoundaryEvidence({
+    rootFolderId: SYNTHETIC_GOOGLE_DRIVE_ROOT_FOLDER_ID,
+    selectedItemId: SYNTHETIC_GOOGLE_DRIVE_FILE_ID,
+    accessToken: "synthetic-memory-only-token",
+    fetchImpl: async (input, init) => {
+      const url = new URL(String(input));
+      const id = decodeURIComponent(url.pathname.split("/").at(-1)!);
+      seen.push({ url: url.toString(), authorization: new Headers(init?.headers).get("authorization") });
+      const item = items.get(id);
+      return new Response(item ? JSON.stringify(item) : null, { status: item ? 200 : 404 });
+    },
+  });
+  assert.equal(result.allowed, true);
+  assert.equal(seen.length, 3);
+  assert.equal(seen.every((request) => request.authorization === "Bearer synthetic-memory-only-token"), true);
+  assert.equal(JSON.stringify(result).includes("synthetic-memory-only-token"), false);
 });
