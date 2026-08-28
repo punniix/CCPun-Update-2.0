@@ -38,7 +38,7 @@ jobs:
           echo "ca57d460e708f7dda055705039c4750ab15eb8aa3a9cad81da7e7b2260f865bc  /tmp/repository-architecture-v42.patch" \
             | sha256sum --check --strict
           test "$(wc -c < /tmp/repository-architecture-v42.patch)" -eq 237118
-          test "$(git hash-object .github/refactor/repository-architecture-runtime-fix.patch)" = "57ecf7eae5d2119dfcd2c2e0b0085008ebf00af9"
+          test "$(git hash-object .github/refactor/repository-architecture-runtime-fix.patch)" = "79be6a165016333a8bc9bc11f27948ec14cd9dfc"
 
       - name: Apply the verified architecture refactor
         shell: bash
