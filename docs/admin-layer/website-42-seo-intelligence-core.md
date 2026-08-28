@@ -9,7 +9,7 @@ Activation requires all of the following:
 - `CCPUN_SEO_INTELLIGENCE_ENABLED=1`
 - Admin UAT environment
 - `ccpun-admin` Vercel project identity
-- exact branch `codex/website-42-seo-ga4-manual-sync-20260828`
+- exact branch `codex/website-42-seo-observation-assembler-20260829`
 - Sanity UAT project `ccb9lnw5` and dataset `uat`
 
 The API is authenticated, requires `seo:read`, checks the configured Admin origin and exposes GET only. The page and API return 404 when any activation guard differs.
@@ -24,8 +24,8 @@ GA4 event outcomes are deferred. The repository has protected analytics event na
 
 The market boundary is provider-neutral and currently has one pure Ubersuggest adapter. It accepts only the existing validated research shape, rejects credential-shaped input, labels SERP evidence as untrusted external data and represents `ready`, `unavailable`, `stale` and `missing` states. The Admin page displays deterministic fixtures for all four fallback states. The adapter performs no provider call, reads no environment variable and does not activate a paid service.
 
-The pure GSC observation assembler can now join validated current and previous rows by the exact page, query, device and country dimensions. It emits detector-ready observations only when the caller supplies complete editorial context: query cluster, intent, intent alignment, indexability, business value, seasonality and last relevant content change. Missing or ambiguous context is skipped, absolute and relative URLs are never guessed to be equivalent, comparison provenance and provider limitations remain explicit, and the assembler performs no provider call or persistence.
+The GSC observation assembler joins validated current and previous rows by the exact page, query, device and country dimensions. The manual-sync route supplies read-only editorial context from the Sanity Published perspective. A row becomes detector-ready only when its page equals the canonical CCPUN article URL and its normalized query exactly matches that article's governed focus or secondary keyword with a Search Intent present. Missing, invalid or ambiguous context is skipped; URL, keyword ownership and intent are never guessed. Comparison provenance and provider limitations remain explicit, and the assembler performs no persistence.
 
-The manual-sync route does not invoke this assembler yet because no approved editorial-context registry is connected. GA4 outcomes also remain separate until an approved event registry and landing-page ownership contract exist. This keeps the current operator response read-only and prevents provider rows from silently becoming recommendations without required editorial evidence.
+The manual-sync route now invokes the deterministic detectors and returns evidence plus limitations in memory only. It assigns neutral Business Value `3/5` and `seasonality=unknown` because no approved business-value or seasonality registry exists. GA4 outcomes remain separate until an approved event registry and landing-page ownership contract exist. No observation, opportunity or provider response is written to Sanity, Neon or Production.
 
-This batch does not call Ubersuggest or a paid provider; persist observations or opportunities; generate AI proposals; mutate Sanity; apply Draft changes; publish content; or change URL, canonical, redirect, sitemap, robots, analytics or consent contracts. Search appearance remains deferred because Google documents it as a separate two-step query. Persistent sync runs, route integration and the opportunity lifecycle remain separate later batches.
+This batch does not call Ubersuggest or a paid provider; persist observations or opportunities; generate AI proposals; mutate Sanity; apply Draft changes; publish content; or change URL, canonical, redirect, sitemap, robots, analytics or consent contracts. Search appearance remains deferred because Google documents it as a separate two-step query. Scheduled sync and the persistent opportunity lifecycle remain separate later batches.

@@ -1,5 +1,7 @@
 import type { GscNormalizedRow } from "./contracts";
 import type { SearchDevice, SeoObservation } from "./foundation";
+import { getArticlePath } from "../../content/url";
+import type { PublishedSeoObservationArticle } from "../sanity-control";
 
 type DateRange = SeoObservation["dateRange"];
 
@@ -67,6 +69,56 @@ function normalizedRowKey(row: GscNormalizedRow): { key: string; device: SearchD
   const device = devices[providerDevice];
   if (!device) return "unsupported-device";
   return { key: rowKey(page, query, device, country), device, country };
+}
+
+function normalizedKeyword(value: string) {
+  return value.toLocaleLowerCase("th-TH").replace(/\s+/g, " ").trim();
+}
+
+export function buildGscObservationContexts(
+  rows: readonly GscNormalizedRow[],
+  articles: readonly PublishedSeoObservationArticle[],
+): GscObservationContext[] {
+  const byPage = new Map<string, PublishedSeoObservationArticle[]>();
+  for (const article of articles) {
+    try {
+      const page = `https://ccpun.com${getArticlePath(article)}`;
+      byPage.set(page, [...(byPage.get(page) ?? []), article]);
+    } catch {
+      // Invalid taxonomy remains unowned instead of guessing a URL.
+    }
+  }
+
+  return rows.flatMap((row, index) => {
+    const normalized = normalizedRowKey(row);
+    if (typeof normalized === "string") return [];
+    const page = row.dimensions.page!;
+    const query = row.dimensions.query!;
+    const candidates = byPage.get(page) ?? [];
+    const queryKey = normalizedKeyword(query);
+    const matches = candidates.filter((article) => {
+      const governed = [article.focusKeyword, ...(article.secondaryKeywords ?? [])]
+        .filter((keyword): keyword is string => Boolean(keyword?.trim()))
+        .map(normalizedKeyword);
+      return Boolean(article.searchIntent?.trim()) && governed.includes(queryKey);
+    });
+    if (matches.length !== 1) return [];
+    const article = matches[0]!;
+    return [{
+      id: `gsc:${article.id}:${index}`,
+      page,
+      query,
+      device: normalized.device,
+      country: normalized.country,
+      queryCluster: queryKey,
+      searchIntent: article.searchIntent!.trim(),
+      intentAligned: true,
+      indexable: article.noindex !== true,
+      businessValue: 3 as const,
+      lastRelevantContentChangeAt: article.updatedAt,
+      seasonality: "unknown" as const,
+    }];
+  });
 }
 
 export function assembleGscObservations(input: {

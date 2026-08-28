@@ -8,6 +8,10 @@ type SyncResult = {
   comparisonRows: number;
   truncated: boolean;
   limitations: string[];
+  observationCount: number;
+  skippedRows: number;
+  opportunityCount: number;
+  opportunities: Array<{ id: string; type: string; page: string; evidence: Array<{ label: string; value: string }>; limitations: string[] }>;
 };
 
 const errorMessage: Record<string, string> = {
@@ -77,6 +81,17 @@ export default function GscManualSync({ defaultStartDate, defaultEndDate }: { de
           <div className="rounded-xl border border-white/5 bg-black/10 p-3"><div className="text-xs text-white/45">ช่วงที่เลือก</div><div className="mt-1 font-semibold">{result.totalRows.toLocaleString("th-TH")} แถว</div></div>
           <div className="rounded-xl border border-white/5 bg-black/10 p-3"><div className="text-xs text-white/45">ช่วงเปรียบเทียบ</div><div className="mt-1 font-semibold">{result.comparisonRows.toLocaleString("th-TH")} แถว</div></div>
           <div className="rounded-xl border border-white/5 bg-black/10 p-3"><div className="text-xs text-white/45">อัปเดต</div><div className="mt-1 font-semibold">{new Date(result.fetchedAt).toLocaleString("th-TH")}</div></div>
+          <div className="rounded-xl border border-white/5 bg-black/10 p-3"><div className="text-xs text-white/45">Observations ที่ยืนยันบริบทแล้ว</div><div className="mt-1 font-semibold">{result.observationCount.toLocaleString("th-TH")}</div></div>
+          <div className="rounded-xl border border-white/5 bg-black/10 p-3"><div className="text-xs text-white/45">แถวที่ไม่เดาบริบท</div><div className="mt-1 font-semibold">{result.skippedRows.toLocaleString("th-TH")}</div></div>
+          <div className="rounded-xl border border-white/5 bg-black/10 p-3"><div className="text-xs text-white/45">Opportunities</div><div className="mt-1 font-semibold">{result.opportunityCount.toLocaleString("th-TH")}</div></div>
+          {result.opportunities.slice(0, 5).map((opportunity) => (
+            <article key={opportunity.id} className="sm:col-span-3 rounded-xl border border-white/10 bg-black/10 p-3">
+              <div className="text-xs font-semibold text-[#e0c985]">{opportunity.type}</div>
+              <div className="mt-1 break-all text-sm text-white/80">{opportunity.page}</div>
+              <dl className="mt-2 flex flex-wrap gap-2 text-xs text-white/55">{opportunity.evidence.map((item) => <div key={item.label}>{item.label}: {item.value}</div>)}</dl>
+              {opportunity.limitations[0] ? <p className="mt-2 text-xs text-amber-100/60">ข้อจำกัด: {opportunity.limitations[0]}</p> : null}
+            </article>
+          ))}
           <p className="sm:col-span-3 text-xs leading-5 text-amber-100/70">{result.truncated ? "ข้อมูลชนขีดจำกัดรอบนี้ · " : ""}{result.limitations.join(" · ")}</p>
         </div>
       ) : null}

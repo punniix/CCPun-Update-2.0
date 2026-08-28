@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import { CCPUN_VERCEL_PROJECT_IDS } from "../../lib/admin/environment";
 import { ga4QueryInputSchema, gscQueryInputSchema, normalizeGa4LandingPageReport, normalizeGscSearchAnalyticsPage, previousEqualDateRange } from "../../lib/admin/seo-intelligence/contracts";
-import { assembleGscObservations } from "../../lib/admin/seo-intelligence/gsc-observations";
+import { assembleGscObservations, buildGscObservationContexts } from "../../lib/admin/seo-intelligence/gsc-observations";
 import {
   detectSeoOpportunities,
   getSyntheticSeoIntelligenceSnapshot,
@@ -163,6 +163,29 @@ test("GSC observation assembly fails closed instead of guessing URL or editorial
   assert.throws(() => assembleGscObservations({ currentRows: [], previousRows: [], contexts: [], fetchedAt: "2026-08-29", comparisonFetchedAt: "2026-08-29T00:00:01.000Z", dateRange: { start: "2026-02-30", end: "2026-03-01" }, comparisonDateRange: { start: "2026-01-31", end: "2026-02-27" } }), /GSC_OBSERVATION_INVALID_PROVENANCE/);
 });
 
+test("GSC editorial context accepts only exact governed keywords and canonical article URLs", () => {
+  const rows = normalizeGscSearchAnalyticsPage({ rows: [
+    { keys: ["ประกันสุขภาพ", "https://ccpun.com/blog/health-insurance/example/", "MOBILE", "tha"], clicks: 1, impressions: 600, ctr: 0.002, position: 5 },
+    { keys: ["คำที่ไม่ได้กำกับ", "https://ccpun.com/blog/health-insurance/example/", "MOBILE", "tha"], clicks: 1, impressions: 600, ctr: 0.002, position: 5 },
+  ] }, ["query", "page", "device", "country"]);
+  const contexts = buildGscObservationContexts(rows, [{
+    id: "article-1",
+    slug: "example",
+    category: "ประกันสุขภาพ",
+    categorySlug: "health-insurance",
+    focusKeyword: "ประกันสุขภาพ",
+    secondaryKeywords: [],
+    searchIntent: "informational",
+    noindex: false,
+    publishedAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-05-01T00:00:00.000Z",
+  }]);
+  assert.equal(contexts.length, 1);
+  assert.equal(contexts[0]?.page, "https://ccpun.com/blog/health-insurance/example/");
+  assert.equal(contexts[0]?.businessValue, 3);
+  assert.equal(contexts[0]?.seasonality, "unknown");
+});
+
 test("GSC provider is server-only, paginated, bounded and never logs credentials", () => {
   const provider = read("lib/admin/seo-intelligence/providers/gsc.ts");
   assert.match(provider, /import "server-only"/);
@@ -185,10 +208,17 @@ test("GSC manual sync is human-only, exact-origin, bounded and read-only", () =>
   assert.match(route, /isSameOriginAdminMutation/);
   assert.match(route, /getSeoIntelligenceRuntimeStatus\(\)\.enabled/);
   assert.match(route, /current\.rows\.slice\(0, 100\)/);
+  assert.match(route, /assembleGscObservations/);
+  assert.match(route, /detectSeoOpportunities/);
+  assert.match(route, /listPublishedSeoObservationArticles/);
+  assert.match(route, /provider-auth-required/);
+  assert.match(route, /provider-rate-limited/);
+  assert.match(route, /provider-timeout/);
+  assert.match(route, /provider-invalid-response/);
   assert.match(route, /CCPUN_GSC_ACCESS_TOKEN/);
   assert.match(route, /export async function POST\(request: Request\)/);
   assert.doesNotMatch(route, /export async function (?:GET|PUT|PATCH|DELETE)/);
-  assert.doesNotMatch(route, /createClient|sanity|mutate|publish|console\./i);
+  assert.doesNotMatch(route, /createClient|\.(?:mutate|create|patch|delete)\(|console\./i);
   assert.match(control, /type="date"/);
   assert.match(control, /กำลัง Sync/);
   assert.match(control, /role="alert"/);
