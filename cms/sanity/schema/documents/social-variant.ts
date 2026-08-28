@@ -1,7 +1,7 @@
 import { defineArrayMember, defineField, defineType } from "sanity";
 
 const channelOptions = ["facebook", "instagram", "youtube", "tiktok", "facebook-group"];
-const formatOptions = ["text-post", "image-post", "carousel", "comment-series", "reel", "video", "short", "photo-post"];
+const formatOptions = ["text-post", "image-post", "album", "carousel", "reel", "video", "short", "photo-post", "live"];
 const publishingModeOptions = ["direct", "native-scheduled", "native-finish", "tiktok-draft", "assisted-distribution"];
 
 export const socialVariant = defineType({
@@ -50,7 +50,12 @@ export const socialVariant = defineType({
       title: "Comment Series",
       type: "array",
       of: [defineArrayMember({ type: "socialCommentSeriesItem" })],
-      validation: (Rule) => Rule.max(20),
+      hidden: ({ document }) => document?.channel !== "facebook",
+      validation: (Rule) => Rule.max(20).custom((items, context) => (
+        context.document?.channel !== "facebook" && Array.isArray(items) && items.length > 0
+          ? "Comment Series ใช้ได้กับ Facebook Main Post เท่านั้น"
+          : true
+      )),
     }),
     defineField({
       name: "publishingMode",

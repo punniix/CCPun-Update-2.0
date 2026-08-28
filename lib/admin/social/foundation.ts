@@ -32,16 +32,23 @@ export const socialPlatformSchema = z.enum([
   "facebook-group",
 ]);
 
-export const socialFormatSchema = z.enum([
+export const SOCIAL_SELECTABLE_FORMATS = [
   "text-post",
   "image-post",
+  "album",
   "carousel",
-  "comment-series",
   "reel",
   "video",
   "short",
   "photo-post",
-]);
+  "live",
+] as const;
+
+export const socialMainPostFormatSchema = z.enum(SOCIAL_SELECTABLE_FORMATS);
+
+// comment-series remains readable for UAT compatibility, but new variants use
+// a main-post format and attach Comment Series through the dedicated child field.
+export const socialFormatSchema = z.enum([...SOCIAL_SELECTABLE_FORMATS, "comment-series"]);
 
 export const publishingModeSchema = z.enum([
   "direct",
@@ -98,12 +105,20 @@ export const socialVariantSchema = z.object({
   masterContentId: boundedId,
   title: z.string().trim().min(1).max(200),
   platform: socialPlatformSchema,
-  format: socialFormatSchema,
+  format: socialMainPostFormatSchema,
   version: z.number().int().min(1),
   publishingMode: publishingModeSchema,
   status: publicationStatusSchema,
   mediaReferences: z.array(mediaAssetReferenceSchema).max(20),
   commentSeries: z.array(commentSeriesItemSchema).max(20),
+}).superRefine((variant, context) => {
+  if (variant.platform !== "facebook" && variant.commentSeries.length > 0) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["commentSeries"],
+      message: "Comment Series belongs to a Facebook main post only",
+    });
+  }
 });
 
 export const socialFoundationSnapshotSchema = z.object({
@@ -250,7 +265,7 @@ export const SYNTHETIC_SOCIAL_FOUNDATION: SocialFoundationSnapshot = {
       masterContentId: "synthetic-master-001",
       title: "Facebook post พร้อม Comment Series",
       platform: "facebook",
-      format: "comment-series",
+      format: "image-post",
       version: 1,
       publishingMode: "native-scheduled",
       status: "approved",
@@ -295,6 +310,18 @@ export const SYNTHETIC_SOCIAL_FOUNDATION: SocialFoundationSnapshot = {
       title: "YouTube Short ที่พร้อมส่งเข้า Native Scheduler",
       platform: "youtube",
       format: "short",
+      version: 1,
+      publishingMode: "native-scheduled",
+      status: "approved",
+      mediaReferences: [],
+      commentSeries: [],
+    },
+    {
+      id: "synthetic-youtube-live-001",
+      masterContentId: "synthetic-master-001",
+      title: "YouTube Live สำหรับทดสอบสถิติย้อนหลัง",
+      platform: "youtube",
+      format: "live",
       version: 1,
       publishingMode: "native-scheduled",
       status: "approved",

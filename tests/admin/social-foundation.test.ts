@@ -12,6 +12,9 @@ import {
   SOCIAL_SCHEMA_MIGRATION_CHECKSUM,
   SOCIAL_SCHEMA_MIGRATION_VERSION,
   SOCIAL_OPERATIONAL_TABLES,
+  SOCIAL_SELECTABLE_FORMATS,
+  socialFormatSchema,
+  socialMainPostFormatSchema,
   socialFoundationSnapshotSchema,
   SYNTHETIC_SOCIAL_FOUNDATION,
   WEBSITE_42_SANITY_DATASET,
@@ -52,9 +55,29 @@ test("Synthetic fixtures validate media metadata without storage or provider sta
   assert.equal(result.variants.every((variant) => variant.masterContentId === result.masterContent.id), true);
   assert.equal(result.mediaAssets.length, 1);
   assert.equal(result.variants[0]?.mediaReferences[0]?.assetId, result.mediaAssets[0]?.id);
+  assert.equal(result.variants[0]?.format, "image-post");
+  assert.equal(result.variants[0]?.commentSeries.length, 1);
   assert.equal(JSON.stringify(result).includes("accessToken"), false);
   assert.equal(JSON.stringify(result).includes("platformObjectId"), false);
   assert.equal(JSON.stringify(result).includes("storageUrl"), false);
+});
+
+test("Post format choices keep Comment Series as a Facebook child", () => {
+  assert.equal(SOCIAL_SELECTABLE_FORMATS.includes("album"), true);
+  assert.equal(SOCIAL_SELECTABLE_FORMATS.includes("live"), true);
+  assert.equal((SOCIAL_SELECTABLE_FORMATS as readonly string[]).includes("comment-series"), false);
+  assert.equal(socialMainPostFormatSchema.safeParse("comment-series").success, false);
+  assert.equal(socialFormatSchema.parse("comment-series"), "comment-series");
+
+  const schema = read("cms/sanity/schema/documents/social-variant.ts");
+  assert.match(schema, /"image-post", "album", "carousel"/);
+  assert.match(schema, /"photo-post", "live"/);
+  assert.doesNotMatch(schema, /formatOptions[^\n]*comment-series/);
+  assert.match(schema, /document\?\.channel !== "facebook"/);
+
+  const invalid = structuredClone(SYNTHETIC_SOCIAL_FOUNDATION);
+  invalid.variants[1]!.commentSeries = invalid.variants[0]!.commentSeries;
+  assert.equal(socialFoundationSnapshotSchema.safeParse(invalid).success, false);
 });
 
 test("Publication state transitions are explicit and terminal states stay terminal", () => {

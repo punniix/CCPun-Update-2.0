@@ -47,12 +47,13 @@ test("Publication planning is deterministic and cannot write to a provider", () 
     "wait-human-finish",
     "wait-human-review",
     "prepare-native-handoff",
+    "prepare-native-handoff",
   ]);
 });
 
 test("Social analytics preserves native metrics and never creates a cross-platform total", () => {
   const snapshot = socialOperationsSnapshotSchema.parse(SYNTHETIC_SOCIAL_OPERATIONS);
-  assert.equal(snapshot.analytics.length, 4);
+  assert.equal(snapshot.analytics.length, 5);
   assert.equal(snapshot.publications.every((item) => item.status === "published" && item.publishedAt && item.platformObjectId && item.providerWriteAllowed === false), true);
   assert.equal(snapshot.analytics.every((item) => item.source === "synthetic-uat"), true);
   assert.equal(snapshot.analytics.flatMap((item) => item.nativeMetrics).every((metric) => metric.key.includes(".")), true);
@@ -62,6 +63,13 @@ test("Social analytics preserves native metrics and never creates a cross-platfo
     assert.ok(publication?.publishedAt && Date.parse(metric.fetchedAt) >= Date.parse(publication.publishedAt));
   }
   assert.equal(Object.hasOwn(snapshot, "totalViews"), false);
+  const live = snapshot.analytics.find((item) => item.publicationId === "uat-published:synthetic-youtube-live-001");
+  assert.deepEqual(live?.nativeMetrics.map((metric) => metric.key), [
+    "youtube.averageConcurrentViewers",
+    "youtube.peakConcurrentViewers",
+    "youtube.estimatedMinutesWatched",
+  ]);
+  assert.match(live?.limitations[0] ?? "", /หลังจบ Live/);
   assert.equal(JSON.stringify(snapshot).includes("expectedUplift"), false);
 
   const invalid = structuredClone(SYNTHETIC_SOCIAL_OPERATIONS);
@@ -73,8 +81,8 @@ test("Social analytics preserves native metrics and never creates a cross-platfo
 
 test("Content Calendar derives one read-only item per variant without provider execution", () => {
   const items = buildSyntheticContentCalendar();
-  assert.equal(items.length, 4);
-  assert.deepEqual(items.map((item) => item.status), ["approved", "awaiting-native-finish", "draft", "approved"]);
+  assert.equal(items.length, 5);
+  assert.deepEqual(items.map((item) => item.status), ["approved", "awaiting-native-finish", "draft", "approved", "approved"]);
   assert.equal(items.every((item) => item.masterContentId === "synthetic-master-001" && item.providerWriteAllowed === false), true);
   assert.equal(items.every((item) => typeof item.analyticsAvailable === "boolean"), true);
   const page = read("features/admin/social/calendar-page.tsx");

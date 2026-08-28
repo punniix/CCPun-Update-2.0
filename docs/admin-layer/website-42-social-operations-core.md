@@ -14,6 +14,8 @@ The route is `/snt-admin/distribution/operations/` and requires `social:read`, t
 
 Analytics fixtures must reference a matching `published` record, the same platform, a provider object ID and a snapshot time after publication. Draft, approved, native-finish and other unpublished records cannot carry analytics.
 
+Live is modeled as a main content format. Phase 1 stores only post-Live historical native metrics when a provider or approved manual import supplies them; it does not poll concurrent viewers during a broadcast. The synthetic YouTube fixture covers average/peak concurrent viewers and watch time after the Live ends. Missing Instagram, Facebook, or TikTok historical fields must remain unavailable rather than being estimated.
+
 No Social API, OAuth connection, database write, scheduled job, webhook, real account, real post, or real analytics sync exists in this phase. Native metrics are not summed across platforms. Disable the feature flag to roll back the Preview surface.
 
 `/snt-admin/distribution/calendar/` is read-only and uses the same exact-lane guard. It displays current variant state, publishing mode, any synthetic scheduled time and whether historical analytics fixtures exist. It does not create publication jobs or provider requests.

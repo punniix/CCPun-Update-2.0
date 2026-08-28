@@ -9,6 +9,9 @@ Status: synthetic Admin UAT only. No real account, media upload, platform reques
 - Postgres owns the operational variant link, publication state, provider object IDs, jobs, locks, idempotency, per-comment execution state, and execution audit.
 - Phase 1 defines reusable media metadata and variant-to-media references, but stores no media bytes, provider upload state, storage URL, or storage credential.
 - Credential/token storage remains intentionally absent from Phase 1.
+- New variants select a main format (`text-post`, single image, album, carousel, Reel, video, Short, photo post, or Live). Facebook Comment Series remains an optional child of a Facebook main post, not a selectable main format. The legacy `comment-series` value remains read-compatible during UAT cleanup.
+
+Format meanings are intentionally distinct: `image-post` is one image, `album` is a Facebook multi-image post, `carousel` is an ordered multi-card asset, and `photo-post` is TikTok's photo format. `live` represents the platform Live object and post-Live reporting, not real-time polling.
 
 ## Fail-closed UAT lane
 
@@ -37,6 +40,8 @@ The readiness probe runs one bounded read-only HTTPS query through the official 
 - sanitized `errorCategory`
 
 The current migration is `db/migrations/20260828_website_42_social_foundation_v2.sql`. It uses an advisory transaction lock, a version/checksum ledger, and refuses to mark the migration current if pre-existing Social tables have unknown lineage.
+
+The reviewed v2 database constraint predates `album` and `live`. Those formats remain read-only foundation contracts until a separate additive migration is reviewed and applied; no operational write lane may store them yet.
 
 ## Manual Neon UAT handoff
 
