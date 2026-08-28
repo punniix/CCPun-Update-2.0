@@ -1,0 +1,224 @@
+name: Temporary finalize repository architecture refactor
+
+on:
+  push:
+    branches:
+      - refactor/repository-architecture-v42-20260828
+    paths:
+      - .github/workflows/temporary-finalize-repository-architecture.yml
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: repository-architecture-v42-finalize
+  cancel-in-progress: false
+
+jobs:
+  finalize-verify-and-open-draft-pr:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout architecture branch
+        uses: actions/checkout@v4
+        with:
+          ref: refactor/repository-architecture-v42-20260828
+          fetch-depth: 0
+
+      - name: Use Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Apply architecture patch exactly once and remove temporary machinery
+        shell: bash
+        run: |
+          set -euo pipefail
+          PATCH=.github/refactor/repository-architecture-v42.patch
+          if [[ -f "$PATCH" ]]; then
+            if git apply --check --binary "$PATCH"; then
+              git apply --index --binary "$PATCH"
+              echo "Architecture patch applied."
+            elif git apply --reverse --check --binary "$PATCH"; then
+              echo "Architecture patch was already applied; continuing without reapplying."
+            else
+              echo "Architecture patch is neither cleanly applicable nor cleanly reversible. Refusing a partial refactor."
+              exit 1
+            fi
+          fi
+
+          git rm -f --ignore-unmatch \
+            .github/refactor/repository-architecture-v42.patch \
+            .github/workflows/temporary-source-export.yml \
+            .github/workflows/temporary-apply-repository-architecture.yml \
+            .github/workflows/temporary-finalize-repository-architecture.yml
+
+      - name: Assert the permanent architecture contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -d app
+          test -d features
+          test -d core
+          test -d shared
+          test ! -d components
+          test ! -d lib
+          test ! -d hooks
+          test -f AGENTS.md
+          test -f docs/architecture/repository-architecture.md
+          grep -q 'features/' AGENTS.md
+          grep -q 'core/' AGENTS.md
+          grep -q 'shared/' AGENTS.md
+          grep -q 'repository-architecture' package.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Full foundation, architecture, SEO, analytics and Admin contracts
+        run: npm run check:foundation
+
+      - name: Run the permanent repository architecture guard
+        shell: bash
+        run: |
+          set -euo pipefail
+          if node -e "const p=require('./package.json'); process.exit(p.scripts?.['check:repository-architecture'] ? 0 : 1)"; then
+            npm run check:repository-architecture
+          elif node -e "const p=require('./package.json'); process.exit(p.scripts?.['check:architecture'] ? 0 : 1)"; then
+            npm run check:architecture
+          else
+            echo "A permanent architecture guard script is required."
+            exit 1
+          fi
+
+      - name: Additional static product contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tests/home-lcp-regression.mjs
+          node tests/seo-topic-hubs-regression.mjs
+          node tests/fhc-seo-geo-regression.mjs
+
+      - name: Production-parity build on the isolated non-production content lane
+        run: npm run build
+        env:
+          CCPUN_APP_ENV: development
+          NEXT_PUBLIC_CCPUN_APP_ENV: development
+          NEXT_PUBLIC_SANITY_PROJECT_ID: ccb9lnw5
+          NEXT_PUBLIC_SANITY_DATASET: uat
+
+      - name: Record verification evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p docs/architecture
+          cat > docs/architecture/repository-architecture-verification-2026-08-28.md <<'EOF'
+          # Repository architecture verification — 2026-08-28
+
+          The repository-wide source reorganization was verified on Node.js 24 before this branch was proposed for review.
+
+          Verified contracts:
+
+          - `app/` owns Next.js routes and route composition only.
+          - `features/` owns product/domain features.
+          - `core/` owns application infrastructure and protected platform boundaries.
+          - `shared/` owns reusable UI, layout, hooks, types and utilities.
+          - Legacy root source buckets `components/`, `lib/` and `hooks/` are absent.
+          - Existing public URLs, canonical ownership, redirects and sitemap routes are unchanged.
+          - No Sanity Production content mutation or publication was performed.
+          - Analytics event names, provider mappings and consent authority are unchanged.
+          - Temporary export/apply/finalize workflows and the transport patch were removed before review.
+
+          Checks completed:
+
+          - `npm ci`
+          - `npm run check:foundation`
+          - permanent repository architecture guard
+          - `node tests/home-lcp-regression.mjs`
+          - `node tests/seo-topic-hubs-regression.mjs`
+          - `node tests/fhc-seo-geo-regression.mjs`
+          - `npm run build` using the isolated `ccb9lnw5/uat` development lane
+
+          This document records verification of source organization only. It does not authorize merge, Production deployment, DNS changes, Sanity Production writes or content publication.
+          EOF
+
+      - name: Commit and push the verified final tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No final tree changes were required."
+          else
+            git config user.name "CCPun Architecture Bot"
+            git config user.email "actions@users.noreply.github.com"
+            git commit -m "refactor: establish AI-friendly repository architecture"
+            git push origin HEAD:refactor/repository-architecture-v42-20260828
+          fi
+
+      - name: Open or reuse a Draft Pull Request
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          EXISTING="$(gh pr list --repo punniix/CCPun-Update-4.0 --head refactor/repository-architecture-v42-20260828 --base v4-production --state open --json number --jq '.[0].number // empty')"
+          if [[ -n "$EXISTING" ]]; then
+            echo "Draft PR #$EXISTING already exists."
+            exit 0
+          fi
+
+          cat > /tmp/pr-body.md <<'EOF'
+          ## Purpose
+
+          Reorganize the CCPun repository in one coordinated pass so humans, Codex and other coding agents can locate ownership quickly and extend Website 4.2 without recreating the previous mixed structure.
+
+          ## Architecture
+
+          - `app/` — Next.js routes, metadata and route composition
+          - `features/` — product/domain features such as home, blog, planning tools and Admin capabilities
+          - `core/` — protected application infrastructure including content, Sanity, auth, environment, SEO, analytics and consent boundaries
+          - `shared/` — reusable UI, layout, hooks, types and utilities
+          - `cms/`, `scripts/`, `qa/`, `tests/`, `workers/`, `tools/` — retain their explicit operational ownership
+
+          The legacy root source buckets `components/`, `lib/` and `hooks/` are removed. Imports and test references are updated in the same refactor.
+
+          ## Codex and AI guardrails
+
+          - `AGENTS.md` now points agents to the architecture contract before code changes.
+          - `docs/architecture/repository-architecture.md` is the human/agent source of truth.
+          - A permanent automated architecture guard rejects legacy buckets and disallowed dependency directions.
+          - The pull-request checklist requires ownership, URL, Sanity, analytics and consent review.
+
+          ## Protected contracts
+
+          - No public URL, slug, canonical, redirect or sitemap ownership change.
+          - No Sanity Production mutation, publication, deletion or migration.
+          - No analytics event rename or provider/consent behavior change.
+          - No Production deployment or DNS change.
+
+          ## Verification
+
+          - `npm ci`
+          - `npm run check:foundation`
+          - permanent repository architecture guard
+          - homepage LCP regression
+          - SEO topic-hub regression
+          - FHC SEO/GEO regression
+          - `npm run build` on the isolated `ccb9lnw5/uat` development lane
+
+          Verification evidence is committed at `docs/architecture/repository-architecture-verification-2026-08-28.md`.
+
+          ## Review and rollback
+
+          This PR is intentionally Draft. Review the file moves, architecture rules and Vercel Preview before marking it ready. Until merge, rollback is simply closing the PR and deleting the branch. After merge, the repository-wide refactor is isolated in a traceable commit and can be reverted without changing Sanity content or public URL ownership.
+          EOF
+
+          gh pr create \
+            --repo punniix/CCPun-Update-4.0 \
+            --base v4-production \
+            --head refactor/repository-architecture-v42-20260828 \
+            --title "refactor: establish AI-friendly repository architecture" \
+            --body-file /tmp/pr-body.md \
+            --draft
