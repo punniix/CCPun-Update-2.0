@@ -5,7 +5,7 @@ on:
     branches:
       - refactor/repository-architecture-v42-20260828
     paths:
-      - .github/refactor/repository-architecture-v42.patch
+      - .github/refactor/repository-architecture-v42.ready
 
 permissions:
   contents: write
@@ -27,12 +27,17 @@ jobs:
           node-version: 24
           cache: npm
 
-      - name: Apply the reviewed binary-safe patch
+      - name: Reassemble and apply the reviewed binary-safe patch
         shell: bash
         run: |
           set -euo pipefail
-          git apply --index --binary .github/refactor/repository-architecture-v42.patch
-          git rm -f --ignore-unmatch .github/refactor/repository-architecture-v42.patch
+          cat .github/refactor/repository-architecture-v42.patch.gz.b64.part-* \
+            | base64 --decode \
+            | gzip --decompress \
+            > /tmp/repository-architecture-v42.patch
+          git apply --index --binary /tmp/repository-architecture-v42.patch
+          git rm -f --ignore-unmatch .github/refactor/repository-architecture-v42.patch.gz.b64.part-*
+          git rm -f --ignore-unmatch .github/refactor/repository-architecture-v42.ready
           git rm -f --ignore-unmatch .github/workflows/temporary-apply-repository-architecture.yml
           git status --short
 
