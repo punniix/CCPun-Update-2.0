@@ -1,0 +1,12 @@
+# Website 4.2 Social Operations Core
+
+Status: local implementation, Preview delivery pending COO approval.
+
+This phase adds a read-only synthetic UAT view for two boundaries:
+
+- deterministic publication planning without provider execution
+- native social metrics kept separate by platform
+
+The route is `/snt-admin/distribution/operations/` and requires `social:read`, the configured Admin origin, and the exact Admin UAT lane. Enable only on `codex/website-42-social-operations-core-20260828` with `CCPUN_SOCIAL_OPERATIONS_ENABLED=1` and `CCPUN_SOCIAL_DATA_MODE=synthetic`.
+
+No Social API, OAuth connection, database write, scheduled job, webhook, real account, real post, or real analytics sync exists in this phase. Native metrics are not summed across platforms. Disable the feature flag to roll back the Preview surface.

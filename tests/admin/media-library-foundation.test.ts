@@ -208,5 +208,5 @@ test("Distribution UAT owns the Media Library presentation without a new Admin n
   assert.doesNotMatch(mediaSection, /text-white\/45/);
   assert.match(mediaSection, /text-white\/55/);
   assert.equal(route.trim(), 'export { metadata, default } from "@/features/admin/social/page";');
-  assert.equal((navigation.match(/\/snt-admin\/distribution\//g) ?? []).length, 1);
+  assert.equal((navigation.match(/\{ href: "\/snt-admin\/distribution\/"/g) ?? []).length, 1);
 });
