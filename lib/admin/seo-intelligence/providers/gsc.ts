@@ -1,0 +1,60 @@
+import "server-only";
+
+import {
+  gscQueryInputSchema,
+  normalizeGscSearchAnalyticsPage,
+  type GscNormalizedRow,
+} from "../contracts";
+
+const MAX_PAGES = 2;
+const TIMEOUT_MS = 15_000;
+type FetchLike = (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
+
+async function requestPage(url: string, token: string, body: string, fetcher: FetchLike) {
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      const response = await fetcher(url, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body,
+        cache: "no-store",
+        signal: AbortSignal.timeout(TIMEOUT_MS),
+      });
+      if (response.ok) return response.json();
+      if (response.status !== 429 && response.status < 500) break;
+    } catch {
+      if (attempt === 1) break;
+    }
+  }
+  throw new Error("GSC_PROVIDER_UNAVAILABLE");
+}
+
+export async function fetchGscSearchAnalytics(rawInput: unknown, fetcher: FetchLike = fetch): Promise<{
+  fetchedAt: string;
+  rows: GscNormalizedRow[];
+  truncated: boolean;
+  limitation: string;
+}> {
+  const input = gscQueryInputSchema.parse(rawInput);
+  const url = `https://www.googleapis.com/webmasters/v3/sites/${encodeURIComponent(input.siteUrl)}/searchAnalytics/query`;
+  const rows: GscNormalizedRow[] = [];
+
+  for (let page = 0; page < MAX_PAGES; page += 1) {
+    const raw = await requestPage(url, input.token, JSON.stringify({
+      startDate: input.startDate,
+      endDate: input.endDate,
+      dimensions: input.dimensions,
+      type: "web",
+      dataState: "final",
+      rowLimit: input.rowLimit,
+      startRow: page * input.rowLimit,
+    }), fetcher);
+    const pageRows = normalizeGscSearchAnalyticsPage(raw, input.dimensions);
+    rows.push(...pageRows);
+    if (pageRows.length < input.rowLimit) {
+      return { fetchedAt: new Date().toISOString(), rows, truncated: false, limitation: "Search Console may omit anonymized or low-volume queries." };
+    }
+  }
+
+  return { fetchedAt: new Date().toISOString(), rows, truncated: true, limitation: "Reached the bounded 50,000-row manual-sync limit; Search Console does not guarantee every possible query row." };
+}

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import { CCPUN_VERCEL_PROJECT_IDS } from "../../lib/admin/environment";
+import { gscQueryInputSchema, normalizeGscSearchAnalyticsPage } from "../../lib/admin/seo-intelligence/contracts";
 import {
   detectSeoOpportunities,
   getSyntheticSeoIntelligenceSnapshot,
@@ -59,6 +60,35 @@ test("Priority is explainable, bounded and synthetic limitations are explicit", 
     assert.ok(opportunity.evidence.length >= 3);
   }
   assert.match(snapshot.limitations.join(" "), /ไม่ใช่ตัวเลขของ ccpun\.com/);
+});
+
+test("GSC normalization follows requested dimension order and rejects malformed provider rows", () => {
+  const rows = normalizeGscSearchAnalyticsPage({ rows: [{
+    keys: ["ประกันสุขภาพ", "https://ccpun.com/blog/health-insurance/example/", "MOBILE", "tha"],
+    clicks: 12,
+    impressions: 600,
+    ctr: 0.02,
+    position: 7.5,
+  }] }, ["query", "page", "device", "country"]);
+  assert.deepEqual(rows[0]?.dimensions, {
+    query: "ประกันสุขภาพ",
+    page: "https://ccpun.com/blog/health-insurance/example/",
+    device: "MOBILE",
+    country: "tha",
+  });
+  assert.equal(gscQueryInputSchema.safeParse({ siteUrl: "sc-domain:ccpun.com", token: "fixture", startDate: "2026-08-28", endDate: "2026-08-01", dimensions: ["query"] }).success, false);
+  assert.throws(() => normalizeGscSearchAnalyticsPage({ rows: [{ keys: ["only-one"], clicks: 1, impressions: 10, ctr: 0.1, position: 2 }] }, ["query", "page"]), /GSC_DIMENSION_MISMATCH/);
+});
+
+test("GSC provider is server-only, paginated, bounded and never logs credentials", () => {
+  const provider = read("lib/admin/seo-intelligence/providers/gsc.ts");
+  assert.match(provider, /import "server-only"/);
+  assert.match(provider, /const MAX_PAGES = 2/);
+  assert.match(provider, /rowLimit: input\.rowLimit/);
+  assert.match(provider, /startRow: page \* input\.rowLimit/);
+  assert.match(provider, /AbortSignal\.timeout\(TIMEOUT_MS\)/);
+  assert.match(provider, /response\.status !== 429 && response\.status < 500/);
+  assert.doesNotMatch(provider, /console\./);
 });
 
 test("SEO opportunities API is authenticated, exact-origin and GET-only", () => {
