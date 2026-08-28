@@ -174,68 +174,27 @@ export function buildSyntheticPublicationPlans(
   });
 }
 
-export const SYNTHETIC_PUBLISHED_SOCIAL_RECORDS = SYNTHETIC_SOCIAL_FOUNDATION.variants.map((variant, index) => ({
-  publicationId: `uat-published:${variant.id}`,
-  variantId: variant.id,
-  platform: variant.platform,
-  format: variant.format,
-  publishingMode: variant.publishingMode,
-  status: "published" as const,
-  scheduledAt: index % 2 === 0 ? "2026-08-27T08:00:00.000Z" : null,
-  publishedAt: "2026-08-28T07:00:00.000Z",
-  platformObjectId: `synthetic-platform:${variant.id}`,
-  providerWriteAllowed: false as const,
-}));
+export const SYNTHETIC_SOCIAL_PUBLICATION_RECORDS = SYNTHETIC_SOCIAL_FOUNDATION.variants.map((variant) => {
+  const published = variant.format === "live";
+  return {
+    publicationId: `${published ? "uat-published" : "uat-publication"}:${variant.id}`,
+    variantId: variant.id,
+    platform: variant.platform,
+    format: variant.format,
+    publishingMode: variant.publishingMode,
+    status: published ? "published" as const : variant.status,
+    scheduledAt: null,
+    publishedAt: published ? "2026-08-28T07:00:00.000Z" : null,
+    platformObjectId: published ? `synthetic-platform:${variant.id}` : null,
+    providerWriteAllowed: false as const,
+  };
+});
+
+export const SYNTHETIC_PUBLISHED_SOCIAL_RECORDS = SYNTHETIC_SOCIAL_PUBLICATION_RECORDS.filter(
+  (publication) => publication.status === "published",
+);
 
 export const SYNTHETIC_SOCIAL_ANALYTICS = [
-  {
-    publicationId: "uat-published:synthetic-facebook-001",
-    platform: "facebook",
-    source: "synthetic-uat",
-    fetchedAt: "2026-08-28T08:00:00.000Z",
-    nativeMetrics: [
-      { key: "facebook.reach", label: "Reach", value: 2400, unit: "count", dimension: "discovery" },
-      { key: "facebook.comments", label: "Comments", value: 18, unit: "count", dimension: "deep-engagement" },
-      { key: "facebook.shares", label: "Shares", value: 32, unit: "count", dimension: "deep-engagement" },
-    ],
-    limitations: ["Fixture สำหรับทดสอบ UAT ไม่ใช่ข้อมูลจาก Facebook"],
-  },
-  {
-    publicationId: "uat-published:synthetic-instagram-001",
-    platform: "instagram",
-    source: "synthetic-uat",
-    fetchedAt: "2026-08-28T08:00:00.000Z",
-    nativeMetrics: [
-      { key: "instagram.views", label: "Views", value: 1800, unit: "count", dimension: "discovery" },
-      { key: "instagram.saves", label: "Saves", value: 74, unit: "count", dimension: "deep-engagement" },
-      { key: "instagram.shares", label: "Shares", value: 21, unit: "count", dimension: "deep-engagement" },
-    ],
-    limitations: ["Fixture สำหรับทดสอบ UAT ไม่ใช่ข้อมูลจาก Instagram"],
-  },
-  {
-    publicationId: "uat-published:synthetic-tiktok-001",
-    platform: "tiktok",
-    source: "synthetic-uat",
-    fetchedAt: "2026-08-28T08:00:00.000Z",
-    nativeMetrics: [
-      { key: "tiktok.view_count", label: "View count", value: 950, unit: "count", dimension: "discovery" },
-      { key: "tiktok.comment_count", label: "Comment count", value: 11, unit: "count", dimension: "engagement" },
-      { key: "tiktok.share_count", label: "Share count", value: 9, unit: "count", dimension: "deep-engagement" },
-    ],
-    limitations: ["Fixture สำหรับทดสอบ UAT ไม่ใช่ข้อมูลจาก TikTok"],
-  },
-  {
-    publicationId: "uat-published:synthetic-youtube-001",
-    platform: "youtube",
-    source: "synthetic-uat",
-    fetchedAt: "2026-08-28T08:00:00.000Z",
-    nativeMetrics: [
-      { key: "youtube.views", label: "Views", value: 1200, unit: "count", dimension: "discovery" },
-      { key: "youtube.estimatedMinutesWatched", label: "Estimated minutes watched", value: 840, unit: "minutes", dimension: "retention" },
-      { key: "youtube.averageViewDuration", label: "Average view duration", value: 42, unit: "seconds", dimension: "retention" },
-    ],
-    limitations: ["Fixture สำหรับทดสอบ UAT ไม่ใช่ข้อมูลจาก YouTube"],
-  },
   {
     publicationId: "uat-published:synthetic-youtube-live-001",
     platform: "youtube",
@@ -253,7 +212,7 @@ export const SYNTHETIC_SOCIAL_ANALYTICS = [
 export const SYNTHETIC_SOCIAL_OPERATIONS = socialOperationsSnapshotSchema.parse({
   mode: "synthetic-uat",
   publicationPlans: buildSyntheticPublicationPlans(),
-  publications: SYNTHETIC_PUBLISHED_SOCIAL_RECORDS,
+  publications: SYNTHETIC_SOCIAL_PUBLICATION_RECORDS,
   analytics: SYNTHETIC_SOCIAL_ANALYTICS,
 });
 
@@ -282,7 +241,7 @@ export function buildSyntheticContentCalendar(
       platform: variant.platform,
       format: variant.format,
       publishingMode: variant.publishingMode,
-      status: variant.status,
+      status: publication?.status ?? variant.status,
       scheduledAt: publication?.scheduledAt ?? null,
       analyticsAvailable: Boolean(publication && analytics.has(publication.publicationId)),
       providerWriteAllowed: false,
