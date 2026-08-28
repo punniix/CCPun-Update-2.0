@@ -1,0 +1,47 @@
+name: Temporary finalize architecture review metadata
+
+on:
+  push:
+    branches:
+      - refactor/repository-architecture-v42-20260828
+    paths:
+      - .github/workflows/temporary-remove-review-brief.yml
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: refactor/repository-architecture-v42-20260828
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Remove one-off review transport and this workflow
+        run: |
+          git rm -f --ignore-unmatch .github/PULL_REQUEST_BODY_ARCHITECTURE.md
+          git rm -f --ignore-unmatch .github/workflows/temporary-remove-review-brief.yml
+      - name: Verify architecture contract
+        run: |
+          test -d app
+          test -d features
+          test -d core
+          test -d shared
+          test ! -d components
+          test ! -d lib
+          test ! -d hooks
+          npm ci
+          if node -e "const p=require('./package.json'); process.exit(p.scripts?.['check:repository-architecture'] ? 0 : 1)"; then npm run check:repository-architecture; else npm run check:architecture; fi
+      - name: Commit cleanup
+        run: |
+          git config user.name "CCPun Architecture Bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          git commit -m "chore: remove one-off architecture review transport"
+          git push origin HEAD:refactor/repository-architecture-v42-20260828
