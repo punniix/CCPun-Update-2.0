@@ -17,6 +17,9 @@ import { ctaBlock } from "./objects/cta-block";
 import { pdfDownload } from "./objects/pdf-download";
 import { detailsBlock } from "./objects/details-block";
 import { portableText } from "./objects/portable-text";
+import { masterContent } from "./documents/master-content";
+import { socialVariant } from "./documents/social-variant";
+import { socialCommentSeriesItem } from "./objects/social-comment-series-item";
 import { adminIntelligenceSchemaTypes } from "../admin/schema";
 
 export const schemaTypes = [
@@ -41,4 +44,7 @@ export const schemaTypes = [
   pdfDownload,
   detailsBlock,
   portableText,
+  masterContent,
+  socialVariant,
+  socialCommentSeriesItem,
 ];

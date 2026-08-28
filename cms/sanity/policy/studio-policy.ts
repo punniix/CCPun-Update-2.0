@@ -12,7 +12,12 @@ const SYSTEM_DOCUMENT_TYPES = new Set([
   "ubersuggestGeoSnapshot",
   "auditLog",
 ]);
+const UAT_ONLY_DOCUMENT_TYPES = new Set(["masterContent", "socialVariant"]);
 const OWNER_HIDDEN_DOCUMENT_TYPES = new Set(["category", ...SYSTEM_DOCUMENT_TYPES]);
+
+function isUatEditorialEnvironment(environment: AdminEnvironment): boolean {
+  return environment === "development" || environment === "local-uat" || environment === "admin-uat";
+}
 
 type StudioAuthProvider = { name: string };
 type StudioNewDocumentOption = { templateId: string };
@@ -37,6 +42,7 @@ export function filterStudioDocumentActions<T extends { action?: string }>(
 ): T[] {
   if (!isStudioDataPlaneAllowed(dataset, environment, undefined, undefined, projectId)) return [];
   if (schemaType && SYSTEM_DOCUMENT_TYPES.has(schemaType)) return [];
+  if (schemaType && UAT_ONLY_DOCUMENT_TYPES.has(schemaType) && !isUatEditorialEnvironment(environment)) return [];
   if (environment === "local-production") {
     if (schemaType !== "article") return [];
     return actions.filter(({ action }) => Boolean(action && LOCAL_PRODUCTION_ARTICLE_ACTIONS.has(action)));
@@ -111,13 +117,22 @@ export function filterStudioNewDocumentOptions<T extends StudioNewDocumentOption
 ): T[] {
   if (!isStudioDataPlaneAllowed(dataset, environment, undefined, undefined, projectId)) return [];
   if (environment === "local-production") return options.filter(({ templateId }) => templateId === "article");
-  return options.filter(({ templateId }) => !OWNER_HIDDEN_DOCUMENT_TYPES.has(templateId));
+  return options.filter(({ templateId }) =>
+    !OWNER_HIDDEN_DOCUMENT_TYPES.has(templateId) &&
+    (isUatEditorialEnvironment(environment) || !UAT_ONLY_DOCUMENT_TYPES.has(templateId)),
+  );
 }
 
-export function filterStudioStructureItems<T extends StudioStructureItem>(items: T[]): T[] {
+export function filterStudioStructureItems<T extends StudioStructureItem>(
+  items: T[],
+  environment: AdminEnvironment,
+): T[] {
   return items.filter((item) => {
     const documentType = item.getId();
     if (!documentType) return false;
-    return !OWNER_HIDDEN_DOCUMENT_TYPES.has(documentType);
+    return (
+      !OWNER_HIDDEN_DOCUMENT_TYPES.has(documentType) &&
+      (isUatEditorialEnvironment(environment) || !UAT_ONLY_DOCUMENT_TYPES.has(documentType))
+    );
   });
 }

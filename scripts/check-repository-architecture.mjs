@@ -66,6 +66,7 @@ for (const requiredName of [
   "article", "author", "category", "faqItem", "sourceReference", "reviewMetadata", "migrationSource",
   "seoMetadata", "geoMetadata", "imageWithAlt", "migratedImage", "tableRow", "simpleTable", "divider",
   "callout", "imageGallery", "ctaBlock", "pdfDownload", "detailsBlock", "portableText",
+  "masterContent", "socialVariant", "socialCommentSeriesItem",
 ]) {
   assert.ok(names.includes(requiredName), `missing persisted Sanity schema type: ${requiredName}`);
 }

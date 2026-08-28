@@ -38,7 +38,7 @@ export const sanityStudioConfig =
         },
         ...getStudioPublishingOptions(dataset, environment, projectId),
         plugins: [
-          createStudioStructurePlugin(),
+          createStudioStructurePlugin(environment),
           createStudioPresentationPlugin(),
         ],
         schema: { types: schemaTypes },

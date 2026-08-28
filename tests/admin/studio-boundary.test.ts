@@ -68,6 +68,7 @@ test("Studio actions follow the application lane and dataset together", () => {
 
   useLocalProject();
   assert.deepEqual(filterStudioDocumentActions(actions, "uat", "local-uat", undefined, UAT_SANITY_PROJECT_ID), [actions[4], actions[5]]);
+  assert.deepEqual(filterStudioDocumentActions(actions, "uat", "local-uat", "socialVariant", UAT_SANITY_PROJECT_ID), [actions[4], actions[5]]);
 
   useProductionAdminProject();
   assert.deepEqual(filterStudioDocumentActions(actions, "production", "production-admin", undefined, PRODUCTION_SANITY_PROJECT_ID), [
@@ -89,6 +90,8 @@ test("Studio actions follow the application lane and dataset together", () => {
 
   useProductionAdminProject();
   assert.deepEqual(filterStudioDocumentActions(actions, "production", "production-admin", "auditLog", PRODUCTION_SANITY_PROJECT_ID), []);
+  assert.deepEqual(filterStudioDocumentActions(actions, "production", "production-admin", "masterContent", PRODUCTION_SANITY_PROJECT_ID), []);
+  assert.deepEqual(filterStudioDocumentActions(actions, "production", "production-admin", "socialVariant", PRODUCTION_SANITY_PROJECT_ID), []);
 
   useLabProject();
   assert.deepEqual(filterStudioDocumentActions(actions, "production", "lab", undefined, UAT_SANITY_PROJECT_ID), []);
@@ -186,6 +189,8 @@ test("Studio keeps identified owner content and hides system/category management
     { getId: () => "category" },
     { getId: () => "auditLog" },
     { getId: () => "author" },
+    { getId: () => "masterContent" },
+    { getId: () => "socialVariant" },
     { getId: () => undefined },
   ];
   const newDocumentOptions = [
@@ -193,10 +198,21 @@ test("Studio keeps identified owner content and hides system/category management
     { templateId: "category" },
     { templateId: "seoSuggestion" },
     { templateId: "author" },
+    { templateId: "masterContent" },
+    { templateId: "socialVariant" },
   ];
 
-  assert.deepEqual(filterStudioStructureItems(structureItems), [structureItems[0], structureItems[3]]);
+  assert.deepEqual(filterStudioStructureItems(structureItems, "local-uat"), [structureItems[0], structureItems[3], structureItems[4], structureItems[5]]);
+  assert.deepEqual(filterStudioStructureItems(structureItems, "production-admin"), [structureItems[0], structureItems[3]]);
   assert.deepEqual(filterStudioNewDocumentOptions(newDocumentOptions, "uat", "local-uat", UAT_SANITY_PROJECT_ID), [
+    newDocumentOptions[0],
+    newDocumentOptions[3],
+    newDocumentOptions[4],
+    newDocumentOptions[5],
+  ]);
+
+  useProductionAdminProject();
+  assert.deepEqual(filterStudioNewDocumentOptions(newDocumentOptions, "production", "production-admin", PRODUCTION_SANITY_PROJECT_ID), [
     newDocumentOptions[0],
     newDocumentOptions[3],
   ]);

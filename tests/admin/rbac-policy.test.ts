@@ -52,6 +52,9 @@ test("removing an email from every allowlist revokes its resolved role", () => {
 });
 
 test("owner has apply permission but viewer does not", () => {
+  assert.equal(hasAdminPermission("owner", "social:read"), true);
+  assert.equal(hasAdminPermission("editor", "social:read"), false);
+  assert.equal(hasAdminPermission("viewer", "social:read"), false);
   assert.equal(hasAdminPermission("owner", "draft:apply"), true);
   assert.equal(hasAdminPermission("reviewer", "reviews:approve"), true);
   assert.equal(hasAdminPermission("reviewer", "reviews:edit"), true);

@@ -19,6 +19,7 @@ export const ADMIN_PERMISSIONS = [
   "reviews:reject",
   "audit:read",
   "settings:read",
+  "social:read",
   "draft:apply",
 ] as const;
 
