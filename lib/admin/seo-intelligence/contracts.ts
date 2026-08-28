@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+const isoDate = z.iso.date();
 
 export const gscDimensionSchema = z.enum(["query", "page", "device", "country", "searchAppearance"]);
 
@@ -34,6 +34,18 @@ export type GscNormalizedRow = {
   ctr: number;
   position: number;
 };
+
+export function previousEqualDateRange(startDate: string, endDate: string) {
+  const start = Date.parse(`${startDate}T00:00:00Z`);
+  const end = Date.parse(`${endDate}T00:00:00Z`);
+  const days = Math.round((end - start) / 86_400_000) + 1;
+  const previousEnd = new Date(start - 86_400_000);
+  const previousStart = new Date(previousEnd.getTime() - (days - 1) * 86_400_000);
+  return {
+    startDate: previousStart.toISOString().slice(0, 10),
+    endDate: previousEnd.toISOString().slice(0, 10),
+  };
+}
 
 export function normalizeGscSearchAnalyticsPage(raw: unknown, dimensions: readonly GscDimension[]): GscNormalizedRow[] {
   return gscSearchAnalyticsPageSchema.parse(raw).rows.map((row) => {

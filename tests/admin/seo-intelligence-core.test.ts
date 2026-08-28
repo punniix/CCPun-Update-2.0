@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import { CCPUN_VERCEL_PROJECT_IDS } from "../../lib/admin/environment";
-import { gscQueryInputSchema, normalizeGscSearchAnalyticsPage } from "../../lib/admin/seo-intelligence/contracts";
+import { gscQueryInputSchema, normalizeGscSearchAnalyticsPage, previousEqualDateRange } from "../../lib/admin/seo-intelligence/contracts";
 import {
   detectSeoOpportunities,
   getSyntheticSeoIntelligenceSnapshot,
@@ -77,6 +77,8 @@ test("GSC normalization follows requested dimension order and rejects malformed 
     country: "tha",
   });
   assert.equal(gscQueryInputSchema.safeParse({ siteUrl: "sc-domain:ccpun.com", token: "fixture", startDate: "2026-08-28", endDate: "2026-08-01", dimensions: ["query"] }).success, false);
+  assert.equal(gscQueryInputSchema.safeParse({ siteUrl: "sc-domain:ccpun.com", token: "fixture", startDate: "2026-02-30", endDate: "2026-03-01", dimensions: ["query"] }).success, false);
+  assert.deepEqual(previousEqualDateRange("2026-08-01", "2026-08-28"), { startDate: "2026-07-04", endDate: "2026-07-31" });
   assert.throws(() => normalizeGscSearchAnalyticsPage({ rows: [{ keys: ["only-one"], clicks: 1, impressions: 10, ctr: 0.1, position: 2 }] }, ["query", "page"]), /GSC_DIMENSION_MISMATCH/);
 });
 
@@ -87,8 +89,29 @@ test("GSC provider is server-only, paginated, bounded and never logs credentials
   assert.match(provider, /rowLimit: input\.rowLimit/);
   assert.match(provider, /startRow: page \* input\.rowLimit/);
   assert.match(provider, /AbortSignal\.timeout\(TIMEOUT_MS\)/);
-  assert.match(provider, /response\.status !== 429 && response\.status < 500/);
+  assert.match(provider, /response\.status === 429/);
+  assert.match(provider, /GSC_AUTH_REQUIRED/);
+  assert.match(provider, /GSC_TIMEOUT/);
   assert.doesNotMatch(provider, /console\./);
+});
+
+test("GSC manual sync is human-only, exact-origin, bounded and read-only", () => {
+  const route = read("app/api/snt-admin/seo/opportunities/sync/gsc/route.ts");
+  const control = read("features/admin/seo/opportunities/GscManualSync.tsx");
+  assert.match(route, /identity\.actorType !== "human"/);
+  assert.match(route, /research:provider-query/);
+  assert.match(route, /isConfiguredAdminOrigin/);
+  assert.match(route, /isSameOriginAdminMutation/);
+  assert.match(route, /getSeoIntelligenceRuntimeStatus\(\)\.enabled/);
+  assert.match(route, /current\.rows\.slice\(0, 100\)/);
+  assert.match(route, /CCPUN_GSC_ACCESS_TOKEN/);
+  assert.match(route, /export async function POST\(request: Request\)/);
+  assert.doesNotMatch(route, /export async function (?:GET|PUT|PATCH|DELETE)/);
+  assert.doesNotMatch(route, /createClient|sanity|mutate|publish|console\./i);
+  assert.match(control, /type="date"/);
+  assert.match(control, /กำลัง Sync/);
+  assert.match(control, /role="alert"/);
+  assert.match(control, /ไม่บันทึก DB\/Sanity/);
 });
 
 test("SEO opportunities API is authenticated, exact-origin and GET-only", () => {

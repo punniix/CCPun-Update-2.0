@@ -10,7 +10,8 @@ const MAX_PAGES = 2;
 const TIMEOUT_MS = 15_000;
 type FetchLike = (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
 
-async function requestPage(url: string, token: string, body: string, fetcher: FetchLike) {
+async function requestPage(url: string, token: string, body: string, fetcher: FetchLike): Promise<unknown> {
+  let failure = "GSC_PROVIDER_UNAVAILABLE";
   for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
       const response = await fetcher(url, {
@@ -20,13 +21,17 @@ async function requestPage(url: string, token: string, body: string, fetcher: Fe
         cache: "no-store",
         signal: AbortSignal.timeout(TIMEOUT_MS),
       });
-      if (response.ok) return response.json();
-      if (response.status !== 429 && response.status < 500) break;
-    } catch {
+      if (response.ok) return response.json() as Promise<unknown>;
+      if (response.status === 401 || response.status === 403) throw new Error("GSC_AUTH_REQUIRED");
+      if (response.status === 429) failure = "GSC_RATE_LIMITED";
+      else if (response.status < 500) throw new Error("GSC_INVALID_RESPONSE");
+    } catch (error) {
+      if (error instanceof Error && error.message.startsWith("GSC_")) throw error;
+      failure = error instanceof Error && error.name === "TimeoutError" ? "GSC_TIMEOUT" : failure;
       if (attempt === 1) break;
     }
   }
-  throw new Error("GSC_PROVIDER_UNAVAILABLE");
+  throw new Error(failure);
 }
 
 export async function fetchGscSearchAnalytics(rawInput: unknown, fetcher: FetchLike = fetch): Promise<{
@@ -49,7 +54,12 @@ export async function fetchGscSearchAnalytics(rawInput: unknown, fetcher: FetchL
       rowLimit: input.rowLimit,
       startRow: page * input.rowLimit,
     }), fetcher);
-    const pageRows = normalizeGscSearchAnalyticsPage(raw, input.dimensions);
+    let pageRows: GscNormalizedRow[];
+    try {
+      pageRows = normalizeGscSearchAnalyticsPage(raw, input.dimensions);
+    } catch {
+      throw new Error("GSC_INVALID_RESPONSE");
+    }
     rows.push(...pageRows);
     if (pageRows.length < input.rowLimit) {
       return { fetchedAt: new Date().toISOString(), rows, truncated: false, limitation: "Search Console may omit anonymized or low-volume queries." };

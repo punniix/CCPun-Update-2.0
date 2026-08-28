@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireAdminPermission } from "@/lib/admin/require-permission";
 import { getSeoIntelligenceRuntimeStatus, getSyntheticSeoIntelligenceSnapshot, type SeoOpportunityType } from "@/lib/admin/seo-intelligence/foundation";
+import GscManualSync from "./GscManualSync";
 
 export const metadata: Metadata = { title: "SEO Opportunities UAT" };
 
@@ -12,6 +13,11 @@ const typeLabel: Record<SeoOpportunityType, string> = {
   "content-decay": "Content Decay",
   cannibalization: "Cannibalization",
 };
+
+function bangkokDate(daysAgo: number) {
+  const date = new Date(Date.now() - daysAgo * 86_400_000);
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Bangkok", year: "numeric", month: "2-digit", day: "2-digit" }).format(date);
+}
 
 export default async function SeoOpportunitiesUatPage() {
   await requireAdminPermission("seo:read");
@@ -34,6 +40,8 @@ export default async function SeoOpportunitiesUatPage() {
         <article className="rounded-2xl border border-white/10 bg-white/[0.035] p-4"><div className="text-sm text-white/60">Opportunities</div><div className="mt-2 text-lg font-semibold">{snapshot.opportunities.length}</div></article>
         <article className="rounded-2xl border border-white/10 bg-white/[0.035] p-4"><div className="text-sm text-white/60">การเปลี่ยน Production</div><div className="mt-2 font-semibold text-emerald-200">ไม่มี</div></article>
       </section>
+
+      <GscManualSync defaultStartDate={bangkokDate(27)} defaultEndDate={bangkokDate(0)} />
 
       <section className="mt-6 grid gap-4 xl:grid-cols-2">
         {snapshot.opportunities.map((opportunity) => (
