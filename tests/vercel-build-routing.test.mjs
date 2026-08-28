@@ -6,16 +6,20 @@ import { shouldBuild } from "../scripts/vercel-ignore-build.mjs";
 const web = "prj_dxwjITkd0av5QiJQv2snUlIASUWu";
 const admin = "prj_6tuUxJxYbQ4mpF7sMgNWx2p2jowN";
 
-test("Website 4.2 builds only in the Web survivor", () => {
-  const input = { environment: "preview", branch: "ux/final-4.2" };
-  assert.equal(shouldBuild({ ...input, projectId: web }), true);
-  assert.equal(shouldBuild({ ...input, projectId: admin }), false);
+test("Website 4.3 and its historical UX branch build only in the Web survivor", () => {
+  for (const branch of ["ux/final-4.2", "web/website-43-homepage", "codex/website-43-accessibility"]) {
+    const input = { environment: "preview", branch };
+    assert.equal(shouldBuild({ ...input, projectId: web }), true);
+    assert.equal(shouldBuild({ ...input, projectId: admin }), false);
+  }
 });
 
-test("Admin-only branches build only in the Admin survivor", () => {
-  const input = { environment: "preview", branch: "admin/review-queue" };
-  assert.equal(shouldBuild({ ...input, projectId: web }), false);
-  assert.equal(shouldBuild({ ...input, projectId: admin }), true);
+test("Website 4.2 and Admin-only branches build only in the Admin survivor", () => {
+  for (const branch of ["admin/review-queue", "codex/admin-oauth", "codex/website-42-social-foundation"]) {
+    const input = { environment: "preview", branch };
+    assert.equal(shouldBuild({ ...input, projectId: web }), false);
+    assert.equal(shouldBuild({ ...input, projectId: admin }), true);
+  }
 });
 
 test("shared 4.1 and Production releases build in both survivors", () => {

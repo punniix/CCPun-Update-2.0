@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import {
-  CCPUN_LEGACY_VERCEL_PROJECT_IDS,
   CCPUN_VERCEL_PROJECT_IDS,
   isAdminDataPlaneAllowed,
   isAdminReadDataPlaneAllowed,
@@ -20,8 +19,8 @@ import { shouldEnforceHttps } from "../../lib/security-policy";
 
 const WEB_PROJECT_ID = CCPUN_VERCEL_PROJECT_IDS.web;
 const PRODUCTION_ADMIN_PROJECT_ID = CCPUN_VERCEL_PROJECT_IDS.adminProduction;
-const LAB_PROJECT_ID = CCPUN_LEGACY_VERCEL_PROJECT_IDS.adminLab;
-const UAT_PROJECT_ID = CCPUN_LEGACY_VERCEL_PROJECT_IDS.adminUat;
+const LAB_PROJECT_ID = "prj_retired_lab";
+const UAT_PROJECT_ID = "prj_retired_uat";
 const UAT_SANITY_PROJECT_ID = "ccb9lnw5";
 const PRODUCTION_SANITY_PROJECT_ID = "kyfxgjnq";
 
@@ -279,15 +278,12 @@ test("Admin proxy uses the project-aware surface guard", () => {
   assert.match(proxySource, /status: 404/);
 });
 
-test("survivor deploy guard allows only immutable survivor IDs and blocks every legacy project", () => {
+test("survivor deploy guard allows only immutable survivor IDs and rejects every unknown project", () => {
   assert.match(survivorGuard, /project\.projectId/);
-  assert.match(survivorGuard, new RegExp(LAB_PROJECT_ID));
-  assert.match(survivorGuard, new RegExp(UAT_PROJECT_ID));
-  assert.match(survivorGuard, /prj_F6yodVaz1U57FcUlEXsKBazI7KF7/);
-  assert.match(survivorGuard, /prj_E3Z5RDozUgrbW625d6pE8aQdfQuK/);
   assert.match(survivorGuard, new RegExp(WEB_PROJECT_ID));
   assert.match(survivorGuard, new RegExp(PRODUCTION_ADMIN_PROJECT_ID));
-  assert.match(survivorGuard, /LEGACY-FROZEN/);
+  assert.match(survivorGuard, /unapproved Vercel project ID/);
+  assert.doesNotMatch(survivorGuard, /LEGACY_PROJECT_IDS|LEGACY-FROZEN/);
   assert.doesNotMatch(survivorGuard, /project\.projectName/);
 });
 
