@@ -3,6 +3,7 @@ import { CCPUN_VERCEL_PROJECT_IDS, parseAdminEnvironment, type AdminEnvironment 
 import {
   publicationStatusSchema,
   publishingModeSchema,
+  type PublicationStatus,
   socialFoundationSnapshotSchema,
   socialPlatformSchema,
   SYNTHETIC_SOCIAL_FOUNDATION,
@@ -84,6 +85,47 @@ export const socialCalendarItemSchema = z.object({
   analyticsAvailable: z.boolean(),
   providerWriteAllowed: z.literal(false),
 });
+
+export const commentSeriesPlanSchema = z.object({
+  publicationId: boundedId,
+  state: z.enum(["wait-main-post", "wait-approval", "ready", "complete", "invalid"]),
+  nextCommentId: boundedId.nullable(),
+  providerWriteAllowed: z.literal(false),
+  reason: z.string().trim().min(1).max(240),
+});
+
+export function planCommentSeries(input: {
+  publicationId: string;
+  platform: "facebook";
+  mainPostStatus: PublicationStatus;
+  mainPostId: string | null;
+  mode: "top-level" | "threaded";
+  comments: Array<{ id: string; order: number; parentItemId: string | null; status: PublicationStatus; platformCommentId: string | null }>;
+}) {
+  const fail = (reason: string) => commentSeriesPlanSchema.parse({ publicationId: input.publicationId, state: "invalid", nextCommentId: null, providerWriteAllowed: false, reason });
+  const comments = [...input.comments].sort((a, b) => a.order - b.order);
+  const ids = new Set(comments.map((item) => item.id));
+  if (ids.size !== comments.length || new Set(comments.map((item) => item.order)).size !== comments.length) return fail("Comment ID และลำดับต้องไม่ซ้ำ");
+  for (const comment of comments) {
+    if (comment.parentItemId && !ids.has(comment.parentItemId)) return fail("Parent comment ต้องอยู่ในชุดเดียวกัน");
+    if (comment.status === "published" && !comment.platformCommentId) return fail("Comment ที่เผยแพร่แล้วต้องมี Platform ID");
+    const visited = new Set([comment.id]);
+    let parent = comment.parentItemId;
+    while (parent) {
+      if (visited.has(parent)) return fail("Comment thread มีวงจรอ้างอิง");
+      visited.add(parent);
+      parent = comments.find((item) => item.id === parent)?.parentItemId ?? null;
+    }
+  }
+  if (input.mode === "top-level" && comments.some((item) => item.parentItemId)) return fail("Top-level series ต้องไม่มี parent comment");
+  if (input.mode === "threaded" && comments.some((item, index) => index > 0 && item.parentItemId !== comments[index - 1]?.id)) return fail("Threaded series ต้องต่อจาก comment ก่อนหน้า");
+  if (input.mainPostStatus !== "published" || !input.mainPostId) return commentSeriesPlanSchema.parse({ publicationId: input.publicationId, state: "wait-main-post", nextCommentId: null, providerWriteAllowed: false, reason: "รอ Main Post เผยแพร่และมี Platform Post ID ก่อน" });
+  if (comments.some((item) => item.status !== "approved" && item.status !== "published")) return commentSeriesPlanSchema.parse({ publicationId: input.publicationId, state: "wait-approval", nextCommentId: null, providerWriteAllowed: false, reason: "ทุก Comment ต้องผ่าน Human Review ก่อน" });
+  const next = comments.find((item) => item.status !== "published");
+  if (!next) return commentSeriesPlanSchema.parse({ publicationId: input.publicationId, state: "complete", nextCommentId: null, providerWriteAllowed: false, reason: "Comment Series เผยแพร่ครบแล้ว" });
+  if (input.mode === "threaded" && next.parentItemId && !comments.find((item) => item.id === next.parentItemId)?.platformCommentId) return fail("Parent comment ต้องเผยแพร่สำเร็จก่อน Reply ถัดไป");
+  return commentSeriesPlanSchema.parse({ publicationId: input.publicationId, state: "ready", nextCommentId: next.id, providerWriteAllowed: false, reason: "พร้อมสำหรับ executor ที่ผ่านการอนุมัติ แต่ UAT นี้ยังไม่เรียก Provider" });
+}
 
 export function buildSyntheticPublicationPlans(
   foundation = socialFoundationSnapshotSchema.parse(SYNTHETIC_SOCIAL_FOUNDATION),
@@ -198,6 +240,15 @@ export const SYNTHETIC_SOCIAL_OPERATIONS = socialOperationsSnapshotSchema.parse(
   publicationPlans: buildSyntheticPublicationPlans(),
   publications: SYNTHETIC_PUBLISHED_SOCIAL_RECORDS,
   analytics: SYNTHETIC_SOCIAL_ANALYTICS,
+});
+
+export const SYNTHETIC_COMMENT_SERIES_PLAN = planCommentSeries({
+  publicationId: "uat-publication:synthetic-facebook-001",
+  platform: "facebook",
+  mainPostStatus: "approved",
+  mainPostId: null,
+  mode: "top-level",
+  comments: SYNTHETIC_SOCIAL_FOUNDATION.variants[0]!.commentSeries.map((item) => ({ ...item, platformCommentId: null })),
 });
 
 export function buildSyntheticContentCalendar(

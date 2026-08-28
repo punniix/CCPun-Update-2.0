@@ -6,6 +6,7 @@ import {
   buildSyntheticContentCalendar,
   buildSyntheticPublicationPlans,
   isSocialOperationsEnabled,
+  planCommentSeries,
   socialOperationsSnapshotSchema,
   SYNTHETIC_SOCIAL_OPERATIONS,
   WEBSITE_42_SOCIAL_OPERATIONS_BRANCH,
@@ -82,6 +83,31 @@ test("Content Calendar derives one read-only item per variant without provider e
   assert.match(page, /getSocialOperationsRuntimeStatus\(\)\.enabled/);
   assert.match(page, /ไม่มีคำสั่งส่งโพสต์/);
   assert.equal(route.trim(), 'export { metadata, default } from "@/features/admin/social/calendar-page";');
+});
+
+test("Comment Series waits for the main post and rejects unsafe thread graphs", () => {
+  const base = {
+    publicationId: "publication:facebook:001",
+    platform: "facebook" as const,
+    mainPostStatus: "published" as const,
+    mainPostId: "facebook-post-001",
+    mode: "threaded" as const,
+    comments: [
+      { id: "comment-1", order: 1, parentItemId: null, status: "published" as const, platformCommentId: "facebook-comment-1" },
+      { id: "comment-2", order: 2, parentItemId: "comment-1", status: "approved" as const, platformCommentId: null },
+    ],
+  };
+  assert.deepEqual(planCommentSeries(base), {
+    publicationId: base.publicationId,
+    state: "ready",
+    nextCommentId: "comment-2",
+    providerWriteAllowed: false,
+    reason: "พร้อมสำหรับ executor ที่ผ่านการอนุมัติ แต่ UAT นี้ยังไม่เรียก Provider",
+  });
+  assert.equal(planCommentSeries({ ...base, mainPostStatus: "approved", mainPostId: null }).state, "wait-main-post");
+  assert.equal(planCommentSeries({ ...base, comments: [{ ...base.comments[0]!, status: "draft", platformCommentId: null }] }).state, "wait-approval");
+  assert.equal(planCommentSeries({ ...base, comments: base.comments.map((item, index) => ({ ...item, parentItemId: index ? "comment-2" : "comment-2" })) }).state, "invalid");
+  assert.equal(planCommentSeries({ ...base, mode: "top-level", comments: base.comments }).state, "invalid");
 });
 
 test("Social operations API is authenticated, exact-origin and GET-only", () => {

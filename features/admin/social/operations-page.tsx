@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { requireAdminPermission } from "@/lib/admin/require-permission";
 import {
   getSocialOperationsRuntimeStatus,
+  SYNTHETIC_COMMENT_SERIES_PLAN,
   socialOperationsSnapshotSchema,
   SYNTHETIC_SOCIAL_OPERATIONS,
 } from "@/lib/admin/social/operations";
@@ -42,6 +43,13 @@ export default async function SocialOperationsUatPage() {
             </article>
           ))}
         </div>
+      </section>
+
+      <section className="mt-8 rounded-3xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="text-xs font-semibold uppercase tracking-wide text-[#e0c985]">Facebook Comment Series</div>
+        <h2 className="mt-2 text-xl font-semibold">{SYNTHETIC_COMMENT_SERIES_PLAN.state === "wait-main-post" ? "รอ Main Post" : SYNTHETIC_COMMENT_SERIES_PLAN.state}</h2>
+        <p className="mt-3 text-sm leading-6 text-white/65">{SYNTHETIC_COMMENT_SERIES_PLAN.reason}</p>
+        <div className="mt-3 text-xs text-amber-200">Provider write: ปิด · Duplicate protection และ executor ยังไม่เปิด</div>
       </section>
 
       <section className="mt-8">
