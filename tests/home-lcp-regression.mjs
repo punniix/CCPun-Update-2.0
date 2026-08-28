@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-const hero = readFileSync(new URL("../components/HeroSection.tsx", import.meta.url), "utf8");
+const hero = readFileSync(new URL("../features/home/components/HeroSection.tsx", import.meta.url), "utf8");
 
 assert.match(hero, /import Image, \{ getImageProps \} from "next\/image";/);
 assert.match(hero, /src: "\/assets\/hero-pun-laptop-v3\.png"/);
