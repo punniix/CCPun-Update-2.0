@@ -2,6 +2,8 @@
 
 This document is the source of truth for source-file ownership. The goal is predictable placement and safe change boundaries, not a large number of folders. Existing public URLs, persisted Sanity names, analytics events, consent behavior, calculator results, and environment guards are contracts.
 
+Runtime baseline: Public Web and Admin use Node.js 24.x with the npm version pinned in `package.json`. Local development and CI use the same Node major; `package.json` is the Vercel runtime authority, `.nvmrc` is the local selector, and `.npmrc` rejects installs on another Node major.
+
 ## Dependency direction
 
 ```text

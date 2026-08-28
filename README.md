@@ -6,6 +6,8 @@ Changes in this repository do not authorize a Production deploy, Sanity `product
 
 ## Runtime
 
+- Node.js 24.x for Public Web, Admin, local development, CI and Vercel builds
+- npm 11 with the committed `package-lock.json`; do not add a competing lockfile
 - Next.js 16.3 / App Router
 - React 19
 - Tailwind CSS v4
@@ -13,9 +15,9 @@ Changes in this repository do not authorize a Production deploy, Sanity `product
 - Auth.js with Google OAuth and email allowlists
 - Vercel-native server runtime
 
-Protected Admin UAT uses a branch-specific Preview inside the Admin survivor `ccpun-admin-prod`. Public Web UAT and Website 4.2 use protected branch-specific Previews inside the Web survivor `ccpun-web-v4-prod`.
+Protected Admin UAT uses a branch-specific Preview inside `ccpun-admin`. Public Web UAT uses protected branch-specific Previews inside `ccpun-web`.
 
-`ccpun-web-v4-uat`, `ccpun-admin-nonprod`, `ccpun-web-v4-1-uat`, and `ccpun-web-lab` are `LEGACY-FROZEN`. Their existing deployments are rollback/parity evidence only. Do not deploy new work or add configuration to them.
+The four former legacy Vercel Projects have been retired. Historical code and rollback evidence belong in Git history/tags, not live legacy runtimes.
 
 Protected Production Admin entry:
 
@@ -145,6 +147,8 @@ Do not copy `.env*`, OAuth JSON, tokens or `.vercel/` into Git.
 ## Local verification
 
 Use the explicit Local UAT lane; never use Production credentials for local verification.
+
+Select Node.js 24 before installing dependencies. npm fails closed on another Node major through the committed engine contract.
 
 ```bash
 npm install
