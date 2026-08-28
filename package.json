@@ -21,6 +21,7 @@
     "check:foundation": "npm run lint && npx tsc --noEmit --incremental false && npm run test:architecture && npm run test:foundation-contracts && npm run test:vercel && npm run test:admin",
     "qa:legacy-urls": "node qa/legacy-url-regression.mjs",
     "qa:site": "node qa/uat-text-responsive-check.mjs",
+    "qa:admin-41-responsive": "node qa/admin-41-responsive-regression.mjs",
     "qa:blog": "CCPUN_UAT_MODE=1 node --env-file-if-exists=.env.local qa/blog-uat-regression.mjs",
     "qa:home": "node qa/home-uat-regression.mjs",
     "qa:tracking": "node qa/tracking-consent-regression.mjs",
