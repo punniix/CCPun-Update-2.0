@@ -64,6 +64,14 @@ Google Drive / CCPun folder
 - YouTube should use its native resumable upload and scheduler where practical. Do not stage a duplicate merely for architectural uniformity.
 - Do not add Google service accounts for a personal My Drive folder, a second database, Vercel Blob, a dedicated CDN, or multiple storage adapters without a demonstrated need and separate approval.
 
+The runnable foundation is intentionally a pure server-only contract in `lib/admin/media/google-drive-foundation.ts`, with a fail-closed browser runtime guard. It accepts only normalized synthetic metadata and verifies the current parent chain against one exact immutable root folder ID. It denies shortcuts rather than resolving them, and denies moved/outside-root, trashed, cyclic, duplicate, missing, multi-parent, or otherwise unverifiable ancestry. Folder names never grant access.
+
+In a future real connection, trusted server code must fetch every current ancestry item directly from the Drive API using the short-lived interactive authorization and normalize that response before invoking this boundary. Client-asserted file IDs, parents, trashed state, MIME types, shortcut targets, or ancestry snapshots must never be treated as authorization evidence.
+
+The authorization contract accepts only `drive.file`, an owner-interactive session, a maximum one-hour lifetime, memory-only access-token handling, and explicitly forbidden refresh-token persistence. It models authorization claims only; it contains no token value and performs no Google API or OAuth call.
+
+No route, UI, dependency, table, or migration change is added for Drive in this synthetic phase. The existing operational schema does not yet persist Drive source provenance. Adding immutable Drive file/root IDs and durable audit evidence is a blocked write-lane design/migration gate before any real import can be enabled; provenance is returned only by the in-memory boundary evaluation for now.
+
 This design keeps the expected early incremental cost at zero while usage remains inside the owner's existing Drive allowance, Neon Free allowance, Google API quota, and any future object-storage free tier. It does not authorize a Google connection, bucket, billing account, or provider secret.
 
 ## API and authorization
