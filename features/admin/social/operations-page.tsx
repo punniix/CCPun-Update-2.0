@@ -29,6 +29,7 @@ export default async function SocialOperationsUatPage() {
       <div className="mt-2 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <h1 className="text-3xl font-semibold">Social Publishing & Analytics Core</h1>
         <div className="flex flex-wrap gap-2">
+          <Link href="/snt-admin/distribution/analytics/post-live/" className="inline-flex min-h-11 items-center rounded-xl border border-white/10 px-4 py-2.5 text-sm text-white/70 hover:bg-white/5">ดูสถิติย้อนหลัง Live</Link>
           <Link href="/snt-admin/distribution/connections/meta/" className="inline-flex min-h-11 items-center rounded-xl border border-white/10 px-4 py-2.5 text-sm text-white/70 hover:bg-white/5">ตรวจ Meta Connection</Link>
           <Link href="/snt-admin/distribution/calendar/" className="inline-flex min-h-11 items-center rounded-xl border border-white/10 px-4 py-2.5 text-sm text-white/70 hover:bg-white/5">เปิด Content Calendar</Link>
         </div>
