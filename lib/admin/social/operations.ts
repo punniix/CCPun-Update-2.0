@@ -1,9 +1,13 @@
 import { z } from "zod";
 import { CCPUN_VERCEL_PROJECT_IDS, parseAdminEnvironment, type AdminEnvironment } from "../environment";
 import {
+  publicationStatusSchema,
+  publishingModeSchema,
   socialFoundationSnapshotSchema,
   socialPlatformSchema,
   SYNTHETIC_SOCIAL_FOUNDATION,
+  WEBSITE_42_SANITY_DATASET,
+  WEBSITE_42_SANITY_PROJECT_ID,
 } from "./foundation";
 
 export const WEBSITE_42_SOCIAL_OPERATIONS_BRANCH = "codex/website-42-social-operations-core-20260828";
@@ -35,10 +39,36 @@ export const socialMetricSnapshotSchema = z.object({
   limitations: z.array(z.string().trim().min(1).max(240)).min(1).max(10),
 });
 
+export const socialPublicationRecordSchema = z.object({
+  publicationId: boundedId,
+  variantId: boundedId,
+  platform: socialPlatformSchema,
+  publishingMode: publishingModeSchema,
+  status: publicationStatusSchema,
+  scheduledAt: z.string().datetime().nullable(),
+  publishedAt: z.string().datetime().nullable(),
+  platformObjectId: boundedId.nullable(),
+  providerWriteAllowed: z.literal(false),
+}).superRefine((publication, context) => {
+  const published = publication.status === "published";
+  if (published !== Boolean(publication.publishedAt && publication.platformObjectId)) {
+    context.addIssue({ code: z.ZodIssueCode.custom, message: "Published records require a timestamp and platform object ID" });
+  }
+});
+
 export const socialOperationsSnapshotSchema = z.object({
   mode: z.literal("synthetic-uat"),
   publicationPlans: z.array(socialPublicationPlanSchema).min(1).max(20),
+  publications: z.array(socialPublicationRecordSchema).min(1).max(20),
   analytics: z.array(socialMetricSnapshotSchema).min(1).max(20),
+}).superRefine((snapshot, context) => {
+  const publications = new Map(snapshot.publications.map((publication) => [publication.publicationId, publication]));
+  for (const metric of snapshot.analytics) {
+    const publication = publications.get(metric.publicationId);
+    if (!publication || publication.status !== "published" || publication.platform !== metric.platform || !publication.publishedAt || Date.parse(metric.fetchedAt) < Date.parse(publication.publishedAt)) {
+      context.addIssue({ code: z.ZodIssueCode.custom, path: ["analytics", metric.publicationId], message: "Analytics require a matching published record and later snapshot time" });
+    }
+  }
 });
 
 export function buildSyntheticPublicationPlans(
@@ -86,9 +116,21 @@ export function buildSyntheticPublicationPlans(
   });
 }
 
+export const SYNTHETIC_PUBLISHED_SOCIAL_RECORDS = SYNTHETIC_SOCIAL_FOUNDATION.variants.map((variant, index) => ({
+  publicationId: `uat-published:${variant.id}`,
+  variantId: variant.id,
+  platform: variant.platform,
+  publishingMode: variant.publishingMode,
+  status: "published" as const,
+  scheduledAt: index % 2 === 0 ? "2026-08-27T08:00:00.000Z" : null,
+  publishedAt: "2026-08-28T07:00:00.000Z",
+  platformObjectId: `synthetic-platform:${variant.id}`,
+  providerWriteAllowed: false as const,
+}));
+
 export const SYNTHETIC_SOCIAL_ANALYTICS = [
   {
-    publicationId: "uat-publication:synthetic-facebook-001",
+    publicationId: "uat-published:synthetic-facebook-001",
     platform: "facebook",
     source: "synthetic-uat",
     fetchedAt: "2026-08-28T08:00:00.000Z",
@@ -100,7 +142,7 @@ export const SYNTHETIC_SOCIAL_ANALYTICS = [
     limitations: ["Fixture สำหรับทดสอบ UAT ไม่ใช่ข้อมูลจาก Facebook"],
   },
   {
-    publicationId: "uat-publication:synthetic-instagram-001",
+    publicationId: "uat-published:synthetic-instagram-001",
     platform: "instagram",
     source: "synthetic-uat",
     fetchedAt: "2026-08-28T08:00:00.000Z",
@@ -112,7 +154,7 @@ export const SYNTHETIC_SOCIAL_ANALYTICS = [
     limitations: ["Fixture สำหรับทดสอบ UAT ไม่ใช่ข้อมูลจาก Instagram"],
   },
   {
-    publicationId: "uat-publication:synthetic-tiktok-001",
+    publicationId: "uat-published:synthetic-tiktok-001",
     platform: "tiktok",
     source: "synthetic-uat",
     fetchedAt: "2026-08-28T08:00:00.000Z",
@@ -124,7 +166,7 @@ export const SYNTHETIC_SOCIAL_ANALYTICS = [
     limitations: ["Fixture สำหรับทดสอบ UAT ไม่ใช่ข้อมูลจาก TikTok"],
   },
   {
-    publicationId: "uat-publication:synthetic-youtube-001",
+    publicationId: "uat-published:synthetic-youtube-001",
     platform: "youtube",
     source: "synthetic-uat",
     fetchedAt: "2026-08-28T08:00:00.000Z",
@@ -140,6 +182,7 @@ export const SYNTHETIC_SOCIAL_ANALYTICS = [
 export const SYNTHETIC_SOCIAL_OPERATIONS = socialOperationsSnapshotSchema.parse({
   mode: "synthetic-uat",
   publicationPlans: buildSyntheticPublicationPlans(),
+  publications: SYNTHETIC_PUBLISHED_SOCIAL_RECORDS,
   analytics: SYNTHETIC_SOCIAL_ANALYTICS,
 });
 
@@ -157,8 +200,8 @@ export function isSocialOperationsEnabled(input: {
     && input.environment === "admin-uat"
     && input.projectId === CCPUN_VERCEL_PROJECT_IDS.adminProduction
     && input.gitBranch === WEBSITE_42_SOCIAL_OPERATIONS_BRANCH
-    && input.sanityProjectId === "ccb9lnw5"
-    && input.sanityDataset === "uat";
+    && input.sanityProjectId === WEBSITE_42_SANITY_PROJECT_ID
+    && input.sanityDataset === WEBSITE_42_SANITY_DATASET;
 }
 
 export function getSocialOperationsRuntimeStatus() {

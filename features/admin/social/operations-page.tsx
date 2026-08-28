@@ -50,6 +50,7 @@ export default async function SocialOperationsUatPage() {
           {snapshot.analytics.map((item) => (
             <article key={item.publicationId} className="rounded-3xl border border-white/10 bg-white/[0.03] p-5">
               <div className="text-xs font-semibold uppercase tracking-wide text-[#e0c985]">{item.platform}</div>
+              <div className="mt-2 text-xs text-white/45">เผยแพร่จำลองแล้ว · {snapshot.publications.find((publication) => publication.publicationId === item.publicationId)?.publishedAt?.slice(0, 10)}</div>
               <dl className="mt-4 space-y-3">
                 {item.nativeMetrics.map((metric) => (
                   <div key={metric.key} className="flex items-end justify-between gap-3 border-b border-white/5 pb-3">

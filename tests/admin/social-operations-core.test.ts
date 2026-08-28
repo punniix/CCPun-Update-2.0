@@ -51,10 +51,22 @@ test("Publication planning is deterministic and cannot write to a provider", () 
 test("Social analytics preserves native metrics and never creates a cross-platform total", () => {
   const snapshot = socialOperationsSnapshotSchema.parse(SYNTHETIC_SOCIAL_OPERATIONS);
   assert.equal(snapshot.analytics.length, 4);
+  assert.equal(snapshot.publications.every((item) => item.status === "published" && item.publishedAt && item.platformObjectId && item.providerWriteAllowed === false), true);
   assert.equal(snapshot.analytics.every((item) => item.source === "synthetic-uat"), true);
   assert.equal(snapshot.analytics.flatMap((item) => item.nativeMetrics).every((metric) => metric.key.includes(".")), true);
+  for (const metric of snapshot.analytics) {
+    const publication = snapshot.publications.find((item) => item.publicationId === metric.publicationId);
+    assert.equal(publication?.platform, metric.platform);
+    assert.ok(publication?.publishedAt && Date.parse(metric.fetchedAt) >= Date.parse(publication.publishedAt));
+  }
   assert.equal(Object.hasOwn(snapshot, "totalViews"), false);
   assert.equal(JSON.stringify(snapshot).includes("expectedUplift"), false);
+
+  const invalid = structuredClone(SYNTHETIC_SOCIAL_OPERATIONS);
+  invalid.publications[0]!.status = "approved";
+  invalid.publications[0]!.publishedAt = null;
+  invalid.publications[0]!.platformObjectId = null;
+  assert.equal(socialOperationsSnapshotSchema.safeParse(invalid).success, false);
 });
 
 test("Social operations API is authenticated, exact-origin and GET-only", () => {
