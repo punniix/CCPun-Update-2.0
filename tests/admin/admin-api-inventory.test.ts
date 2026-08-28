@@ -92,6 +92,14 @@ const contracts: Record<string, RouteContract> = {
     methods: ["GET"], identity: /getAdminIdentity\(\)/, authorization: /"seo:read"/,
     validation: { file: "app/api/snt-admin/seo/opportunities/route.ts", pattern: /isConfiguredAdminOrigin\(request\.url, process\.env\.AUTH_URL\)/, exception: "Sensitive GET adds an exact configured-origin check." },
   },
+  "app/api/snt-admin/seo/opportunities/sync/ga4/route.ts": {
+    methods: ["POST"], identity: /getAdminIdentity\(\)/, authorization: /"research:provider-query"/,
+    validation: { file: "app/api/snt-admin/seo/opportunities/sync/ga4/route.ts", pattern: /inputSchema\.safeParse\(await request\.json\(\)\.catch/, },
+  },
+  "app/api/snt-admin/seo/opportunities/sync/gsc/route.ts": {
+    methods: ["POST"], identity: /getAdminIdentity\(\)/, authorization: /"research:provider-query"/,
+    validation: { file: "app/api/snt-admin/seo/opportunities/sync/gsc/route.ts", pattern: /inputSchema\.safeParse\(await request\.json\(\)\.catch/, },
+  },
   "app/api/snt-admin/seo/suggestions/route.ts": {
     methods: ["POST"], identity: /getAdminIdentity\(\)/, authorization: /action: "proposal:create"/,
     validation: { file: "app/api/snt-admin/seo/suggestions/route.ts", pattern: /bodySchema\.safeParse\(await request\.json\(\)\.catch/, },
