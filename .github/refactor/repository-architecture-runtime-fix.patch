@@ -40,3 +40,16 @@ index 48d1e29..ed67963 100644
  const sourceFiles = ['app', 'features', 'core', 'shared', 'cms']
    .flatMap(walk)
    .filter((file) => sourceExtensions.has(path.extname(file)));
+diff --git a/tests/vercel-native-regression.mjs b/tests/vercel-native-regression.mjs
+index 06d220d..f4b8b8f 100644
+--- a/tests/vercel-native-regression.mjs
++++ b/tests/vercel-native-regression.mjs
+@@ -297,7 +297,7 @@ assert.match(deploymentEnvironment, /VERCEL_ENV === "production"/);
+ assert.match(deploymentEnvironment, /CCPUN_ENABLE_PRODUCTION_ANALYTICS === "1"/);
+ 
+ const securityPolicy = read('core/security/policy.ts');
+-assert.match(securityPolicy, /import \{ IS_REVIEW_ENVIRONMENT \} from ["']@\/core\/environment\/deployment["']/);
++assert.match(securityPolicy, /import \{ IS_REVIEW_ENVIRONMENT \} from ["']\.\.\/environment\/deployment["']/);
+ assert.match(
+   securityPolicy,
+   /const SANITY_REVIEW_SCRIPT_SOURCES = IS_REVIEW_ENVIRONMENT\s*\?\s*["'] https:\/\/core\.sanity-cdn\.com["']\s*:\s*["']["']/,
