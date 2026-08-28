@@ -58,6 +58,7 @@ test("Synthetic fixtures validate media metadata without storage or provider sta
   assert.equal(result.mediaAssets.length, 1);
   assert.equal(result.variants[0]?.mediaReferences[0]?.assetId, result.mediaAssets[0]?.id);
   assert.equal(result.variants[0]?.format, "image-post");
+  assert.equal(result.variants[0]?.commentSeriesMode, "top-level");
   assert.equal(result.variants[0]?.commentSeries.length, 1);
   assert.equal(JSON.stringify(result).includes("accessToken"), false);
   assert.equal(JSON.stringify(result).includes("platformObjectId"), false);
@@ -76,6 +77,9 @@ test("Post format choices keep Comment Series as a Facebook child", () => {
   assert.match(schema, /"photo-post", "live"/);
   assert.doesNotMatch(schema, /formatOptions[^\n]*comment-series/);
   assert.match(schema, /document\?\.channel !== "facebook"/);
+  assert.match(schema, /name: "commentSeriesMode"/);
+  assert.match(schema, /value: "threaded"/);
+  assert.match(schema, /ลำดับ Comment ต้องไม่ซ้ำ/);
 
   const invalid = structuredClone(SYNTHETIC_SOCIAL_FOUNDATION);
   invalid.variants[1]!.commentSeries = invalid.variants[0]!.commentSeries;

@@ -102,6 +102,8 @@ export const commentSeriesItemSchema = z.object({
   status: publicationStatusSchema,
 });
 
+export const commentSeriesModeSchema = z.enum(["top-level", "threaded"]);
+
 export const socialVariantSchema = z.object({
   id: boundedId,
   masterContentId: boundedId,
@@ -112,6 +114,7 @@ export const socialVariantSchema = z.object({
   publishingMode: publishingModeSchema,
   status: publicationStatusSchema,
   mediaReferences: z.array(mediaAssetReferenceSchema).max(20),
+  commentSeriesMode: commentSeriesModeSchema.default("top-level"),
   commentSeries: z.array(commentSeriesItemSchema).max(20),
 }).superRefine((variant, context) => {
   if (variant.platform !== "facebook" && variant.commentSeries.length > 0) {
@@ -119,6 +122,13 @@ export const socialVariantSchema = z.object({
       code: z.ZodIssueCode.custom,
       path: ["commentSeries"],
       message: "Comment Series belongs to a Facebook main post only",
+    });
+  }
+  if (variant.platform !== "facebook" && variant.commentSeriesMode !== "top-level") {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["commentSeriesMode"],
+      message: "Comment Series mode belongs to Facebook only",
     });
   }
 });
@@ -272,6 +282,7 @@ export const SYNTHETIC_SOCIAL_FOUNDATION: SocialFoundationSnapshot = {
       publishingMode: "native-scheduled",
       status: "approved",
       mediaReferences: [{ assetId: "synthetic-media-001", role: "primary", order: null }],
+      commentSeriesMode: "top-level",
       commentSeries: [
         {
           id: "synthetic-comment-001",
@@ -292,6 +303,7 @@ export const SYNTHETIC_SOCIAL_FOUNDATION: SocialFoundationSnapshot = {
       publishingMode: "native-finish",
       status: "awaiting-native-finish",
       mediaReferences: [],
+      commentSeriesMode: "top-level",
       commentSeries: [],
     },
     {
@@ -304,6 +316,7 @@ export const SYNTHETIC_SOCIAL_FOUNDATION: SocialFoundationSnapshot = {
       publishingMode: "tiktok-draft",
       status: "draft",
       mediaReferences: [],
+      commentSeriesMode: "top-level",
       commentSeries: [],
     },
     {
@@ -316,6 +329,7 @@ export const SYNTHETIC_SOCIAL_FOUNDATION: SocialFoundationSnapshot = {
       publishingMode: "native-scheduled",
       status: "approved",
       mediaReferences: [],
+      commentSeriesMode: "top-level",
       commentSeries: [],
     },
     {
@@ -328,6 +342,7 @@ export const SYNTHETIC_SOCIAL_FOUNDATION: SocialFoundationSnapshot = {
       publishingMode: "native-scheduled",
       status: "approved",
       mediaReferences: [],
+      commentSeriesMode: "top-level",
       commentSeries: [],
     },
   ],

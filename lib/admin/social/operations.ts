@@ -262,7 +262,7 @@ export const SYNTHETIC_COMMENT_SERIES_PLAN = planCommentSeries({
   platform: "facebook",
   mainPostStatus: "approved",
   mainPostId: null,
-  mode: "top-level",
+  mode: SYNTHETIC_SOCIAL_FOUNDATION.variants[0]!.commentSeriesMode,
   comments: SYNTHETIC_SOCIAL_FOUNDATION.variants[0]!.commentSeries.map((item) => ({ ...item, platformCommentId: null })),
 });
 
