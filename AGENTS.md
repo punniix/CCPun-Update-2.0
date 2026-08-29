@@ -39,6 +39,18 @@ Before modifying Sanity:
 5. Never modify Production content without explicit task-specific approval.
 6. Validate the schema and Admin/environment boundaries after changes.
 
+### Production editorial routing
+
+- `admin.ccpun.com` is the owner-facing Production editorial control plane, pinned to Sanity `kyfxgjnq/production`.
+- Article Edit must preserve the logical Sanity document ID and open its Edit Intent directly; never route normal editing through generic Sanity Manage, project selection, or dataset selection.
+- Website 4.2 and Admin Preview remain pinned to `ccb9lnw5/uat`. Never cross the Production and UAT lanes.
+
+### Concurrent workstream isolation
+
+- Production hotfixes branch from the latest `v4-production`, target `v4-production`, use a dedicated worktree, and stay narrow.
+- Website 4.2 branches normally use `codex/website-42-`, Admin Preview/UAT, and `ccb9lnw5/uat`; do not stack a Production hotfix on them.
+- Never reuse another active worktree, mix unrelated work in one commit, or copy a hotfix independently into every feature branch. Stop and report an unexpected cross-workstream dependency.
+
 ## 1. Delivery workflow
 
 - Production branch: `v4-production`.

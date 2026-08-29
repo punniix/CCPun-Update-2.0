@@ -23,6 +23,11 @@ type StudioAuthProvider = { name: string };
 type StudioNewDocumentOption = { templateId: string };
 type StudioStructureItem = { getId: () => string | undefined };
 
+export function getStudioArticleEditHref(documentId: string): string {
+  const logicalDocumentId = documentId.replace(/^drafts\./, "");
+  return `/studio/intent/edit/id=${encodeURIComponent(logicalDocumentId)};type=article`;
+}
+
 export function filterStudioAuthProviders<T extends StudioAuthProvider>(
   providers: T[],
   dataset: string,
@@ -30,7 +35,7 @@ export function filterStudioAuthProviders<T extends StudioAuthProvider>(
   projectId = process.env.NEXT_PUBLIC_SANITY_PROJECT_ID,
 ): T[] {
   if (!isStudioDataPlaneAllowed(dataset, environment, undefined, undefined, projectId)) return [];
-  return environment === "production-admin" ? providers : providers.filter(({ name }) => name === "google");
+  return providers.filter(({ name }) => name === "google");
 }
 
 export function filterStudioDocumentActions<T extends { action?: string }>(

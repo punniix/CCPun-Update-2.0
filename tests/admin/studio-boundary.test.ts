@@ -6,6 +6,7 @@ import {
   filterStudioDocumentActions,
   filterStudioNewDocumentOptions,
   filterStudioStructureItems,
+  getStudioArticleEditHref,
   protectProductionContentLifecycleActions,
 } from "../../cms/sanity/policy/studio-policy";
 import { getStudioPublishingOptions } from "../../cms/sanity/config/publishing";
@@ -101,7 +102,7 @@ test("Studio actions follow the application lane and dataset together", () => {
   assert.deepEqual(filterStudioDocumentActions(actions, "uat", "unknown"), []);
 });
 
-test("UAT Studio uses Google auth and cannot schedule publishing", () => {
+test("Production and UAT Studio use Google-only auth and fail closed across lanes", () => {
   const providers = [{ name: "vercel" }, { name: "google" }, { name: "github" }];
 
   useLabProject();
@@ -111,7 +112,11 @@ test("UAT Studio uses Google auth and cannot schedule publishing", () => {
   assert.deepEqual(filterStudioAuthProviders(providers, "uat", "local-uat", UAT_SANITY_PROJECT_ID), [{ name: "google" }]);
 
   useProductionAdminProject();
-  assert.deepEqual(filterStudioAuthProviders(providers, "production", "production-admin", PRODUCTION_SANITY_PROJECT_ID), providers);
+  assert.deepEqual(filterStudioAuthProviders(providers, "production", "production-admin", PRODUCTION_SANITY_PROJECT_ID), [{ name: "google" }]);
+  assert.deepEqual(filterStudioAuthProviders(providers, "uat", "admin-uat", UAT_SANITY_PROJECT_ID), [{ name: "google" }]);
+  assert.deepEqual(filterStudioAuthProviders(providers, "uat", "production-admin", UAT_SANITY_PROJECT_ID), []);
+  assert.deepEqual(filterStudioAuthProviders(providers, "production", "admin-uat", PRODUCTION_SANITY_PROJECT_ID), []);
+  assert.deepEqual(filterStudioAuthProviders([{ name: "github" }], "production", "production-admin", PRODUCTION_SANITY_PROJECT_ID), []);
 
   useLabProject();
   assert.deepEqual(filterStudioAuthProviders(providers, "production", "lab", UAT_SANITY_PROJECT_ID), []);
@@ -237,4 +242,12 @@ test("Admin returns to the same Sanity data after owner editing", () => {
   assert.match(adminDataRefresh, /document\.addEventListener\("visibilitychange", refreshWhenVisible\)/);
   assert.match(adminDataRefresh, /router\.refresh\(\)/);
   assert.match(adminContentPage, /\/studio\/intent\/create\/type=article/);
+  assert.match(adminContentPage, /getStudioArticleEditHref\(article\.id\)/);
+  assert.doesNotMatch(adminContentPage, /\/studio\/structure\/article;/);
+  assert.match(studioConfig, /redirectOnSingle: true/);
+  assert.equal(getStudioArticleEditHref("ccpun-wp-published-359"), "/studio/intent/edit/id=ccpun-wp-published-359;type=article");
+  assert.equal(getStudioArticleEditHref("drafts.ccpun-wp-published-359"), "/studio/intent/edit/id=ccpun-wp-published-359;type=article");
+  assert.notEqual(getStudioArticleEditHref("A"), getStudioArticleEditHref("B"));
+  assert.equal(getStudioArticleEditHref("drafts.article/with space"), "/studio/intent/edit/id=article%2Fwith%20space;type=article");
+  assert.doesNotMatch(adminContentPage, /sanity\.io\/manage|\/manage\/project|\/manage\/organization/);
 });
