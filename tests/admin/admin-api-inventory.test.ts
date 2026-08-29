@@ -100,6 +100,10 @@ const contracts: Record<string, RouteContract> = {
     methods: ["POST"], identity: /getAdminIdentity\(\)/, authorization: /"research:provider-query"/,
     validation: { file: "app/api/snt-admin/seo/opportunities/sync/gsc/route.ts", pattern: /inputSchema\.safeParse\(await request\.json\(\)\.catch/, },
   },
+  "app/api/snt-admin/seo/providers/readiness/route.ts": {
+    methods: ["GET"], identity: /getAdminIdentity\(\)/, authorization: /"seo:read"/,
+    validation: { file: "app/api/snt-admin/seo/providers/readiness/route.ts", pattern: /seoGoogleProviderSchema\.safeParse/, exception: "Sensitive GET validates the provider and returns no values." },
+  },
   "app/api/snt-admin/seo/suggestions/route.ts": {
     methods: ["POST"], identity: /getAdminIdentity\(\)/, authorization: /action: "proposal:create"/,
     validation: { file: "app/api/snt-admin/seo/suggestions/route.ts", pattern: /bodySchema\.safeParse\(await request\.json\(\)\.catch/, },

@@ -1,5 +1,12 @@
 # Website 4.2 SEO Intelligence Core
 
+The preparation branch exposes an authenticated, same-origin readiness endpoint at
+`/api/snt-admin/seo/providers/readiness?provider=gsc|ga4`. It returns required variable
+names, presence, identifier validity, minimum read-only scope, and limitations only.
+It never returns values. The current short-lived UAT access-token path remains manual-sync
+only; refreshable OAuth is deliberately blocked until reviewed token storage and callback
+routes exist.
+
 Status: synthetic, read-only Admin UAT foundation.
 
 This batch adds deterministic detectors for CTR underperformance, position 4–15 opportunities, content decay and persistent query/page cannibalization. It uses fixed synthetic observations only. The provisional CTR baseline, detector thresholds, priority components, evidence and limitations are visible in code and the Admin UAT page.
