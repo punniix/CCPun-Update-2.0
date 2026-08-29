@@ -23,7 +23,7 @@ export default async function AdminAuditPage() {
 
       {result.error ? (
         <section className="mt-6 rounded-3xl border border-amber-200/20 bg-amber-200/10 p-5 text-sm leading-6 text-amber-50">
-          ยังอ่านประวัติจาก Sanity UAT ไม่ได้ ระบบหยุดไว้เพื่อความปลอดภัยและจะไม่สลับไปอ่าน Production
+          ยังอ่านประวัติจาก Sanity ไม่ได้ ระบบหยุดไว้เพื่อความปลอดภัยและจะไม่สลับไปอ่านข้อมูลจากอีกสภาพแวดล้อม
         </section>
       ) : null}
 

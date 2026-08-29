@@ -37,10 +37,27 @@ test("admin presentation uses friendly Thai labels and hides unknown API detail"
   assert.equal(connectionLabel(true, "read", "local-production"), "อ่านข้อมูล Production ได้");
   assert.equal(connectionLabel(true, "studio", "local-production"), "แก้ฉบับร่าง Production ใน Studio ได้");
   assert.equal(connectionLabel(false, "studio", "local-production"), "ปิดการแก้ฉบับร่างไว้เพื่อความปลอดภัย");
+  assert.equal(friendlyApiError("not-configured"), "การเชื่อมต่อของสภาพแวดล้อมนี้ยังตั้งค่าไม่ครบ ระบบจึงหยุดไว้เพื่อความปลอดภัย");
+  assert.equal(friendlyApiError("article-not-found"), "ไม่พบบทความนี้ในสภาพแวดล้อมนี้");
+  assert.doesNotMatch(friendlyApiError("not-configured"), /UAT|Production/);
+  assert.doesNotMatch(friendlyApiError("article-not-found"), /UAT|Production/);
   assert.equal(friendlyApiError("suggestion-conflict"), "บทความหรือข้อเสนอเปลี่ยนไปแล้ว กรุณาโหลดหน้าใหม่และตรวจอีกครั้ง");
   assert.equal(friendlyApiError("suggestion-stale"), "ฉบับร่างเปลี่ยนหลังจากอนุมัติข้อเสนอนี้ กรุณาตรวจ SEO และสร้างข้อเสนอใหม่");
   assert.equal(friendlyApiError("raw-provider-secret-detail"), "ระบบยังทำรายการนี้ไม่สำเร็จ กรุณาลองอีกครั้ง");
   assert.equal(friendlyApiErrorFromPayload({ error: "forbidden", reason: "raw internal detail" }), "บัญชีนี้ไม่มีสิทธิ์ทำรายการนี้");
+});
+
+test("production-capable admin surfaces do not hard-code UAT copy", () => {
+  const dashboard = readFileSync("app/snt-admin/(protected)/dashboard/page.tsx", "utf8");
+  const login = readFileSync("app/snt-admin/(auth)/login/page.tsx", "utf8");
+  const audit = readFileSync("app/snt-admin/(protected)/audit/page.tsx", "utf8");
+
+  assert.match(dashboard, /พื้นที่นี้ทำงานใน/);
+  assert.match(dashboard, /\{lane\}/);
+  assert.doesNotMatch(dashboard, /status\.environment === "local-production" \? "production" : "uat"/);
+  assert.doesNotMatch(login, /พื้นที่ทดสอบ/);
+  assert.doesNotMatch(audit, /Sanity UAT/);
+  assert.doesNotMatch(audit, /สลับไปอ่าน Production/);
 });
 
 test("content list separates document state from content review state", () => {
