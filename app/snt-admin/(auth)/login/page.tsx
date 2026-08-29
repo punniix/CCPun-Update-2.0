@@ -38,7 +38,7 @@ export default async function AdminLoginPage({ searchParams }: LoginPageProps) {
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#e0c985]">{environmentLabel}</p>
           <h1 className="mt-4 text-3xl font-semibold">เข้าสู่พื้นที่ควบคุม CCPun</h1>
           <p className="mt-3 text-base leading-7 text-white/70">
-            พื้นที่ทดสอบสำหรับตรวจบทความ วิเคราะห์ SEO และให้คุณอนุมัติทุกการเปลี่ยนแปลงด้วยตัวเอง
+            พื้นที่ควบคุมสำหรับตรวจบทความ วิเคราะห์ SEO และให้คุณอนุมัติทุกการเปลี่ยนแปลงด้วยตัวเอง
           </p>
 
           {params.error ? (
@@ -58,7 +58,7 @@ export default async function AdminLoginPage({ searchParams }: LoginPageProps) {
             </form>
           ) : (
             <div className="mt-8 rounded-2xl border border-amber-200/20 bg-amber-200/10 px-4 py-4 text-sm leading-6 text-amber-50">
-              ระบบเข้าสู่ระบบของพื้นที่ทดสอบยังตั้งค่าไม่ครบ จึงปิดการเข้าใช้งานไว้เพื่อความปลอดภัย กรุณาให้ผู้ดูแลตั้งค่า Google Login และรายชื่อผู้ใช้ก่อน
+              ระบบเข้าสู่ระบบของพื้นที่ควบคุมยังตั้งค่าไม่ครบ จึงปิดการเข้าใช้งานไว้เพื่อความปลอดภัย กรุณาให้ผู้ดูแลตั้งค่า Google Login และรายชื่อผู้ใช้ก่อน
             </div>
           )}
 

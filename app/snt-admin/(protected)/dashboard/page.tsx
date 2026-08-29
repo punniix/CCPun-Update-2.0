@@ -47,7 +47,7 @@ export default async function AdminDashboardPage({ searchParams }: DashboardProp
       <section className="mt-7 rounded-3xl border border-[#e0c985]/20 bg-[#e0c985]/[0.07] p-5 md:p-6" aria-labelledby="safety-heading">
         <h2 id="safety-heading" className="text-lg font-semibold text-[#f4df9b]">ขอบเขตปลอดภัยยังทำงานอยู่</h2>
         <p className="mt-2 max-w-4xl text-sm leading-6 text-white/70">
-          ชุดข้อมูลที่คาดไว้คือ <strong className="font-medium text-white">{status.environment === "local-production" ? "production" : "uat"}</strong> ระบบจะหยุดเองหาก project หรือชุดข้อมูลไม่ตรงกับโหมดที่เปิด
+          พื้นที่นี้ทำงานใน <strong className="font-medium text-white">{lane}</strong> เท่านั้น ระบบจะหยุดเองหาก project หรือชุดข้อมูลไม่ตรงกับสภาพแวดล้อมนี้ และจะไม่สลับไปใช้อีกสภาพแวดล้อม
         </p>
       </section>
 
