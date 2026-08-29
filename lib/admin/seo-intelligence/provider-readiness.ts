@@ -7,16 +7,20 @@ export type SeoGoogleProvider = z.infer<typeof seoGoogleProviderSchema>;
 
 const providerConfig = {
   gsc: {
-    accessToken: "CCPUN_GSC_ACCESS_TOKEN",
     resource: "CCPUN_GSC_SITE_URL",
     scope: "https://www.googleapis.com/auth/webmasters.readonly",
   },
   ga4: {
-    accessToken: "CCPUN_GA4_ACCESS_TOKEN",
     resource: "CCPUN_GA4_PROPERTY_ID",
     scope: "https://www.googleapis.com/auth/analytics.readonly",
   },
 } as const;
+
+const oauthVariables = [
+  "CCPUN_GOOGLE_DATA_CLIENT_ID",
+  "CCPUN_GOOGLE_DATA_CLIENT_SECRET",
+  "CCPUN_GOOGLE_DATA_REFRESH_TOKEN",
+] as const;
 
 function validResource(provider: SeoGoogleProvider, value: string | undefined) {
   if (!value?.trim()) return false;
@@ -37,21 +41,20 @@ export function getSeoGoogleProviderReadiness(
 ) {
   const provider = seoGoogleProviderSchema.parse(providerValue);
   const config = providerConfig[provider];
-  const tokenPresent = Boolean(env[config.accessToken]?.trim());
+  const oauthReady = oauthVariables.every((name) => Boolean(env[name]?.trim()));
   const resourcePresent = Boolean(env[config.resource]?.trim());
   const resourceValid = validResource(provider, env[config.resource]);
   return {
     provider,
-    mode: "temporary-uat-access-token" as const,
-    status: tokenPresent && resourceValid ? "manual-sync-ready" as const : "configuration-required" as const,
+    mode: "refreshable-oauth" as const,
+    status: oauthReady && resourceValid ? "manual-sync-ready" as const : "configuration-required" as const,
     required: [
-      { name: config.accessToken, present: tokenPresent, valid: tokenPresent },
+      ...oauthVariables.map((name) => ({ name, present: Boolean(env[name]?.trim()), valid: Boolean(env[name]?.trim()) })),
       { name: config.resource, present: resourcePresent, valid: resourceValid },
     ],
     scope: config.scope,
-    refreshableConnectionReady: false as const,
+    refreshableConnectionReady: oauthReady,
     callbackPath: null,
-    limitation: "The current UAT lane accepts one short-lived server token. A persistent refreshable OAuth connection is intentionally not available yet.",
+    limitation: "Owner-authorized offline access is refreshed server-side. Sync remains manual, read-only and non-persistent.",
   };
 }
-

@@ -6,6 +6,7 @@ import { getAdminIdentity } from "@/lib/admin/identity";
 import { hasAdminPermission } from "@/lib/admin/rbac";
 import { previousEqualDateRange } from "@/lib/admin/seo-intelligence/contracts";
 import { getSeoIntelligenceRuntimeStatus } from "@/lib/admin/seo-intelligence/foundation";
+import { getGoogleDataAccessToken } from "@/lib/admin/seo-intelligence/google-data-auth";
 import { fetchGa4LandingPages } from "@/lib/admin/seo-intelligence/providers/ga4";
 
 const inputSchema = z.object({ startDate: z.iso.date(), endDate: z.iso.date() }).superRefine((input, context) => {
@@ -49,9 +50,8 @@ export async function POST(request: Request) {
 
   const parsed = inputSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "invalid-input" }, { status: 400 });
-  const token = process.env.CCPUN_GA4_ACCESS_TOKEN?.trim();
   const propertyId = process.env.CCPUN_GA4_PROPERTY_ID?.trim();
-  if (!token || !propertyId) return NextResponse.json({ error: "provider-not-connected" }, { status: 409 });
+  if (!propertyId) return NextResponse.json({ error: "provider-not-connected" }, { status: 409 });
   if (syncInFlight) return NextResponse.json({ error: "sync-in-progress" }, { status: 409 });
 
   syncInFlight = true;
@@ -59,6 +59,7 @@ export async function POST(request: Request) {
   const comparisonRange = previousEqualDateRange(parsed.data.startDate, parsed.data.endDate);
   try {
     // ponytail: one owner and one manual sync at a time; add a durable lock only with scheduled sync.
+    const token = await getGoogleDataAccessToken();
     const current = await fetchGa4LandingPages({ propertyId, token, ...parsed.data });
     let comparison: Awaited<ReturnType<typeof fetchGa4LandingPages>> | null = null;
     let comparisonError: string | null = null;
@@ -84,6 +85,12 @@ export async function POST(request: Request) {
       limitations: [...new Set([...current.limitations, ...(comparison?.limitations ?? []), "ตัวอย่างหน้า Admin จำกัด 100 แถวและยังไม่บันทึกข้อมูล"])],
     }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
+    const code = error instanceof Error ? error.message : "";
+    if (code === "GOOGLE_DATA_NOT_CONFIGURED") return NextResponse.json({ error: "provider-not-connected", requestId }, { status: 409 });
+    if (code === "GOOGLE_DATA_AUTH_REQUIRED") return NextResponse.json({ error: "provider-auth-required", requestId }, { status: 401 });
+    if (code === "GOOGLE_DATA_RATE_LIMITED") return NextResponse.json({ error: "provider-rate-limited", requestId }, { status: 429, headers: { "Retry-After": "60" } });
+    if (code === "GOOGLE_DATA_TIMEOUT") return NextResponse.json({ error: "provider-timeout", requestId }, { status: 504 });
+    if (code === "GOOGLE_DATA_INVALID_RESPONSE") return NextResponse.json({ error: "provider-invalid-response", requestId }, { status: 502 });
     const mapped = providerError(error);
     return NextResponse.json({ error: mapped.error, requestId }, {
       status: mapped.status,
