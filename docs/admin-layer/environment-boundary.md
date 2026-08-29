@@ -140,6 +140,8 @@ The reconciliation must use the complete paginated result set and report orphan 
 
 Owner editing uses the exact existing Sanity document identity. An `แก้ไขบทความ` action opens the private Studio document; changes to an already Published article are saved as its Draft overlay so the public Published document remains unchanged until Human Publish. Full content editing remains in Sanity Studio; the Control Plane remains the operating/review layer rather than a second unrestricted CMS.
 
+Current routing authority: `admin.ccpun.com` edits the exact logical Article through Sanity Edit Intent in `kyfxgjnq/production`; the owner never chooses a project or dataset. Website 4.2/Admin Preview remains isolated in `ccb9lnw5/uat`, and neither lane may fall back to or discover the other.
+
 ## Current Enforced Code Boundary
 
 One shared invariant now governs Admin clients, public Sanity reads, Sanity Live, CLI and Studio:

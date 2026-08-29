@@ -7,6 +7,7 @@ import { requireAdminPermission } from "@/lib/admin/require-permission";
 import { listAdminArticles } from "@/lib/admin/sanity-control";
 import { runSeoAudit } from "@/lib/admin/seo-audit";
 import { SEO_AUDIT_VERSION } from "@/lib/admin/seo-heuristics";
+import { getStudioArticleEditHref } from "@/cms/sanity/policy/studio-policy";
 
 export const metadata: Metadata = { title: "บทความ" };
 
@@ -178,7 +179,7 @@ export default async function AdminContentPage({ searchParams }: AdminContentPag
               <tbody className="divide-y divide-white/5">
                 {filters.rows.map((article) => {
                   const documentId = article.id.replace(/^drafts\./, "");
-                  const studioHref = `/studio/structure/article;${encodeURIComponent(documentId)}`;
+                  const studioHref = getStudioArticleEditHref(article.id);
                   const liveAudit = liveAudits.get(article.id);
                   const seoScore = article.seoScore ?? liveAudit?.score;
                   const hasSavedAudit = article.seoScore != null;
