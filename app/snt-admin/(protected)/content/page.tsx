@@ -1,6 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { getContentTags, resolveContentFilters, type ContentFilterParams } from "@/lib/admin/content-filters";
+import {
+  defaultContentSortOrder,
+  getContentTags,
+  resolveContentFilters,
+  type ContentFilterParams,
+  type ContentSortKey,
+  type ContentSortOrder,
+} from "@/lib/admin/content-filters";
 import { adminDataLaneLabel, connectionLabel, contentReviewStatusLabel, friendlyApiError } from "@/lib/admin/presentation";
 import { isStudioDataPlaneAllowed } from "@/lib/admin/environment";
 import { requireAdminPermission } from "@/lib/admin/require-permission";
@@ -15,6 +22,57 @@ function formatDate(value: string) {
   return new Intl.DateTimeFormat("th-TH", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Bangkok" }).format(new Date(value));
 }
 
+type ContentListState = {
+  category: string;
+  tag: string;
+  sort: ContentSortKey;
+  order: ContentSortOrder;
+};
+
+function contentListHref(state: ContentListState) {
+  const params = new URLSearchParams();
+  if (state.category) params.set("category", state.category);
+  if (state.tag) params.set("tag", state.tag);
+  params.set("sort", state.sort);
+  params.set("order", state.order);
+  return `/snt-admin/content/?${params.toString()}`;
+}
+
+function sortHref(state: ContentListState, sort: ContentSortKey) {
+  const order = state.sort === sort
+    ? state.order === "asc" ? "desc" : "asc"
+    : defaultContentSortOrder(sort);
+  return contentListHref({ ...state, sort, order });
+}
+
+function SortableHeader({
+  label,
+  sort,
+  state,
+}: {
+  label: string;
+  sort: ContentSortKey;
+  state: ContentListState;
+}) {
+  const active = state.sort === sort;
+  return (
+    <th
+      className="px-4 py-4 font-medium"
+      aria-sort={active ? state.order === "asc" ? "ascending" : "descending" : undefined}
+    >
+      <Link
+        href={sortHref(state, sort)}
+        className="inline-flex min-h-11 items-center gap-1.5 rounded-lg px-1 text-left transition hover:text-white focus:outline-none focus:ring-2 focus:ring-[#e0c985]/60"
+      >
+        <span>{label}</span>
+        <span aria-hidden="true" className={active ? "text-[#e0c985]" : "text-white/35"}>
+          {active ? state.order === "asc" ? "↑" : "↓" : "↕"}
+        </span>
+      </Link>
+    </th>
+  );
+}
+
 type AdminContentPageProps = {
   searchParams: Promise<ContentFilterParams>;
 };
@@ -26,6 +84,12 @@ export default async function AdminContentPage({ searchParams }: AdminContentPag
   const lane = adminDataLaneLabel(result.status.environment);
   const studioReady = isStudioDataPlaneAllowed(result.status.dataset ?? undefined);
   const filters = resolveContentFilters(result.rows, params);
+  const listState: ContentListState = {
+    category: filters.category,
+    tag: filters.tag,
+    sort: filters.sort,
+    order: filters.order,
+  };
   const liveAudits = new Map(await Promise.all(
     filters.rows
       .filter((article) => article.hasPublished && article.seoScore == null)
@@ -109,6 +173,8 @@ export default async function AdminContentPage({ searchParams }: AdminContentPag
           </div>
 
           <form action="/snt-admin/content/" method="get" className="mt-4 grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] md:items-end">
+            <input type="hidden" name="sort" value={filters.sort} />
+            <input type="hidden" name="order" value={filters.order} />
             <label className="grid gap-2 text-sm font-medium text-white/80">
               หมวดหมู่หลัก
               <select
@@ -137,7 +203,7 @@ export default async function AdminContentPage({ searchParams }: AdminContentPag
               <button type="submit" className="inline-flex min-h-11 items-center justify-center rounded-xl bg-[#e0c985] px-4 text-sm font-semibold text-[#17191d] transition hover:brightness-105 focus:outline-none focus:ring-2 focus:ring-[#e0c985]/60">
                 ใช้ตัวกรอง
               </button>
-              <Link href="/snt-admin/content/" className="inline-flex min-h-11 items-center justify-center rounded-xl border border-white/15 px-4 text-sm text-white/75 transition hover:bg-white/5 hover:text-white focus:outline-none focus:ring-2 focus:ring-[#e0c985]/60">
+              <Link href={contentListHref({ ...listState, category: "", tag: "" })} className="inline-flex min-h-11 items-center justify-center rounded-xl border border-white/15 px-4 text-sm text-white/75 transition hover:bg-white/5 hover:text-white focus:outline-none focus:ring-2 focus:ring-[#e0c985]/60">
                 ล้างตัวกรอง
               </Link>
             </div>
@@ -151,7 +217,7 @@ export default async function AdminContentPage({ searchParams }: AdminContentPag
           <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-white/65">
             ลองเลือกหมวดหมู่หรือแท็กอื่น หรือล้างตัวกรองเพื่อดูบทความทั้งหมด
           </p>
-          <Link href="/snt-admin/content/" className="mt-4 inline-flex min-h-11 items-center justify-center rounded-xl border border-[#e0c985]/40 px-4 text-sm font-medium text-[#e0c985] transition hover:bg-[#e0c985]/10 focus:outline-none focus:ring-2 focus:ring-[#e0c985]/60">
+          <Link href={contentListHref({ ...listState, category: "", tag: "" })} className="mt-4 inline-flex min-h-11 items-center justify-center rounded-xl border border-[#e0c985]/40 px-4 text-sm font-medium text-[#e0c985] transition hover:bg-[#e0c985]/10 focus:outline-none focus:ring-2 focus:ring-[#e0c985]/60">
             ล้างตัวกรอง
           </Link>
         </section>
@@ -160,19 +226,20 @@ export default async function AdminContentPage({ searchParams }: AdminContentPag
       {filters.rows.length > 0 ? (
         <section className="mt-6 overflow-hidden rounded-3xl border border-white/10 bg-white/[0.025]">
           <p className="px-5 pt-4 text-sm leading-6 text-white/60">สถานะเอกสารบอกว่าเผยแพร่แล้วหรือยัง ส่วนขั้นตรวจเนื้อหาบอกว่างานอยู่ขั้นไหน ทั้งสองอย่างไม่ใช่การเผยแพร่เอง</p>
+          <p className="px-5 pt-2 text-sm text-white/60">กดหัวคอลัมน์ที่มี ↕ เพื่อเรียงลำดับ · ลูกศร ↑/↓ แสดงทิศทางปัจจุบัน</p>
           <p className="px-5 pt-2 text-sm text-white/60 xl:hidden">เลื่อนตารางไปทางซ้ายหรือขวาเพื่อดูข้อมูลทั้งหมด</p>
           <div role="region" aria-label={`ตารางบทความ ${lane}`} tabIndex={0} className="overflow-x-auto">
             <table className="w-full min-w-[1240px] text-left text-sm">
               <thead className="border-b border-white/10 bg-white/[0.03] text-xs uppercase tracking-wide text-white/60">
                 <tr>
-                  <th className="px-5 py-4 font-medium">บทความ</th>
-                  <th className="px-4 py-4 font-medium">สถานะเอกสาร</th>
-                  <th className="px-4 py-4 font-medium">ขั้นตรวจเนื้อหา</th>
+                  <SortableHeader label="บทความ" sort="title" state={listState} />
+                  <SortableHeader label="สถานะเอกสาร" sort="document-status" state={listState} />
+                  <SortableHeader label="ขั้นตรวจเนื้อหา" sort="review-status" state={listState} />
                   <th className="px-4 py-4 font-medium">คำค้นหลัก</th>
                   <th className="px-4 py-4 font-medium">เป้าหมายการค้นหา</th>
-                  <th className="px-4 py-4 font-medium">ผลตรวจ SEO ที่บันทึก</th>
-                  <th className="px-4 py-4 font-medium">เผยแพร่ครั้งแรก</th>
-                  <th className="px-4 py-4 font-medium">แก้ไขล่าสุด</th>
+                  <SortableHeader label="ผลตรวจ SEO ที่บันทึก" sort="seo-score" state={listState} />
+                  <SortableHeader label="เผยแพร่ครั้งแรก" sort="published-at" state={listState} />
+                  <SortableHeader label="แก้ไขล่าสุด" sort="updated-at" state={listState} />
                   <th className="px-5 py-4 font-medium">ทำต่อ</th>
                 </tr>
               </thead>
