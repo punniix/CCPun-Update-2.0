@@ -8,6 +8,7 @@ export const GOOGLE_DRIVE_FILE_SCOPE = "https://www.googleapis.com/auth/drive.fi
 export const GOOGLE_DRIVE_FOLDER_MIME_TYPE = "application/vnd.google-apps.folder" as const;
 export const GOOGLE_DRIVE_SHORTCUT_MIME_TYPE = "application/vnd.google-apps.shortcut" as const;
 export const GOOGLE_DRIVE_INTERACTIVE_AUTH_MAX_TTL_MS = 60 * 60 * 1_000;
+export const MAX_GOOGLE_DRIVE_PROJECTION_BODY_BYTES = 12_288;
 
 export const googleDriveFileIdSchema = z.string()
   .trim()
@@ -38,6 +39,96 @@ export const googleDriveInteractiveAuthorizationSchema = z.strictObject({
 });
 
 export type GoogleDriveInteractiveAuthorization = z.infer<typeof googleDriveInteractiveAuthorizationSchema>;
+
+const googleDriveAccessTokenSchema = z.string().trim().min(1).max(8_192);
+
+export const googleDriveSelectedFileRequestSchema = z.strictObject({
+  selectedFileId: googleDriveFileIdSchema,
+  accessToken: googleDriveAccessTokenSchema,
+  authorization: googleDriveInteractiveAuthorizationSchema,
+});
+
+export type GoogleDriveSelectedFileRequest = z.infer<typeof googleDriveSelectedFileRequestSchema>;
+
+const googleDriveHttpsUrlSchema = z.string()
+  .trim()
+  .max(4_096)
+  .url()
+  .refine((value) => {
+    const url = new URL(value);
+    return url.protocol === "https:" && !url.username && !url.password;
+  });
+
+export const googleDriveSelectedFileProjectionSchema = z.strictObject({
+  id: googleDriveFileIdSchema,
+  name: z.string().trim().min(1).max(255).refine(
+    (value) => !/[\u0000-\u001F\u007F-\u009F]/u.test(value),
+    "Drive name must not contain a control character",
+  ),
+  mimeType: z.string().trim().min(1).max(200),
+  modifiedTime: z.iso.datetime({ offset: true }),
+  webViewLink: googleDriveHttpsUrlSchema.nullable(),
+  thumbnailLink: googleDriveHttpsUrlSchema.nullable(),
+  iconLink: googleDriveHttpsUrlSchema.nullable(),
+});
+
+export type GoogleDriveSelectedFileProjection = z.infer<typeof googleDriveSelectedFileProjectionSchema>;
+
+const googleDriveApprovedRootFolderIdsSchema = z.array(googleDriveFileIdSchema)
+  .min(1)
+  .max(2)
+  .superRefine((ids, context) => {
+    if (new Set(ids).size !== ids.length) {
+      context.addIssue({ code: z.ZodIssueCode.custom, message: "Drive roots must be unique" });
+    }
+  });
+
+export function parseGoogleDriveApprovedRootFolderIds(values: readonly unknown[]): string[] | null {
+  const parsed = googleDriveApprovedRootFolderIdsSchema.safeParse(
+    values.filter((value) => typeof value !== "string" || value.trim().length > 0),
+  );
+  return parsed.success ? parsed.data : null;
+}
+
+export type GoogleDriveProjectionHttpValidation =
+  | { ok: true; data: GoogleDriveSelectedFileRequest }
+  | { ok: false; error: "unsupported-media-type" | "payload-too-large" | "invalid-input"; status: 400 | 413 | 415 };
+
+export function validateGoogleDriveProjectionHttpRequest(input: {
+  contentType: string | null;
+  contentLength: string | null;
+  body: string;
+}): GoogleDriveProjectionHttpValidation {
+  const contentType = input.contentType?.split(";", 1)[0]?.trim().toLowerCase();
+  if (contentType !== "application/json") {
+    return { ok: false, error: "unsupported-media-type", status: 415 };
+  }
+  if (!input.contentLength || !/^[1-9]\d*$/.test(input.contentLength)) {
+    return { ok: false, error: "payload-too-large", status: 413 };
+  }
+  const contentLength = Number(input.contentLength);
+  const actualLength = Buffer.byteLength(input.body, "utf8");
+  if (
+    !Number.isSafeInteger(contentLength) ||
+    contentLength < 2 ||
+    contentLength > MAX_GOOGLE_DRIVE_PROJECTION_BODY_BYTES ||
+    actualLength > MAX_GOOGLE_DRIVE_PROJECTION_BODY_BYTES
+  ) {
+    return { ok: false, error: "payload-too-large", status: 413 };
+  }
+  if (actualLength !== contentLength) return { ok: false, error: "invalid-input", status: 400 };
+
+  let value: unknown;
+  try {
+    value = JSON.parse(input.body);
+  } catch {
+    return { ok: false, error: "invalid-input", status: 400 };
+  }
+  const parsed = googleDriveSelectedFileRequestSchema.safeParse(value);
+  return parsed.success
+    ? { ok: true, data: parsed.data }
+    : { ok: false, error: "invalid-input", status: 400 };
+}
 
 export function evaluateGoogleDriveInteractiveAuthorization(
   authorization: unknown,
@@ -94,7 +185,12 @@ const MAX_ANCESTRY_DEPTH = 64;
 
 const googleDriveApiItemSchema = z.object({
   id: googleDriveFileIdSchema,
+  name: z.string().trim().min(1).max(255).optional(),
   mimeType: z.string().trim().min(1).max(200),
+  modifiedTime: z.iso.datetime({ offset: true }).optional(),
+  webViewLink: googleDriveHttpsUrlSchema.optional(),
+  thumbnailLink: googleDriveHttpsUrlSchema.optional(),
+  iconLink: googleDriveHttpsUrlSchema.optional(),
   parents: z.array(googleDriveFileIdSchema).max(2).optional(),
   trashed: z.boolean(),
   shortcutDetails: z.object({
@@ -105,8 +201,71 @@ const googleDriveApiItemSchema = z.object({
 
 function driveMetadataUrl(fileId: string): string {
   const url = new URL(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}`);
-  url.searchParams.set("fields", "id,mimeType,parents,trashed,shortcutDetails(targetId,targetMimeType)");
+  url.searchParams.set("fields", "id,name,mimeType,modifiedTime,webViewLink,thumbnailLink,iconLink,parents,trashed,shortcutDetails(targetId,targetMimeType)");
   return url.toString();
+}
+
+type GoogleDriveApiItem = z.infer<typeof googleDriveApiItemSchema>;
+
+async function fetchGoogleDriveAncestry(input: {
+  rootFolderIds: readonly unknown[];
+  selectedItemId: unknown;
+  accessToken: string;
+  signal?: AbortSignal;
+  fetchImpl?: typeof fetch;
+}): Promise<
+  | { ok: true; items: GoogleDriveNormalizedItem[]; selectedItem: GoogleDriveApiItem }
+  | { ok: false; reason: "invalid-boundary-input" | "ancestry-unverifiable" | "provider-unavailable" }
+> {
+  const rootFolderIds = googleDriveApprovedRootFolderIdsSchema.safeParse(input.rootFolderIds);
+  const selectedItemId = googleDriveFileIdSchema.safeParse(input.selectedItemId);
+  const accessToken = googleDriveAccessTokenSchema.safeParse(input.accessToken);
+  if (!rootFolderIds.success || !selectedItemId.success || !accessToken.success) {
+    return { ok: false, reason: "invalid-boundary-input" };
+  }
+
+  const approvedRoots = new Set(rootFolderIds.data);
+  const items: GoogleDriveNormalizedItem[] = [];
+  const visited = new Set<string>();
+  let selectedItem: GoogleDriveApiItem | null = null;
+  let currentId = selectedItemId.data;
+  const fetchImpl = input.fetchImpl ?? fetch;
+
+  for (let depth = 0; depth < MAX_ANCESTRY_DEPTH; depth += 1) {
+    if (visited.has(currentId)) return { ok: false, reason: "ancestry-unverifiable" };
+    visited.add(currentId);
+
+    let response: Response;
+    try {
+      response = await fetchImpl(driveMetadataUrl(currentId), {
+        headers: { Authorization: `Bearer ${accessToken.data}` },
+        signal: input.signal ?? AbortSignal.timeout(5_000),
+      });
+    } catch {
+      return { ok: false, reason: "provider-unavailable" };
+    }
+    if (!response.ok) return { ok: false, reason: "provider-unavailable" };
+
+    const parsed = googleDriveApiItemSchema.safeParse(await response.json().catch(() => null));
+    if (!parsed.success || parsed.data.id !== currentId) {
+      return { ok: false, reason: "ancestry-unverifiable" };
+    }
+    if (!selectedItem) selectedItem = parsed.data;
+    items.push({
+      id: parsed.data.id,
+      mimeType: parsed.data.mimeType,
+      parents: parsed.data.parents ?? [],
+      trashed: parsed.data.trashed,
+      shortcutDetails: parsed.data.shortcutDetails ?? null,
+    });
+    if (approvedRoots.has(currentId) || !parsed.data.parents?.length) break;
+    if (parsed.data.parents.length !== 1) return { ok: false, reason: "ancestry-unverifiable" };
+    currentId = parsed.data.parents[0]!;
+  }
+
+  return selectedItem
+    ? { ok: true, items, selectedItem }
+    : { ok: false, reason: "ancestry-unverifiable" };
 }
 
 export async function fetchGoogleDriveBoundaryEvidence(input: {
@@ -117,49 +276,99 @@ export async function fetchGoogleDriveBoundaryEvidence(input: {
   fetchImpl?: typeof fetch;
 }): Promise<GoogleDriveBoundaryEvaluation | { allowed: false; reason: "provider-unavailable" }> {
   const rootFolderId = googleDriveFileIdSchema.safeParse(input.rootFolderId);
-  const selectedItemId = googleDriveFileIdSchema.safeParse(input.selectedItemId);
-  const accessToken = z.string().trim().min(1).max(8192).safeParse(input.accessToken);
-  if (!rootFolderId.success || !selectedItemId.success || !accessToken.success) {
+  if (!rootFolderId.success) {
     return { allowed: false, reason: "invalid-boundary-input" };
   }
 
-  const items: GoogleDriveNormalizedItem[] = [];
-  let currentId = selectedItemId.data;
-  const fetchImpl = input.fetchImpl ?? fetch;
-
-  for (let depth = 0; depth < MAX_ANCESTRY_DEPTH; depth += 1) {
-    let response: Response;
-    try {
-      response = await fetchImpl(driveMetadataUrl(currentId), {
-        headers: { Authorization: `Bearer ${accessToken.data}` },
-        signal: input.signal,
-      });
-    } catch {
-      return { allowed: false, reason: "provider-unavailable" };
-    }
-    if (!response.ok) return { allowed: false, reason: "provider-unavailable" };
-
-    const parsed = googleDriveApiItemSchema.safeParse(await response.json().catch(() => null));
-    if (!parsed.success || parsed.data.id !== currentId) {
-      return { allowed: false, reason: "ancestry-unverifiable" };
-    }
-    items.push({
-      id: parsed.data.id,
-      mimeType: parsed.data.mimeType,
-      parents: parsed.data.parents ?? [],
-      trashed: parsed.data.trashed,
-      shortcutDetails: parsed.data.shortcutDetails ?? null,
-    });
-    if (currentId === rootFolderId.data || !parsed.data.parents?.length) break;
-    if (parsed.data.parents.length !== 1) return { allowed: false, reason: "ancestry-unverifiable" };
-    currentId = parsed.data.parents[0]!;
-  }
+  const ancestry = await fetchGoogleDriveAncestry({
+    rootFolderIds: [rootFolderId.data],
+    selectedItemId: input.selectedItemId,
+    accessToken: input.accessToken,
+    signal: input.signal,
+    fetchImpl: input.fetchImpl,
+  });
+  if (!ancestry.ok) return { allowed: false, reason: ancestry.reason };
 
   return evaluateGoogleDriveRootBoundary({
     rootFolderId: rootFolderId.data,
-    selectedItemId: selectedItemId.data,
-    items,
+    selectedItemId: input.selectedItemId,
+    items: ancestry.items,
   });
+}
+
+export type GoogleDriveSelectedFileProjectionResult =
+  | { projected: true; item: GoogleDriveSelectedFileProjection }
+  | {
+      projected: false;
+      reason:
+        | "invalid-boundary-input"
+        | "invalid-authorization"
+        | "not-yet-valid"
+        | "expired"
+        | "provider-unavailable"
+        | "selected-file-denied"
+        | "selected-item-is-folder"
+        | "metadata-unverifiable";
+    };
+
+export async function fetchGoogleDriveSelectedFileProjection(input: {
+  rootFolderIds: readonly unknown[];
+  selectedItemId: unknown;
+  accessToken: string;
+  authorization: unknown;
+  nowMs: number;
+  signal?: AbortSignal;
+  fetchImpl?: typeof fetch;
+}): Promise<GoogleDriveSelectedFileProjectionResult> {
+  const rootFolderIds = googleDriveApprovedRootFolderIdsSchema.safeParse(input.rootFolderIds);
+  if (!rootFolderIds.success) return { projected: false, reason: "invalid-boundary-input" };
+
+  const authorization = evaluateGoogleDriveInteractiveAuthorization(input.authorization, input.nowMs);
+  if (!authorization.usable) return { projected: false, reason: authorization.reason };
+
+  const ancestry = await fetchGoogleDriveAncestry({
+    rootFolderIds: rootFolderIds.data,
+    selectedItemId: input.selectedItemId,
+    accessToken: input.accessToken,
+    signal: input.signal,
+    fetchImpl: input.fetchImpl,
+  });
+  if (!ancestry.ok) {
+    return {
+      projected: false,
+      reason: ancestry.reason === "provider-unavailable" ? "provider-unavailable" : "selected-file-denied",
+    };
+  }
+
+  let insideApprovedRoot = false;
+  for (const rootFolderId of rootFolderIds.data) {
+    const evaluation = evaluateGoogleDriveRootBoundary({
+      rootFolderId,
+      selectedItemId: input.selectedItemId,
+      items: ancestry.items,
+    });
+    if (evaluation.allowed) {
+      insideApprovedRoot = true;
+      break;
+    }
+  }
+  if (!insideApprovedRoot) return { projected: false, reason: "selected-file-denied" };
+  if (ancestry.selectedItem.mimeType === GOOGLE_DRIVE_FOLDER_MIME_TYPE) {
+    return { projected: false, reason: "selected-item-is-folder" };
+  }
+
+  const item = googleDriveSelectedFileProjectionSchema.safeParse({
+    id: ancestry.selectedItem.id,
+    name: ancestry.selectedItem.name,
+    mimeType: ancestry.selectedItem.mimeType,
+    modifiedTime: ancestry.selectedItem.modifiedTime,
+    webViewLink: ancestry.selectedItem.webViewLink ?? null,
+    thumbnailLink: ancestry.selectedItem.thumbnailLink ?? null,
+    iconLink: ancestry.selectedItem.iconLink ?? null,
+  });
+  return item.success
+    ? { projected: true, item: item.data }
+    : { projected: false, reason: "metadata-unverifiable" };
 }
 
 export function evaluateGoogleDriveRootBoundary(input: {

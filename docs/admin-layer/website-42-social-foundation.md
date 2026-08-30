@@ -13,6 +13,8 @@ Status: synthetic Admin UAT only. No real account, media upload, platform reques
 
 Format meanings are intentionally distinct: `image-post` is one image, `album` is a Facebook multi-image post, `carousel` is an ordered multi-card asset, and `photo-post` is TikTok's photo format. `live` represents the platform Live object and post-Live reporting, not real-time polling.
 
+This phase has no application cron, background sync, or autonomous executor. `native-scheduled` is a provider lifecycle state, not permission to run a CCPUN scheduler. Any background or recurring execution requires separate exact approval.
+
 ## Fail-closed UAT lane
 
 The feature is available only when all of these match:
@@ -45,9 +47,9 @@ The applied v2 database constraint predates `album` and `live`. The additive, ba
 
 ## Manual Neon UAT handoff
 
-The frozen v2 foundation ledger was previously verified in Neon UAT. Re-verify it before applying the post-format migration; do not assume the earlier screenshot is current.
+The frozen v2 foundation ledger was previously verified in Neon UAT. Canonical UAT identity is project `young-term-47483330` on its existing `main` branch; the legacy `main` name does not mean Production. Do not create a duplicate `uat` child branch. Re-verify the identity and ledger before applying the post-format migration; do not assume the earlier screenshot is current.
 
-1. Sign in to Neon manually and select the exact UAT project/branch/database.
+1. Sign in to Neon manually and select project `young-term-47483330`, its existing `main` UAT branch, and the inventoried UAT database. Stop if any identity differs; do not create another branch as a workaround.
 2. Use the migration-owner role only inside Neon SQL Editor. Never bind it to Vercel.
 3. Run this read-only preflight:
 

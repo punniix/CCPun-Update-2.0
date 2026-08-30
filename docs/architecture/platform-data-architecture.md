@@ -11,6 +11,7 @@ GitHub = code
 Vercel = runtime and deployment
 Sanity = editorial content, Draft/Published workflow and Article SEO fields
 Neon Postgres = private Admin and social operational state
+Google Drive = private strategy/research documents and long-lived media
 
 Production = real system
 UAT = isolated testing system
@@ -24,11 +25,13 @@ Code, content and operational state must not be mirrored across systems. Deploym
 |---|---|---|
 | Public Web Production | Vercel `ccpun-web`; `ccpun.com`, `www.ccpun.com` | Published reads from Sanity `kyfxgjnq/production` only |
 | Admin Production | Vercel `ccpun-admin`; `admin.ccpun.com` | Authenticated/RBAC-guarded Sanity `kyfxgjnq/production` operations |
-| Admin UAT/Preview | Vercel `ccpun-admin` Preview | Sanity `ccb9lnw5/uat`; UAT-only operational data |
-| Local UAT | loopback `127.0.0.1:3100` | Sanity `ccb9lnw5/uat`; UAT-only operational data |
+| Admin UAT/Preview | Vercel `ccpun-admin` Preview | Sanity `ccb9lnw5/uat` during its current private trial; UAT-only operational data |
+| Local UAT | loopback `127.0.0.1:3100` | Sanity `ccb9lnw5/uat` during its current private trial; UAT-only operational data |
 | Local Production Draft lane | loopback `127.0.0.1:3000` | Sanity `kyfxgjnq/production`; separately guarded Draft operations only |
 
 Both Vercel projects build from the existing `punniix/CCPun-Update-4.0` repository. Do not create another repository or Vercel project to separate Web, Admin, Sanity or Neon.
+
+Preview routing uses the feature branch name. Production ignored-build routing uses native Git changed-file evidence: an Admin-only Website 4.2 change builds `ccpun-admin` and skips `ccpun-web`, while a Web-only release does the inverse. Mixed changes, unknown paths, an empty diff, or unavailable Git evidence build both survivors. This fail-safe fallback must not be weakened to save a build.
 
 ## Sanity boundaries
 
@@ -38,18 +41,24 @@ The current two-project split is an intentional security boundary:
 |---|---|---|---|
 | `kyfxgjnq` | `production` | active | Published content and guarded Production editorial workflows |
 | `kyfxgjnq` | `uat` | legacy, runtime denied | rollback evidence only |
-| `ccb9lnw5` | `uat` | active | schema, Studio, content workflow and Preview testing |
-| `ccb9lnw5` | `recovery` | active, non-routine | restore drills and disaster recovery only |
+| `ccb9lnw5` | `uat` | active, private trial | schema, authenticated Draft workflow and synthetic Preview testing |
+| `ccb9lnw5` | `recovery` | active, private trial, non-routine | temporary recovery evidence pending protected export and verification |
 
 Do not consolidate these projects until dataset-scoped user and robot permissions are verified to preserve or improve least privilege. A lower project count is not a valid reason to weaken the Production/UAT boundary.
 
-Editorial and Admin-intelligence schema sources are distinct ownership domains even where current schema aggregation or historical data still places them in one dataset. Moving intelligence records requires inventory, export, reference verification, target permission verification, copy-and-compare, cutover and separate deletion approval.
+The current private trial is a verified fact; the possible conversion of `ccb9lnw5/uat` to a public zero-cost dataset is pending and has not happened. Before the trial expires:
+
+1. Inventory `uat` and keep it limited to synthetic records plus authenticated Drafts that are safe for the planned lane. Private strategy, research, credentials and Production restore material do not belong there.
+2. Export any private or Production recovery material from `recovery`, record checksums, encrypt the local copy or place it in the Restricted area of the owner-selected `CCPun-Financial Advisor Project` Drive folder, and verify read-back.
+3. Both private datasets revert to public visibility if the trial expires. Do not allow the trial to lapse while private material remains in `recovery`; the intended no-new-spend steady state keeps only `uat` as the active public test lane. Request separate deletion approval only after export and read-back pass; this document does not authorize deleting a dataset or document.
+
+Private strategy and research documents use the owner-selected Google Drive folder as their source of truth. Its verified child folders include `Website 4.2 — Admin Control Plane` and the existing `Website 4.2 — Media Library`. These names record the current inventory only; authorization still requires the owner-selected immutable root/file IDs, which must not be hard-coded into public code or documentation. Sanity `internal` remains deferred; do not create or populate it merely to mirror Drive. Existing intelligence records require inventory and an approved migration before any move or deletion.
 
 Production content types include `article`, `author` and `category`. Existing regulated review and compliance states remain product contracts; do not replace them with a shorter generic workflow without explicit approval. Do not add `siteSettings` or another document type until a real consumer requires it.
 
 ## Neon boundaries
 
-Neon project `young-term-47483330` currently belongs to the UAT operational lane. Its existing `main` branch must not be relabelled or treated as Production without a read-only branch, database, schema, role, grant, migration-ledger and consumer inventory.
+Neon project `young-term-47483330` and its existing `main` branch currently belong to the UAT operational lane. The legacy branch name does not make it Production. Do not create a duplicate `uat` child branch, and do not relabel or treat `main` as Production without a read-only branch, database, schema, role, grant, migration-ledger and consumer inventory.
 
 The existing `ccpun_social` schema owns social operational state such as publication records, jobs, provider IDs, locks, retries, sync state, audit metadata and idempotency. The separate `ccpun_admin` schema owns Control Plane `auditLog`, `researchSnapshot` and `seoSuggestion` workflow/state. Both schemas reference Sanity content by document identity/revision and neither owns article bodies, authors, categories or public SEO fields.
 
@@ -95,8 +104,9 @@ Live Vercel variable names, types, environments and branch scopes must be read b
 | Published and Draft editorial content | Sanity |
 | Public SEO fields attached to content | Sanity |
 | Private research snapshots, Control Plane audit and SEO suggestion lifecycle | Neon `ccpun_admin` |
-| Article Draft/Published workflow, content, review state and public SEO fields | Sanity |
-| Social content variants and human editorial approval | Sanity |
+| Private strategy and research documents | Google Drive folder `CCPun-Financial Advisor Project` |
+| Long-lived media source files | Google Drive folder `CCPun-Financial Advisor Project` |
+| Social copy and human approval state | Sanity |
 | Publication execution, retries, provider IDs and sync cursors | Neon |
 | Application code, schema source and migrations | GitHub |
 | Deployment/runtime configuration | Vercel |

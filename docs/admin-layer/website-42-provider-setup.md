@@ -20,16 +20,28 @@ Use separate UAT and Production provider apps/clients. Start read-only. Add publ
 
 No current route exchanges authorization codes or persists refresh tokens. Do not create or paste long-lived provider secrets until the corresponding reviewed callback, encrypted token store, revoke flow, and audit event exist.
 
+All analytics/provider sync in the current phase is owner-triggered and manual. There is no cron, background sync, or autonomous provider execution. Adding any recurring or background path requires a separate exact approval, code review, and UAT gate.
+
+## Zero-cost Drive-first steady state
+
+The owner-selected Google Drive folder `CCPun-Financial Advisor Project` is the source of truth for private strategy/research documents and long-lived media. Its verified children include `Website 4.2 — Admin Control Plane` and the existing `Website 4.2 — Media Library`. Folder names are inventory labels only; do not hard-code Drive file/folder IDs in public code or documentation. Sanity remains the Article Draft/Published system, Sanity `internal` is deferred, and Neon remains the operational-state system. Do not copy Drive document bodies into Sanity or Neon.
+
+Admin may project only metadata, a Drive link, and a Drive-hosted preview for a file selected interactively through Google Picker with `drive.file`. This does not authorize folder crawling, broad `drive` or `drive.readonly` scopes, token persistence, a provider connection, or media/document duplication.
+
+Sanity `ccb9lnw5/uat` and `ccb9lnw5/recovery` remain private during the current trial. If the trial expires, both datasets revert to public visibility; the intended no-new-spend steady state keeps only `uat` as the active public test lane. Before expiry, keep `uat` limited to synthetic data and authenticated Drafts; export and checksum any private or Production restore material in `recovery` to encrypted local storage or the Restricted area of the selected Drive folder, then verify read-back. Do not allow the trial to lapse while that material remains. No deletion is authorized by this runbook.
+
 ## Recommended setup order
 
 1. Finish and merge the synthetic foundation.
 2. Apply the reviewed additive migration to Neon UAT only.
-3. Keep every provider feature flag disabled by default.
-4. Create or select a provider **UAT** app/client only after its exact callback route is present in a reviewed Preview.
-5. Authorize the minimum read-only scope and one owner account.
-6. Verify connection, expiry, refresh-required, revoked, and reconnect behavior.
-7. Run a manual read-only sync and review its evidence/limitations.
-8. Request publishing scopes separately, one platform at a time.
+3. Inventory the private-trial Sanity datasets and complete the protected export/checksum/read-back gate before any public transition or separately approved deletion.
+4. Keep every provider feature flag disabled by default.
+5. Use the existing Picker plus `drive.file` contract for owner-selected Drive files; do not create a persistent Drive provider connection.
+6. Create or select another provider **UAT** app/client only after its exact callback route is present in a reviewed Preview.
+7. Authorize the minimum read-only scope and one owner account.
+8. Verify connection, expiry, refresh-required, revoked, and reconnect behavior.
+9. Run a manual read-only sync and review its evidence/limitations.
+10. Request publishing scopes separately, one platform at a time.
 
 ## Google Search Console
 
@@ -66,9 +78,9 @@ Official references:
 - https://developers.google.com/analytics/devguides/reporting/data/v1/quickstart
 - https://developers.google.com/analytics/devguides/reporting/data/v1/quotas
 
-## Google Drive media source
+## Google Drive private document and media source
 
-Purpose: use the owner's existing Drive as the long-lived media source while avoiding a new paid media store until a platform actually requires a temporary pullable URL.
+Purpose: use the owner's existing Drive as the source of truth for private strategy/research documents and long-lived media while avoiding a paid duplicate store.
 
 1. Enable **Google Drive API** and **Google Picker API** in a UAT Google Cloud project.
 2. Request only `https://www.googleapis.com/auth/drive.file`; do not request broad `drive` or `drive.readonly` access.
@@ -76,9 +88,10 @@ Purpose: use the owner's existing Drive as the long-lived media source while avo
 4. Select the existing folder named **`CCPun-Financial Advisor Project`**.
 5. Record the immutable folder ID returned by Drive as the CCPUN root. The folder name is descriptive only and is never an authorization check.
 6. Reject shortcuts, trashed files, moved files, multiple parents, cycles, and any file whose current parent chain cannot be proven to descend from that exact root ID.
-7. Keep media bytes out of Vercel Functions. Use direct/resumable provider upload or temporary object staging only when required.
+7. Let Admin show only selected-file metadata, link and Drive-hosted preview; never copy the document body into Sanity or Neon.
+8. Keep media bytes out of Vercel Functions. Use direct/resumable provider upload or temporary object staging only when required.
 
-The current adapter accepts a short-lived access token in memory and fetches metadata only. It does not yet implement OAuth or persist refresh tokens. Do not put Drive tokens in Sanity, Neon documents, source, logs, or browser storage.
+The current adapter accepts a short-lived access token in memory and fetches metadata only. It does not yet implement OAuth, persist refresh tokens or create a provider connection. Do not put Drive tokens in Sanity, Neon documents, source, logs, or browser storage.
 
 Official references:
 
@@ -171,7 +184,7 @@ Reuse the existing CCPUN connector and its pinned issuer/discovery checks. Do no
 
 ## Cost boundary
 
-This preparation creates no paid resource. Early UAT should remain inside existing Google/Meta/YouTube/TikTok API quotas, the current Neon Free resource, and the owner's Google Drive allowance. Quotas, review requirements, and pricing can change; verify each provider dashboard before enabling recurring sync or uploads. Do not activate DataForSEO, object storage, paid delivery, or a billing upgrade without separate owner approval.
+This preparation creates no paid resource. The steady-state target uses the owner's Google Drive allowance, the current Neon Free resource and existing API quotas without a standing object-storage or provider-connection cost. Quotas, review requirements and pricing can change; verify each provider dashboard before any separately approved recurring sync or upload phase. Do not activate DataForSEO, object storage, paid delivery or a billing upgrade without separate owner approval.
 
 ## Ready-for-owner checklist
 
@@ -180,7 +193,7 @@ This preparation creates no paid resource. Early UAT should remain inside existi
 - [ ] Minimum scopes are documented and visible on consent.
 - [ ] Token storage is server-only, encrypted at rest, revocable, and audited.
 - [ ] Not-connected, expired, revoked, and reconnect states pass.
-- [ ] Manual read-only sync passes before any scheduler is enabled.
+- [ ] Manual read-only sync passes; no scheduler/background sync exists without separate exact approval.
 - [ ] Provider freshness, limits, and partial-data warnings are visible.
 - [ ] No real post or Production content mutation is possible in the read-only phase.
 - [ ] Publishing scope is requested only by a separate approved phase.
