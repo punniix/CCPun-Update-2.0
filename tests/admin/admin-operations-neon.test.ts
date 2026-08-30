@@ -7,6 +7,7 @@ import {
   isAdminOperationsRuntimeIdentityValid,
 } from "../../lib/admin/operations/foundation";
 import { sanitizeLegacyAuditPayload } from "../../lib/admin/operations/backfill";
+import { prepareBackfillInsert } from "../../scripts/backfill-sanity-admin-operations";
 
 const read = (path: string) => readFileSync(new URL(`../../${path}`, import.meta.url), "utf8");
 
@@ -30,6 +31,26 @@ test("Admin operations migration is additive, checksum-locked, and isolated from
   assert.match(migration, /GRANT UPDATE \([\s\S]*\) ON ccpun_admin\.seo_suggestion TO ccpun_admin_runtime/);
   assert.match(migration, /REVOKE ALL PRIVILEGES ON SCHEMA ccpun_social FROM ccpun_admin_runtime/);
   assert.doesNotMatch(migration, /GRANT [^;]*ccpun_social[^;]*ccpun_admin_runtime/);
+});
+
+test("Admin operations readback stays locked to the migration identity, checksum, and least privileges", () => {
+  const readback = read("db/migrations/20260830_website_42_admin_operations_v1_readback.sql");
+  assert.match(readback, new RegExp(ADMIN_OPERATIONS_MIGRATION_CHECKSUM.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  for (const identity of ["young-term-47483330", "br-crimson-mouse-az7ajkv8", "ep-mute-frost-aztvz394", "neondb"]) {
+    assert.match(readback, new RegExp(identity));
+  }
+  for (const result of [
+    "database_ok", "checksum_ok", "identity_ok", "runtime_role_exists", "runtime_role_restricted",
+    "database_connect_ok", "admin_schema_usage_ok", "social_schema_denied", "admin_table_grants_ok",
+    "seo_update_columns_ok", "social_objects_denied",
+  ]) assert.match(readback, new RegExp(`AS ${result}`));
+  assert.match(readback, /NOT rolcanlogin AND NOT rolsuper AND NOT rolcreatedb AND NOT rolcreaterole/);
+  assert.match(readback, /NOT rolinherit AND NOT rolreplication AND NOT rolbypassrls/);
+  assert.match(readback, /information_schema\.role_column_grants/);
+  assert.match(readback, /information_schema\.role_table_grants/);
+  assert.match(readback, /information_schema\.role_usage_grants/);
+  assert.match(readback, /table_schema = 'ccpun_social'/);
+  assert.match(readback, /object_schema = 'ccpun_social'/);
 });
 
 test("runtime operational records use only CCPUN_ADMIN_DATABASE_URL", () => {
@@ -60,6 +81,28 @@ test("legacy audit backfill sanitizer removes nested and credential-shaped paylo
   assert.equal(sanitizeLegacyAuditPayload({ nested: { authorization: "Bearer secret" } }), null);
 });
 
+test("backfill pre-validates every mapped row before building transaction queries", () => {
+  const prepared = prepareBackfillInsert({
+    _id: "auditLog.fixture", _rev: "fixture-revision", _type: "auditLog",
+    actor: "owner@example.com", actorType: "human", action: "seo-audit:run",
+    objectType: "article", objectId: "drafts.article.fixture", environment: "admin-uat",
+    requestId: "11111111-1111-4111-8111-111111111111", timestamp: "2026-08-30T00:00:00.000Z",
+    before: { status: "approved", token: "must-not-cross" },
+  });
+  assert.equal(prepared.type, "auditLog");
+  assert.equal(prepared.params[6], JSON.stringify({ status: "approved" }));
+  assert.throws(() => prepareBackfillInsert({
+    _id: "auditLog.invalid", _rev: "fixture-revision", _type: "auditLog", actor: "", actorType: "human",
+  }), /Invalid audit actor/);
+  assert.throws(() => prepareBackfillInsert({
+    _id: "researchSnapshot.invalid", _rev: "fixture-revision", _type: "researchSnapshot", keyword: "", provider: "manual",
+  }), /Invalid research keyword/);
+  assert.throws(() => prepareBackfillInsert({
+    _id: "seoSuggestion.invalid", _rev: "fixture-revision", _type: "seoSuggestion",
+    targetDocument: { _ref: "drafts.article.fixture" }, confidence: 2,
+  }), /Invalid suggestion confidence/);
+});
+
 test("cross-store SEO apply claims Neon, patches one exact Draft revision, and fails closed to reconciliation", () => {
   const control = read("lib/admin/sanity-control.ts");
   const operations = read("lib/admin/operations/database.ts");
@@ -87,6 +130,13 @@ test("backfill defaults to dry-run and hard-pins the verified UAT identities and
   assert.match(script, /const apply = process\.argv\.includes\("--apply"\)/);
   assert.match(script, /--apply requires CCPUN_APP_ENV=local-uat/);
   assert.match(script, /source_hash_sha256=EXCLUDED\.source_hash_sha256/);
+  assert.ok(script.indexOf("const prepared = documents.map(prepareBackfillInsert)") < script.indexOf("if (!apply) return"));
+  assert.match(script, /prevalidatedRows: prepared\.length/);
+  assert.match(script, /sql\.transaction\(\(transaction\) => \[/);
+  assert.match(script, /isolationLevel: "Serializable"/);
+  assert.match(script, /jsonb_to_recordset\(\$1::jsonb\)/);
+  assert.match(script, /atomic_lineage_ok/);
+  assert.match(script, /source_revision=EXCLUDED\.source_revision/);
   assert.doesNotMatch(script, /SANITY_API_READ_TOKEN\s*\|\|\s*SANITY_API_WRITE_TOKEN/);
 });
 

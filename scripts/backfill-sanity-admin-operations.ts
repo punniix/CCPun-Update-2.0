@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { pathToFileURL } from "node:url";
 import { createClient } from "@sanity/client";
 import { neon } from "@neondatabase/serverless";
 import { sanitizeLegacyAuditPayload } from "../lib/admin/operations/backfill";
@@ -11,6 +12,19 @@ const apply = process.argv.includes("--apply");
 const enforceCurrentInventory = process.argv.includes("--expect-current-inventory");
 
 type SourceDocument = Record<string, unknown> & { _id: string; _rev: string; _type: keyof typeof CURRENT_INVENTORY_BASELINE };
+type SourceType = SourceDocument["_type"];
+type PreparedInsert = {
+  id: string;
+  type: SourceType;
+  query: string;
+  params: unknown[];
+  lineage: {
+    type: SourceType;
+    source_document_id: string;
+    source_revision: string;
+    source_hash_sha256: string;
+  };
+};
 
 function canonical(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;
@@ -37,6 +51,163 @@ function sourceHash(document: SourceDocument) {
   return hash(payload);
 }
 
+function requiredString(value: unknown, field: string, max: number) {
+  if (typeof value !== "string" || value.length < 1 || value.length > max) throw new Error(`Invalid ${field}`);
+  return value;
+}
+
+function optionalString(value: unknown, field: string, max = Number.MAX_SAFE_INTEGER) {
+  if (value === null || value === undefined) return null;
+  if (typeof value !== "string" || value.length > max) throw new Error(`Invalid ${field}`);
+  return value;
+}
+
+function timestamp(value: unknown, field: string) {
+  const parsed = requiredString(value, field, 100);
+  if (!Number.isFinite(Date.parse(parsed))) throw new Error(`Invalid ${field}`);
+  return parsed;
+}
+
+function optionalTimestamp(value: unknown, field: string) {
+  if (value === null || value === undefined) return null;
+  return timestamp(value, field);
+}
+
+function enumValue<T extends string>(value: string, allowed: readonly T[], field: string): T {
+  if (!allowed.includes(value as T)) throw new Error(`Invalid ${field}`);
+  return value as T;
+}
+
+export function prepareBackfillInsert(document: SourceDocument): PreparedInsert {
+  const documentType = enumValue(text(document._type), ["auditLog", "researchSnapshot", "seoSuggestion"] as const, "source type");
+  const documentId = requiredString(document._id, "source document id", 220);
+  const sourceRevision = requiredString(document._rev, `source revision for ${documentId}`, 220);
+  const payloadHash = sourceHash(document);
+  const source = [SOURCE.projectId, SOURCE.dataset, documentId, sourceRevision, payloadHash];
+  const lineage = { type: documentType, source_document_id: documentId, source_revision: sourceRevision, source_hash_sha256: payloadHash };
+
+  if (documentType === "auditLog") {
+    const actor = requiredString(text(document.actor, "legacy-system"), `audit actor for ${documentId}`, 320);
+    const actorType = enumValue(text(document.actorType, "system"), ["human", "ai", "system"] as const, `audit actor type for ${documentId}`);
+    const action = requiredString(text(document.action, "legacy:unknown").toLowerCase().replace(/[^a-z0-9:-]/g, "-").slice(0, 100), `audit action for ${documentId}`, 100);
+    if (!/^[a-z0-9:-]+$/.test(action)) throw new Error(`Invalid audit action for ${documentId}`);
+    const objectType = requiredString(text(document.objectType, "unknown"), `audit object type for ${documentId}`, 100);
+    const objectId = requiredString(text(document.objectId, documentId), `audit object id for ${documentId}`, 220);
+    const environment = requiredString(text(document.environment, "admin-uat"), `audit environment for ${documentId}`, 40);
+    const occurredAt = timestamp(text(document.timestamp, text(document._updatedAt, new Date(0).toISOString())), `audit timestamp for ${documentId}`);
+    return {
+      id: documentId,
+      type: documentType,
+      lineage,
+      query: `INSERT INTO ccpun_admin.audit_log
+          (id,actor,actor_type,action,object_type,object_id,before_json,after_json,request_id,environment,occurred_at,
+           source_project_id,source_dataset,source_document_id,source_revision,source_hash_sha256)
+         VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb,$8::jsonb,$9::uuid,$10,$11::timestamptz,$12,$13,$14,$15,$16)
+         ON CONFLICT (id) DO UPDATE SET id=EXCLUDED.id
+         WHERE ccpun_admin.audit_log.source_hash_sha256=EXCLUDED.source_hash_sha256
+           AND ccpun_admin.audit_log.source_project_id=EXCLUDED.source_project_id
+           AND ccpun_admin.audit_log.source_dataset=EXCLUDED.source_dataset
+           AND ccpun_admin.audit_log.source_document_id=EXCLUDED.source_document_id
+           AND ccpun_admin.audit_log.source_revision=EXCLUDED.source_revision
+         RETURNING source_hash_sha256`,
+      params: [documentId, actor, actorType, action, objectType, objectId,
+        JSON.stringify(sanitizeLegacyAuditPayload(document.before)), JSON.stringify(sanitizeLegacyAuditPayload(document.after)),
+        uuid(document.requestId, documentId), environment, occurredAt, ...source],
+    };
+  }
+
+  if (documentType === "researchSnapshot") {
+    const keyword = requiredString(text(document.keyword), `research keyword for ${documentId}`, 500);
+    const keywordKey = requiredString(text(document.keywordKey, keyword.toLocaleLowerCase("th-TH").trim()), `research keyword key for ${documentId}`, 500);
+    const provider = enumValue(text(document.provider, "manual"), ["manual", "ubersuggest", "gsc", "serp"] as const, `research provider for ${documentId}`);
+    const trustClass = requiredString(text(document.trustClass, "untrusted-external-data"), `research trust class for ${documentId}`, 500);
+    const checkedAt = timestamp(text(document.checkedAt, text(document._updatedAt, new Date(0).toISOString())), `research checkedAt for ${documentId}`);
+    return {
+      id: documentId,
+      type: documentType,
+      lineage,
+      query: `INSERT INTO ccpun_admin.research_snapshot
+          (id,keyword,keyword_key,provider,scope,location,language,volume,difficulty,intent,serp_json,competitors_json,trust_class,checked_at,
+           source_project_id,source_dataset,source_document_id,source_revision,source_hash_sha256)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::jsonb,$12::jsonb,$13,$14::timestamptz,$15,$16,$17,$18,$19)
+         ON CONFLICT (id) DO UPDATE SET id=EXCLUDED.id
+         WHERE ccpun_admin.research_snapshot.source_hash_sha256=EXCLUDED.source_hash_sha256
+           AND ccpun_admin.research_snapshot.source_project_id=EXCLUDED.source_project_id
+           AND ccpun_admin.research_snapshot.source_dataset=EXCLUDED.source_dataset
+           AND ccpun_admin.research_snapshot.source_document_id=EXCLUDED.source_document_id
+           AND ccpun_admin.research_snapshot.source_revision=EXCLUDED.source_revision
+         RETURNING source_hash_sha256`,
+      params: [documentId, keyword, keywordKey, provider,
+        optionalString(document.scope, `research scope for ${documentId}`), optionalString(document.location, `research location for ${documentId}`),
+        optionalString(document.language, `research language for ${documentId}`), number(document.volume), number(document.difficulty),
+        optionalString(document.intent, `research intent for ${documentId}`), JSON.stringify(array(document.serp)), JSON.stringify(array(document.competitors)),
+        trustClass, checkedAt, ...source],
+    };
+  }
+
+  const target = document.targetDocument as { _ref?: unknown } | undefined;
+  const targetDocumentId = requiredString(text(target?._ref).replace(/^drafts\./, ""), `suggestion target for ${documentId}`, 220);
+  const targetRevision = requiredString(text(document.targetRevision, "legacy-unknown"), `suggestion target revision for ${documentId}`, 220);
+  const suggestionType = enumValue(text(document.type, "content"), ["seo-title", "meta-description", "primary-keyword", "secondary-keywords", "search-intent", "structure", "internal-links", "content"] as const, `suggestion type for ${documentId}`);
+  const afterValue = requiredString(text(document.after, "legacy-value"), `suggestion after value for ${documentId}`, 12_000);
+  const reason = requiredString(text(document.reason, "Legacy migrated suggestion"), `suggestion reason for ${documentId}`, 8_000);
+  const confidence = number(document.confidence) ?? 0;
+  if (confidence < 0 || confidence > 1) throw new Error(`Invalid suggestion confidence for ${documentId}`);
+  const riskLevel = enumValue(text(document.riskLevel, "critical"), ["low", "medium", "high", "critical"] as const, `suggestion risk for ${documentId}`);
+  const status = enumValue(text(document.status, "needs-human-review"), ["proposed", "automated-review", "needs-human-review", "approved", "rejected", "applied", "published", "reconciliation-required"] as const, `suggestion status for ${documentId}`);
+  const createdBy = requiredString(text(document.createdBy, "legacy-system"), `suggestion creator for ${documentId}`, 320);
+  const createdAt = timestamp(text(document.createdAt, text(document._createdAt, new Date(0).toISOString())), `suggestion createdAt for ${documentId}`);
+  return {
+    id: documentId,
+    type: documentType,
+    lineage,
+    query: `INSERT INTO ccpun_admin.seo_suggestion
+          (id,target_document_id,target_revision,suggestion_type,before_value,after_value,reason,confidence,risk_level,evidence_json,status,
+           created_by,created_at,edited_by,edited_at,reviewed_by,reviewed_at,rejection_reason,approved_after,approved_base_value,approved_type,
+           approved_risk_level,approved_target_id,approved_target_revision,applied_by,applied_at,row_version,apply_request_id,apply_state,
+           source_project_id,source_dataset,source_document_id,source_revision,source_hash_sha256)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$11,$12,$13::timestamptz,$14,$15::timestamptz,$16,$17::timestamptz,$18,$19,$20,$21,$22,$23,$24,$25,$26::timestamptz,1,$27::uuid,$28,$29,$30,$31,$32,$33)
+         ON CONFLICT (id) DO UPDATE SET id=EXCLUDED.id
+         WHERE ccpun_admin.seo_suggestion.source_hash_sha256=EXCLUDED.source_hash_sha256
+           AND ccpun_admin.seo_suggestion.source_project_id=EXCLUDED.source_project_id
+           AND ccpun_admin.seo_suggestion.source_dataset=EXCLUDED.source_dataset
+           AND ccpun_admin.seo_suggestion.source_document_id=EXCLUDED.source_document_id
+           AND ccpun_admin.seo_suggestion.source_revision=EXCLUDED.source_revision
+         RETURNING source_hash_sha256`,
+    params: [documentId, targetDocumentId, targetRevision, suggestionType, optionalString(document.before, `suggestion before value for ${documentId}`),
+      afterValue, reason, confidence, riskLevel, JSON.stringify(array(document.evidence)), status, createdBy, createdAt,
+      optionalString(document.editedBy, `suggestion editedBy for ${documentId}`), optionalTimestamp(document.editedAt, `suggestion editedAt for ${documentId}`),
+      optionalString(document.reviewedBy, `suggestion reviewedBy for ${documentId}`), optionalTimestamp(document.reviewedAt, `suggestion reviewedAt for ${documentId}`),
+      optionalString(document.rejectionReason, `suggestion rejection reason for ${documentId}`), optionalString(document.approvedAfter, `suggestion approved after for ${documentId}`),
+      optionalString(document.approvedBaseValue, `suggestion approved base value for ${documentId}`), optionalString(document.approvedType, `suggestion approved type for ${documentId}`),
+      optionalString(document.approvedRiskLevel, `suggestion approved risk for ${documentId}`), optionalString(document.approvedTargetId, `suggestion approved target for ${documentId}`),
+      optionalString(document.approvedTargetRevision, `suggestion approved revision for ${documentId}`), optionalString(document.appliedBy, `suggestion appliedBy for ${documentId}`),
+      optionalTimestamp(document.appliedAt, `suggestion appliedAt for ${documentId}`), status === "applied" ? uuid(null, `${documentId}:legacy-applied`) : null,
+      status === "applied" ? "completed" : null, ...source],
+  };
+}
+
+const atomicLineageGuardQuery = `WITH expected AS (
+    SELECT * FROM jsonb_to_recordset($1::jsonb) AS expected_row(
+      type text, source_document_id text, source_revision text, source_hash_sha256 text
+    )
+  ), actual AS (
+    SELECT 'auditLog'::text AS type,source_document_id,source_revision,source_hash_sha256
+      FROM ccpun_admin.audit_log WHERE source_project_id=$2 AND source_dataset=$3
+    UNION ALL SELECT 'researchSnapshot',source_document_id,source_revision,source_hash_sha256
+      FROM ccpun_admin.research_snapshot WHERE source_project_id=$2 AND source_dataset=$3
+    UNION ALL SELECT 'seoSuggestion',source_document_id,source_revision,source_hash_sha256
+      FROM ccpun_admin.seo_suggestion WHERE source_project_id=$2 AND source_dataset=$3
+  )
+  SELECT 1 / CASE WHEN
+    (SELECT count(*) FROM expected) = (SELECT count(*) FROM actual)
+    AND NOT EXISTS (
+      SELECT 1 FROM expected
+      LEFT JOIN actual USING (type,source_document_id,source_revision,source_hash_sha256)
+      WHERE actual.source_document_id IS NULL
+    )
+  THEN 1 ELSE 0 END AS atomic_lineage_ok`;
+
 async function main() {
   const token = process.env.SANITY_API_READ_TOKEN?.trim();
   if (!token) throw new Error("SANITY_API_READ_TOKEN is required; no write-token fallback is allowed");
@@ -54,8 +225,9 @@ async function main() {
     throw new Error(`Source inventory differs from the 2026-08-30 baseline: ${JSON.stringify(counts)}`);
   }
   const sourceDigest = hash(documents.map((document) => `${document._type}:${document._id}:${document._rev}:${sourceHash(document)}`));
+  const prepared = documents.map(prepareBackfillInsert);
   console.log(JSON.stringify({ mode: apply ? "apply" : "dry-run", source: SOURCE, target: TARGET, counts,
-    currentInventoryBaseline: CURRENT_INVENTORY_BASELINE, baselineMatches, sourceDigest }, null, 2));
+    currentInventoryBaseline: CURRENT_INVENTORY_BASELINE, baselineMatches, sourceDigest, prevalidatedRows: prepared.length }, null, 2));
   if (!apply) return;
 
   if (process.env.CCPUN_APP_ENV !== "local-uat") throw new Error("--apply requires CCPUN_APP_ENV=local-uat");
@@ -83,60 +255,10 @@ async function main() {
   if (!identityRow || identityRow.database_name !== TARGET.database || !["neondb_owner","cloud_admin"].includes(identityRow.role_name)
     || !identityRow.ledger_current || !identityRow.identity_current) throw new Error("Neon migration identity/checksum mismatch");
 
-  for (const document of documents) {
-    const payloadHash = sourceHash(document);
-    const source = [SOURCE.projectId, SOURCE.dataset, document._id, document._rev, payloadHash];
-    if (document._type === "auditLog") {
-      await sql.query(
-        `INSERT INTO ccpun_admin.audit_log
-          (id,actor,actor_type,action,object_type,object_id,before_json,after_json,request_id,environment,occurred_at,
-           source_project_id,source_dataset,source_document_id,source_revision,source_hash_sha256)
-         VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb,$8::jsonb,$9::uuid,$10,$11::timestamptz,$12,$13,$14,$15,$16)
-         ON CONFLICT (id) DO UPDATE SET id=EXCLUDED.id
-         WHERE ccpun_admin.audit_log.source_hash_sha256=EXCLUDED.source_hash_sha256
-         RETURNING source_hash_sha256`,
-        [document._id, text(document.actor,"legacy-system"), ["human","ai","system"].includes(text(document.actorType)) ? document.actorType : "system",
-          text(document.action,"legacy:unknown").toLowerCase().replace(/[^a-z0-9:-]/g,"-").slice(0,100), text(document.objectType,"unknown"),
-          text(document.objectId,document._id), JSON.stringify(sanitizeLegacyAuditPayload(document.before)), JSON.stringify(sanitizeLegacyAuditPayload(document.after)),
-          uuid(document.requestId,document._id), text(document.environment,"admin-uat"), text(document.timestamp,text(document._updatedAt,new Date(0).toISOString())), ...source],
-      ).then((rows) => { if (!(rows as unknown[])[0]) throw new Error(`Hash conflict: ${document._id}`); });
-    } else if (document._type === "researchSnapshot") {
-      await sql.query(
-        `INSERT INTO ccpun_admin.research_snapshot
-          (id,keyword,keyword_key,provider,scope,location,language,volume,difficulty,intent,serp_json,competitors_json,trust_class,checked_at,
-           source_project_id,source_dataset,source_document_id,source_revision,source_hash_sha256)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::jsonb,$12::jsonb,$13,$14::timestamptz,$15,$16,$17,$18,$19)
-         ON CONFLICT (id) DO UPDATE SET id=EXCLUDED.id
-         WHERE ccpun_admin.research_snapshot.source_hash_sha256=EXCLUDED.source_hash_sha256
-         RETURNING source_hash_sha256`,
-        [document._id,text(document.keyword),text(document.keywordKey,text(document.keyword).toLocaleLowerCase("th-TH").trim()),text(document.provider,"manual"),
-          document.scope ?? null,document.location ?? null,document.language ?? null,number(document.volume),number(document.difficulty),document.intent ?? null,
-          JSON.stringify(array(document.serp)),JSON.stringify(array(document.competitors)),text(document.trustClass,"untrusted-external-data"),
-          text(document.checkedAt,text(document._updatedAt,new Date(0).toISOString())),...source],
-      ).then((rows) => { if (!(rows as unknown[])[0]) throw new Error(`Hash conflict: ${document._id}`); });
-    } else {
-      const target = document.targetDocument as { _ref?: unknown } | undefined;
-      await sql.query(
-        `INSERT INTO ccpun_admin.seo_suggestion
-          (id,target_document_id,target_revision,suggestion_type,before_value,after_value,reason,confidence,risk_level,evidence_json,status,
-           created_by,created_at,edited_by,edited_at,reviewed_by,reviewed_at,rejection_reason,approved_after,approved_base_value,approved_type,
-           approved_risk_level,approved_target_id,approved_target_revision,applied_by,applied_at,row_version,apply_request_id,apply_state,
-           source_project_id,source_dataset,source_document_id,source_revision,source_hash_sha256)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$11,$12,$13::timestamptz,$14,$15::timestamptz,$16,$17::timestamptz,$18,$19,$20,$21,$22,$23,$24,$25,$26::timestamptz,1,$27::uuid,$28,$29,$30,$31,$32,$33)
-         ON CONFLICT (id) DO UPDATE SET id=EXCLUDED.id
-         WHERE ccpun_admin.seo_suggestion.source_hash_sha256=EXCLUDED.source_hash_sha256
-         RETURNING source_hash_sha256`,
-        [document._id,text(target?._ref).replace(/^drafts\./,""),text(document.targetRevision,"legacy-unknown"),text(document.type,"content"),
-          document.before ?? null,text(document.after,"legacy-value"),text(document.reason,"Legacy migrated suggestion"),number(document.confidence) ?? 0,
-          text(document.riskLevel,"critical"),JSON.stringify(array(document.evidence)),text(document.status,"needs-human-review"),text(document.createdBy,"legacy-system"),
-          text(document.createdAt,text(document._createdAt,new Date(0).toISOString())),document.editedBy ?? null,document.editedAt ?? null,document.reviewedBy ?? null,
-          document.reviewedAt ?? null,document.rejectionReason ?? null,document.approvedAfter ?? null,document.approvedBaseValue ?? null,document.approvedType ?? null,
-          document.approvedRiskLevel ?? null,document.approvedTargetId ?? null,document.approvedTargetRevision ?? null,document.appliedBy ?? null,document.appliedAt ?? null,
-          text(document.status) === "applied" ? uuid(null,`${document._id}:legacy-applied`) : null,
-          text(document.status) === "applied" ? "completed" : null,...source],
-      ).then((rows) => { if (!(rows as unknown[])[0]) throw new Error(`Hash conflict: ${document._id}`); });
-    }
-  }
+  await sql.transaction((transaction) => [
+    ...prepared.map((row) => transaction.query(row.query, row.params)),
+    transaction.query(atomicLineageGuardQuery, [JSON.stringify(prepared.map((row) => row.lineage)), SOURCE.projectId, SOURCE.dataset]),
+  ], { isolationLevel: "Serializable" });
 
   const postflight = await sql.query(
     `SELECT 'auditLog' AS type,count(*)::int AS count FROM ccpun_admin.audit_log WHERE source_project_id=$1 AND source_dataset=$2
@@ -161,4 +283,6 @@ async function main() {
   console.log(JSON.stringify({ applied: true, targetCounts, sourceDigest, targetDigest, rollback: "Keep Sanity source documents; disable CCPUN_ADMIN_DATABASE_URL to fail closed." }, null, 2));
 }
 
-main().catch((error) => { console.error(error instanceof Error ? error.message : "Backfill failed"); process.exitCode = 1; });
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch((error) => { console.error(error instanceof Error ? error.message : "Backfill failed"); process.exitCode = 1; });
+}

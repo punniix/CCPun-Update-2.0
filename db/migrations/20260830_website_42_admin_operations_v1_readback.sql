@@ -41,30 +41,17 @@ SELECT
     SELECT column_name::text FROM information_schema.role_column_grants
     WHERE grantee = 'ccpun_admin_runtime' AND table_schema = 'ccpun_admin'
       AND table_name = 'seo_suggestion' AND privilege_type = 'UPDATE'
-    ORDER BY column_name
+    ORDER BY column_name::text
   ) = ARRAY[
-    'after_value','apply_claimed_at','apply_request_id','apply_state','applied_at','applied_by',
-    'applied_target_revision','approved_after','approved_base_value','approved_risk_level',
+    'after_value','applied_at','applied_by','applied_target_revision','apply_claimed_at','apply_request_id',
+    'apply_state','approved_after','approved_base_value','approved_risk_level',
     'approved_target_id','approved_target_revision','approved_type','edited_at','edited_by','reason',
     'reconciliation_reason','rejection_reason','reviewed_at','reviewed_by','row_version','status','updated_at'
   ]::text[] AS seo_update_columns_ok,
   NOT EXISTS (
-    SELECT 1
-    FROM pg_class AS relation
-    JOIN pg_namespace AS namespace ON namespace.oid = relation.relnamespace
-    WHERE namespace.nspname = 'ccpun_social'
-      AND relation.relkind IN ('r','p','v','m','f')
-      AND has_table_privilege(
-        'ccpun_admin_runtime', format('%I.%I', namespace.nspname, relation.relname),
-        'SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER'
-      )
+    SELECT 1 FROM information_schema.role_table_grants
+    WHERE grantee = 'ccpun_admin_runtime' AND table_schema = 'ccpun_social'
   ) AND NOT EXISTS (
-    SELECT 1
-    FROM pg_class AS relation
-    JOIN pg_namespace AS namespace ON namespace.oid = relation.relnamespace
-    WHERE namespace.nspname = 'ccpun_social'
-      AND relation.relkind = 'S'
-      AND has_sequence_privilege(
-        'ccpun_admin_runtime', format('%I.%I', namespace.nspname, relation.relname), 'USAGE,SELECT,UPDATE'
-      )
+    SELECT 1 FROM information_schema.role_usage_grants
+    WHERE grantee = 'ccpun_admin_runtime' AND object_schema = 'ccpun_social'
   ) AS social_objects_denied;
