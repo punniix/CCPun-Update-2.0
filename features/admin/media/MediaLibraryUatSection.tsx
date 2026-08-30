@@ -48,6 +48,36 @@ export default function MediaLibraryUatSection() {
         </article>
       </div>
 
+      <section aria-labelledby="drive-selected-file-title" className="mt-6 rounded-3xl border border-[#e0c985]/20 bg-[#e0c985]/[0.045] p-5">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="max-w-2xl">
+            <div className="text-xs font-semibold tracking-[0.1em] text-[#e0c985]">GOOGLE DRIVE · SELECTED FILE ONLY</div>
+            <h2 id="drive-selected-file-title" className="mt-2 text-xl font-semibold">ไฟล์ที่เจ้าของเลือกจาก Drive</h2>
+            <p className="mt-2 text-sm leading-6 text-white/65">
+              Projection รองรับ metadata, ลิงก์เปิดไฟล์ และ preview ที่ Drive ส่งให้เท่านั้น ระบบไม่อ่านเนื้อหา ดาวน์โหลดไฟล์ หรือเก็บ token
+            </p>
+          </div>
+          <span className="rounded-full border border-amber-200/20 bg-amber-200/[0.06] px-3 py-1 text-xs text-amber-100">
+            รอ Manual OAuth / Picker
+          </span>
+        </div>
+
+        <div className="mt-5 rounded-2xl border border-dashed border-white/15 bg-black/10 p-4">
+          <div className="text-sm font-medium text-white/80">ยังไม่ได้เลือกไฟล์</div>
+          <p role="status" className="mt-2 text-sm leading-6 text-white/60">
+            ต้องตั้งค่า Google Picker และให้เจ้าของอนุญาตสิทธิ์ <code>drive.file</code> แบบชั่วคราวก่อน ปุ่มจะยังปิดเพื่อไม่สร้าง client ID, API key หรือ token สมมติ
+          </p>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <button type="button" disabled aria-disabled="true" className="cursor-not-allowed rounded-xl border border-white/10 px-4 py-2 text-sm text-white/40">
+              เลือกไฟล์จาก Google Drive
+            </button>
+            <button type="button" disabled aria-disabled="true" className="cursor-not-allowed rounded-xl border border-white/10 px-4 py-2 text-sm text-white/40">
+              Refresh metadata
+            </button>
+          </div>
+        </div>
+      </section>
+
       <div className="mt-6 grid gap-4 lg:grid-cols-2">
         {snapshot.assets.map((asset) => (
           <article key={asset.id} className="rounded-3xl border border-white/10 bg-white/[0.03] p-5">

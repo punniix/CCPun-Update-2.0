@@ -33,8 +33,8 @@ const contracts: Record<string, RouteContract> = {
     validation: { file: "app/api/snt-admin/content/route.ts", pattern: /export async function GET\(\)/, exception: "No request input." },
   },
   "app/api/snt-admin/media/route.ts": {
-    methods: ["GET"], identity: /getAdminIdentity\(\)/, authorization: /"social:read"/,
-    validation: { file: "app/api/snt-admin/media/route.ts", pattern: /isConfiguredAdminOrigin\(request\.url, process\.env\.AUTH_URL\)/, exception: "Sensitive GET adds an exact configured-origin check." },
+    methods: ["GET", "POST"], identity: /getAdminIdentity\(\)/, authorization: /"social:read"/,
+    validation: { file: "app/api/snt-admin/media/route.ts", pattern: /validateGoogleDriveProjectionHttpRequest\(\{[\s\S]*body,[\s\S]*\}\)/, exception: "Sensitive GET uses configured-origin validation; manual Drive POST uses strict JSON plus same-origin validation." },
   },
   "app/api/snt-admin/media/upload-intents/route.ts": {
     methods: ["POST"], identity: /getAdminIdentity\(\)/, authorization: /"media:upload"/,
@@ -112,9 +112,17 @@ const contracts: Record<string, RouteContract> = {
     methods: ["GET"], identity: /getAdminIdentity\(\)/, authorization: /"social:read"/,
     validation: { file: "app/api/snt-admin/social/foundation/route.ts", pattern: /isConfiguredAdminOrigin\(request\.url, process\.env\.AUTH_URL\)/, exception: "Sensitive GET adds an exact configured-origin check." },
   },
+  "app/api/snt-admin/social/analytics/post-live/route.ts": {
+    methods: ["GET"], identity: /getAdminIdentity\(\)/, authorization: /"social:read"/,
+    validation: { file: "app/api/snt-admin/social/analytics/post-live/route.ts", pattern: /isConfiguredAdminOrigin\(request\.url, process\.env\.AUTH_URL\)/, exception: "Sensitive GET adds an exact configured-origin check." },
+  },
   "app/api/snt-admin/social/operations/route.ts": {
     methods: ["GET"], identity: /getAdminIdentity\(\)/, authorization: /"social:read"/,
     validation: { file: "app/api/snt-admin/social/operations/route.ts", pattern: /isConfiguredAdminOrigin\(request\.url, process\.env\.AUTH_URL\)/, exception: "Sensitive GET adds an exact configured-origin check." },
+  },
+  "app/api/snt-admin/social/providers/meta/connection/route.ts": {
+    methods: ["GET"], identity: /getAdminIdentity\(\)/, authorization: /"social:read"/,
+    validation: { file: "app/api/snt-admin/social/providers/meta/connection/route.ts", pattern: /isConfiguredAdminOrigin\(request\.url, process\.env\.AUTH_URL\)/, exception: "Sensitive GET adds an exact configured-origin check." },
   },
 };
 

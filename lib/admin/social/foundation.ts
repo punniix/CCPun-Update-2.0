@@ -4,14 +4,20 @@ import {
   parseAdminEnvironment,
   type AdminEnvironment,
 } from "../environment";
-import { mediaAssetMetadataSchema, mediaAssetReferenceSchema } from "../media/foundation";
+import {
+  MEDIA_OPERATIONAL_TABLES,
+  mediaAssetMetadataSchema,
+  mediaAssetReferenceSchema,
+} from "../media/foundation";
 
-export const WEBSITE_42_SOCIAL_BRANCH = "codex/website-42-social-foundation-v2-20260828";
+export const WEBSITE_42_SOCIAL_BRANCH = "codex/website-42-social-media-integration-20260829";
 export const WEBSITE_42_SANITY_PROJECT_ID = "ccb9lnw5";
 export const WEBSITE_42_SANITY_DATASET = "uat";
 
 export const SOCIAL_SCHEMA_MIGRATION_VERSION = "20260828_website_42_social_foundation_v2";
 export const SOCIAL_SCHEMA_MIGRATION_CHECKSUM = "sha256:b6ad0b823775df1dcfc06e0da896dfcc477cfbeae897b70e228c18a051712acb";
+export const SOCIAL_FORMAT_MIGRATION_VERSION = "20260829_website_42_social_post_formats";
+export const SOCIAL_FORMAT_MIGRATION_CHECKSUM = "sha256:64d8471247fa28a08fcb99cda5b4df87e73f7ed1dc497250da26d01119ade977";
 
 export const SOCIAL_OPERATIONAL_TABLES = [
   "social_media_asset",
@@ -23,6 +29,11 @@ export const SOCIAL_OPERATIONAL_TABLES = [
 ] as const;
 
 export type SocialOperationalTable = (typeof SOCIAL_OPERATIONAL_TABLES)[number];
+export const SOCIAL_REQUIRED_OPERATIONAL_TABLES = [
+  ...SOCIAL_OPERATIONAL_TABLES,
+  ...MEDIA_OPERATIONAL_TABLES,
+] as const;
+export type SocialRequiredOperationalTable = (typeof SOCIAL_REQUIRED_OPERATIONAL_TABLES)[number];
 
 export const socialPlatformSchema = z.enum([
   "facebook",
@@ -32,16 +43,23 @@ export const socialPlatformSchema = z.enum([
   "facebook-group",
 ]);
 
-export const socialFormatSchema = z.enum([
+export const SOCIAL_SELECTABLE_FORMATS = [
   "text-post",
   "image-post",
+  "album",
   "carousel",
-  "comment-series",
   "reel",
   "video",
   "short",
   "photo-post",
-]);
+  "live",
+] as const;
+
+export const socialMainPostFormatSchema = z.enum(SOCIAL_SELECTABLE_FORMATS);
+
+// comment-series remains readable for UAT compatibility, but new variants use
+// a main-post format and attach Comment Series through the dedicated child field.
+export const socialFormatSchema = z.enum([...SOCIAL_SELECTABLE_FORMATS, "comment-series"]);
 
 export const publishingModeSchema = z.enum([
   "direct",
@@ -93,17 +111,35 @@ export const commentSeriesItemSchema = z.object({
   status: publicationStatusSchema,
 });
 
+export const commentSeriesModeSchema = z.enum(["top-level", "threaded"]);
+
 export const socialVariantSchema = z.object({
   id: boundedId,
   masterContentId: boundedId,
   title: z.string().trim().min(1).max(200),
   platform: socialPlatformSchema,
-  format: socialFormatSchema,
+  format: socialMainPostFormatSchema,
   version: z.number().int().min(1),
   publishingMode: publishingModeSchema,
   status: publicationStatusSchema,
   mediaReferences: z.array(mediaAssetReferenceSchema).max(20),
+  commentSeriesMode: commentSeriesModeSchema.default("top-level"),
   commentSeries: z.array(commentSeriesItemSchema).max(20),
+}).superRefine((variant, context) => {
+  if (variant.platform !== "facebook" && variant.commentSeries.length > 0) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["commentSeries"],
+      message: "Comment Series belongs to a Facebook main post only",
+    });
+  }
+  if (variant.platform !== "facebook" && variant.commentSeriesMode !== "top-level") {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["commentSeriesMode"],
+      message: "Comment Series mode belongs to Facebook only",
+    });
+  }
 });
 
 export const socialFoundationSnapshotSchema = z.object({
@@ -141,9 +177,14 @@ export type SocialDatabaseReadiness = {
 
 export function isSocialDatabaseSchemaCurrent(input: {
   ledgerCurrent: boolean;
-  tables: Record<SocialOperationalTable, boolean>;
+  formatLedgerCurrent: boolean;
+  mediaLedgerCurrent: boolean;
+  tables: Record<SocialRequiredOperationalTable, boolean>;
 }): boolean {
-  return input.ledgerCurrent && SOCIAL_OPERATIONAL_TABLES.every((table) => input.tables[table]);
+  return input.ledgerCurrent
+    && input.formatLedgerCurrent
+    && input.mediaLedgerCurrent
+    && SOCIAL_REQUIRED_OPERATIONAL_TABLES.every((table) => input.tables[table]);
 }
 
 export function isSocialDatabaseConnectionString(value: string): boolean {
@@ -250,11 +291,12 @@ export const SYNTHETIC_SOCIAL_FOUNDATION: SocialFoundationSnapshot = {
       masterContentId: "synthetic-master-001",
       title: "Facebook post พร้อม Comment Series",
       platform: "facebook",
-      format: "comment-series",
+      format: "image-post",
       version: 1,
       publishingMode: "native-scheduled",
       status: "approved",
       mediaReferences: [{ assetId: "synthetic-media-001", role: "primary", order: null }],
+      commentSeriesMode: "top-level",
       commentSeries: [
         {
           id: "synthetic-comment-001",
@@ -275,6 +317,7 @@ export const SYNTHETIC_SOCIAL_FOUNDATION: SocialFoundationSnapshot = {
       publishingMode: "native-finish",
       status: "awaiting-native-finish",
       mediaReferences: [],
+      commentSeriesMode: "top-level",
       commentSeries: [],
     },
     {
@@ -287,6 +330,7 @@ export const SYNTHETIC_SOCIAL_FOUNDATION: SocialFoundationSnapshot = {
       publishingMode: "tiktok-draft",
       status: "draft",
       mediaReferences: [],
+      commentSeriesMode: "top-level",
       commentSeries: [],
     },
     {
@@ -299,6 +343,20 @@ export const SYNTHETIC_SOCIAL_FOUNDATION: SocialFoundationSnapshot = {
       publishingMode: "native-scheduled",
       status: "approved",
       mediaReferences: [],
+      commentSeriesMode: "top-level",
+      commentSeries: [],
+    },
+    {
+      id: "synthetic-youtube-live-001",
+      masterContentId: "synthetic-master-001",
+      title: "YouTube Live สำหรับทดสอบสถิติย้อนหลัง",
+      platform: "youtube",
+      format: "live",
+      version: 1,
+      publishingMode: "native-scheduled",
+      status: "approved",
+      mediaReferences: [],
+      commentSeriesMode: "top-level",
       commentSeries: [],
     },
   ],

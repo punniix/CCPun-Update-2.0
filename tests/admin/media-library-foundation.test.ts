@@ -43,6 +43,10 @@ test("Media Library requires the exact Admin UAT branch and data plane", () => {
     { environment: "production-admin" as const },
     { projectId: CCPUN_VERCEL_PROJECT_IDS.web },
     { gitBranch: "v4-production" },
+    { gitBranch: "codex/website-42-media-library-foundation-20260828" },
+    { gitBranch: "codex/website-42-social-foundation-v2-20260828" },
+    { gitBranch: "codex/website-42-social-operations-core-20260828" },
+    { gitBranch: "codex/unknown-preview" },
     { sanityProjectId: "kyfxgjnq" },
     { sanityDataset: "production" },
   ]) {
@@ -155,12 +159,22 @@ test("Upload intent rate limiter hashes each actor and returns deterministic Ret
 
 test("Media APIs enforce Auth.js, RBAC, exact origin, UAT flag and metadata-only direct upload", () => {
   const listRoute = read("app/api/snt-admin/media/route.ts");
+  const driveFoundation = read("lib/admin/media/google-drive-foundation.ts");
   const uploadRoute = read("app/api/snt-admin/media/upload-intents/route.ts");
   const service = read("lib/admin/media/service.ts");
 
   assert.match(listRoute, /getAdminIdentity\(\)/);
   assert.match(listRoute, /hasAdminPermission\(identity\.role, "social:read"\)/);
   assert.match(listRoute, /isConfiguredAdminOrigin\(request\.url, process\.env\.AUTH_URL\)/);
+  assert.match(listRoute, /identity\.actorType !== "human"/);
+  assert.match(listRoute, /isSameOriginAdminMutation\(request\.url, request\.headers\.get\("origin"\)\)/);
+  assert.match(listRoute, /getMediaLibraryRuntimeStatus\(\)\.enabled/);
+  assert.match(listRoute, /CCPUN_GOOGLE_DRIVE_ADMIN_ROOT_FOLDER_ID/);
+  assert.match(listRoute, /CCPUN_GOOGLE_DRIVE_MEDIA_ROOT_FOLDER_ID/);
+  assert.match(listRoute, /validateGoogleDriveProjectionHttpRequest/);
+  assert.match(listRoute, /fetchGoogleDriveSelectedFileProjection/);
+  assert.match(listRoute, /refreshMode: "manual"/);
+  assert.match(listRoute, /export async function POST\(request: Request\)/);
   assert.match(uploadRoute, /hasAdminPermission\(identity\.role, "media:upload"\)/);
   assert.match(uploadRoute, /isSameOriginAdminMutation\(request\.url, request\.headers\.get\("origin"\)\)/);
   assert.match(uploadRoute, /getMediaLibraryRuntimeStatus\(\)\.enabled/);
@@ -172,10 +186,14 @@ test("Media APIs enforce Auth.js, RBAC, exact origin, UAT flag and metadata-only
   assert.match(service, /import "server-only"/);
   assert.match(service, /bytesAcceptedByApplication: false/);
   assert.match(service, /createHash\("sha256"\)\.update\(input\.idempotencyKey\)/);
-  for (const source of [listRoute, uploadRoute, service]) {
+  for (const source of [listRoute, uploadRoute, service, driveFoundation]) {
     assert.doesNotMatch(source, /\.formData\(|\.arrayBuffer\(|\.blob\(|request\.body|uploadUrl|storageUrl/);
     assert.doesNotMatch(source, /console\./);
   }
+  for (const source of [listRoute, driveFoundation]) {
+    assert.doesNotMatch(source, /localStorage|sessionStorage|cookies\(|createClient|INSERT|UPDATE|DELETE/i);
+  }
+  assert.doesNotMatch(listRoute, /refreshToken|accessToken.*NextResponse|console\./);
 });
 
 test("Media migration is additive, checksum-locked and provider-neutral", () => {
@@ -207,6 +225,11 @@ test("Distribution UAT owns the Media Library presentation without a new Admin n
   assert.match(page, /MediaLibraryUatSection/);
   assert.doesNotMatch(mediaSection, /text-white\/45/);
   assert.match(mediaSection, /text-white\/55/);
+  assert.match(mediaSection, /GOOGLE DRIVE · SELECTED FILE ONLY/);
+  assert.match(mediaSection, /เลือกไฟล์จาก Google Drive/);
+  assert.match(mediaSection, /Refresh metadata/);
+  assert.match(mediaSection, /Manual OAuth \/ Picker/);
+  assert.equal((mediaSection.match(/disabled aria-disabled="true"/g) ?? []).length, 2);
   assert.equal(route.trim(), 'export { metadata, default } from "@/features/admin/social/page";');
   assert.equal((navigation.match(/\{ href: "\/snt-admin\/distribution\/"/g) ?? []).length, 1);
 });

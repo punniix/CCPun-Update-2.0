@@ -11,7 +11,12 @@ import {
   isSocialFoundationEnabled,
   SOCIAL_SCHEMA_MIGRATION_CHECKSUM,
   SOCIAL_SCHEMA_MIGRATION_VERSION,
-  SOCIAL_OPERATIONAL_TABLES,
+  SOCIAL_FORMAT_MIGRATION_CHECKSUM,
+  SOCIAL_FORMAT_MIGRATION_VERSION,
+  SOCIAL_REQUIRED_OPERATIONAL_TABLES,
+  SOCIAL_SELECTABLE_FORMATS,
+  socialFormatSchema,
+  socialMainPostFormatSchema,
   socialFoundationSnapshotSchema,
   SYNTHETIC_SOCIAL_FOUNDATION,
   WEBSITE_42_SANITY_DATASET,
@@ -39,6 +44,10 @@ test("Social foundation requires the exact Admin UAT code and data plane", () =>
     { environment: "production-admin" as const },
     { projectId: CCPUN_VERCEL_PROJECT_IDS.web },
     { gitBranch: "v4-production" },
+    { gitBranch: "codex/website-42-social-foundation-v2-20260828" },
+    { gitBranch: "codex/website-42-media-library-foundation-20260828" },
+    { gitBranch: "codex/website-42-social-operations-core-20260828" },
+    { gitBranch: "codex/unknown-preview" },
     { sanityProjectId: "kyfxgjnq" },
     { sanityDataset: "production" },
   ]) {
@@ -52,9 +61,33 @@ test("Synthetic fixtures validate media metadata without storage or provider sta
   assert.equal(result.variants.every((variant) => variant.masterContentId === result.masterContent.id), true);
   assert.equal(result.mediaAssets.length, 1);
   assert.equal(result.variants[0]?.mediaReferences[0]?.assetId, result.mediaAssets[0]?.id);
+  assert.equal(result.variants[0]?.format, "image-post");
+  assert.equal(result.variants[0]?.commentSeriesMode, "top-level");
+  assert.equal(result.variants[0]?.commentSeries.length, 1);
   assert.equal(JSON.stringify(result).includes("accessToken"), false);
   assert.equal(JSON.stringify(result).includes("platformObjectId"), false);
   assert.equal(JSON.stringify(result).includes("storageUrl"), false);
+});
+
+test("Post format choices keep Comment Series as a Facebook child", () => {
+  assert.equal(SOCIAL_SELECTABLE_FORMATS.includes("album"), true);
+  assert.equal(SOCIAL_SELECTABLE_FORMATS.includes("live"), true);
+  assert.equal((SOCIAL_SELECTABLE_FORMATS as readonly string[]).includes("comment-series"), false);
+  assert.equal(socialMainPostFormatSchema.safeParse("comment-series").success, false);
+  assert.equal(socialFormatSchema.parse("comment-series"), "comment-series");
+
+  const schema = read("cms/sanity/schema/documents/social-variant.ts");
+  assert.match(schema, /"image-post", "album", "carousel"/);
+  assert.match(schema, /"photo-post", "live"/);
+  assert.doesNotMatch(schema, /formatOptions[^\n]*comment-series/);
+  assert.match(schema, /document\?\.channel !== "facebook"/);
+  assert.match(schema, /name: "commentSeriesMode"/);
+  assert.match(schema, /value: "threaded"/);
+  assert.match(schema, /ลำดับ Comment ต้องไม่ซ้ำ/);
+
+  const invalid = structuredClone(SYNTHETIC_SOCIAL_FOUNDATION);
+  invalid.variants[1]!.commentSeries = invalid.variants[0]!.commentSeries;
+  assert.equal(socialFoundationSnapshotSchema.safeParse(invalid).success, false);
 });
 
 test("Publication state transitions are explicit and terminal states stay terminal", () => {
@@ -74,20 +107,43 @@ test("Database readiness is read-only and returns sanitized categories", () => {
   assert.equal(classifySocialDatabaseError({ code: "42P01", message: "raw schema detail" }).errorCategory, "migration-missing");
   assert.equal(classifySocialDatabaseError({ name: "TimeoutError", message: "raw timeout" }).errorCategory, "timeout");
 
-  const allTables = Object.fromEntries(SOCIAL_OPERATIONAL_TABLES.map((table) => [table, true])) as Record<(typeof SOCIAL_OPERATIONAL_TABLES)[number], boolean>;
-  assert.equal(isSocialDatabaseSchemaCurrent({ ledgerCurrent: true, tables: allTables }), true);
-  assert.equal(isSocialDatabaseSchemaCurrent({ ledgerCurrent: false, tables: allTables }), false);
-  assert.equal(isSocialDatabaseSchemaCurrent({
-    ledgerCurrent: true,
-    tables: { ...allTables, social_media_asset: false },
-  }), false);
+  const allTables = Object.fromEntries(SOCIAL_REQUIRED_OPERATIONAL_TABLES.map((table) => [table, true])) as Record<(typeof SOCIAL_REQUIRED_OPERATIONAL_TABLES)[number], boolean>;
+  const currentInput = { ledgerCurrent: true, formatLedgerCurrent: true, mediaLedgerCurrent: true, tables: allTables };
+  assert.equal(isSocialDatabaseSchemaCurrent(currentInput), true);
+  assert.equal(isSocialDatabaseSchemaCurrent({ ...currentInput, ledgerCurrent: false }), false);
+  assert.equal(isSocialDatabaseSchemaCurrent({ ...currentInput, formatLedgerCurrent: false }), false);
+  assert.equal(isSocialDatabaseSchemaCurrent({ ...currentInput, mediaLedgerCurrent: false }), false);
+  for (const table of SOCIAL_REQUIRED_OPERATIONAL_TABLES) {
+    assert.equal(isSocialDatabaseSchemaCurrent({
+      ...currentInput,
+      tables: { ...allTables, [table]: false },
+    }), false, table);
+  }
 
   const source = read("lib/admin/social/database.ts");
   assert.match(source, /import "server-only"/);
   assert.match(source, /FROM ccpun_social\.schema_migration/);
-  for (const table of SOCIAL_OPERATIONAL_TABLES) assert.match(source, new RegExp(table));
+  assert.match(source, /format_ledger_current/);
+  assert.match(source, /media_ledger_current/);
+  for (const table of SOCIAL_REQUIRED_OPERATIONAL_TABLES) assert.match(source, new RegExp(table));
   assert.doesNotMatch(source, /\b(?:INSERT|UPDATE|DELETE|ALTER|DROP)\b/i);
   assert.doesNotMatch(source, /console\./);
+});
+
+test("Post-format migration is additive and preserves legacy Comment Series rows", () => {
+  const sql = read("db/migrations/20260829_website_42_social_post_formats.sql");
+  const body = sql.split("-- checksum-source-begin\n")[1]?.split("-- checksum-source-end")[0];
+  assert.ok(body);
+  const checksum = `sha256:${createHash("sha256").update(body).digest("hex")}`;
+  assert.equal(checksum, SOCIAL_FORMAT_MIGRATION_CHECKSUM);
+  assert.match(sql, new RegExp(SOCIAL_FORMAT_MIGRATION_VERSION));
+  assert.match(sql, new RegExp(SOCIAL_FORMAT_MIGRATION_CHECKSUM));
+  assert.match(sql, /website_42_social_foundation_v2/);
+  assert.match(sql, /DROP CONSTRAINT social_variant_link_format_check/);
+  assert.match(sql, /'album'/);
+  assert.match(sql, /'live'/);
+  assert.match(sql, /'comment-series'/);
+  assert.doesNotMatch(sql, /DROP TABLE|DELETE FROM|TRUNCATE/i);
 });
 
 test("Migration checksum covers the reviewed DDL and operational constraints", () => {
