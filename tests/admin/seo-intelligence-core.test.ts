@@ -10,6 +10,7 @@ import {
   isBrandedQuery,
   isSeoIntelligenceEnabled,
   SYNTHETIC_SEO_OBSERVATIONS,
+  WEBSITE_42_GOOGLE_PROVIDER_BRANCH,
   WEBSITE_42_SEO_BRANCH,
   WEBSITE_42_SEO_SANITY_DATASET,
   WEBSITE_42_SEO_SANITY_PROJECT_ID,
@@ -27,11 +28,13 @@ const enabledInput = {
 
 test("SEO Intelligence opens only on the exact Admin UAT branch and data plane", () => {
   assert.equal(isSeoIntelligenceEnabled(enabledInput), true);
+  assert.equal(isSeoIntelligenceEnabled({ ...enabledInput, gitBranch: WEBSITE_42_GOOGLE_PROVIDER_BRANCH }), true);
   for (const change of [
     { flag: "true" },
     { environment: "production-admin" as const },
     { projectId: CCPUN_VERCEL_PROJECT_IDS.web },
     { gitBranch: "v4-production" },
+    { gitBranch: "codex/unapproved-preview" },
     { sanityProjectId: "kyfxgjnq" },
     { sanityDataset: "production" },
   ]) assert.equal(isSeoIntelligenceEnabled({ ...enabledInput, ...change }), false, JSON.stringify(change));
