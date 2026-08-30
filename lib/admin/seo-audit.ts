@@ -7,6 +7,7 @@ import { summarizeContentReadiness, type ContentReadiness } from "./content-read
 import { isAdminDataPlaneAllowed, isAdminReadDataPlaneAllowed } from "./environment";
 import { getAdminSanityReadToken, getAdminSanityWriteToken } from "./sanity-credentials";
 import { buildAuditLogDocument, isRevisionConflict } from "./sanity-control";
+import { findAdminProposalResearch, insertAdminAudit } from "./operations/database";
 import { normalizeResearchKeyword } from "./research-input";
 import { isArticleCanonicalAligned } from "../content/url";
 import { countGraphemes, countMatchingQuestions, isReviewDateFresh, META_DESCRIPTION_MAX, META_DESCRIPTION_MIN, SEO_AUDIT_VERSION, SEO_TITLE_MAX, SEO_TITLE_MIN, seoBodyFacts } from "./seo-heuristics";
@@ -315,13 +316,26 @@ export async function runSeoAudit(
       requestId: auditContext.requestId,
       timestamp: result.auditedAt,
     });
+    const intentAudit = buildAuditLogDocument({
+      id: `auditLog.${randomUUID()}`,
+      actor: auditContext.actor,
+      actorType: auditContext.actorType,
+      action: "seo-audit:persist-intent",
+      objectType: "article",
+      objectId: targetId,
+      after: { status: "started", score: result.score },
+      requestId: auditContext.requestId,
+      timestamp: result.auditedAt,
+    });
 
     try {
-      await writeClient.transaction().patch(targetId, (patch) => patch.ifRevisionId(article.revision).set({
+      await insertAdminAudit(intentAudit);
+      await writeClient.patch(targetId).ifRevisionId(article.revision).set({
         "seo.auditSnapshot": {
           ...auditSnapshot,
         },
-      })).create(auditDocument).commit();
+      }).commit();
+      await insertAdminAudit(auditDocument);
     } catch (error) {
       if (isRevisionConflict(error)) throw new Error("SEO_AUDIT_STALE");
       throw error;
@@ -376,16 +390,6 @@ export async function getSeoProposalContext(articleId: string) {
   const keywordKey = normalizeResearchKeyword(article.focusKeyword ?? "");
   if (!keywordKey) return { ...article, research: null };
   const freshAfter = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-  const researchRaw = await readClient.fetch(groq`*[
-    _type == "researchSnapshot" &&
-    keywordKey == $keywordKey &&
-    provider in $providers &&
-    defined(intent) &&
-    checkedAt >= $freshAfter
-  ] | order(checkedAt desc)[0]{ provider, intent, checkedAt }`, {
-    keywordKey,
-    providers: ["gsc", "ubersuggest", "serp"],
-    freshAfter,
-  });
+  const researchRaw = await findAdminProposalResearch(keywordKey, freshAfter);
   return { ...article, research: proposalResearchSchema.nullable().parse(researchRaw) };
 }

@@ -6,6 +6,7 @@ import { z } from "zod";
 import { isAdminDataPlaneAllowed, isAdminReadDataPlaneAllowed } from "./environment";
 import { getAdminSanityReadToken, getAdminSanityResearchWriteToken } from "./sanity-credentials";
 import { buildAuditLogDocument } from "./sanity-control";
+import { insertAdminAudit, isAdminOperationsWriteReady, readAdminResearch } from "./operations/database";
 import { privateAdminDocumentId } from "./suggestion-lifecycle";
 import { isUbersuggestSnapshotFresh } from "./ubersuggest-contracts";
 import type { UbersuggestDashboardSync } from "./ubersuggest-dashboard-provider";
@@ -115,7 +116,7 @@ function arrayKey(prefix: string, index: number) {
 }
 
 export function isUbersuggestSyncWriteReady() {
-  return Boolean(writeClient());
+  return Boolean(writeClient() && isAdminOperationsWriteReady());
 }
 
 export function isSnapshotFresh(value: string | null | undefined, maxAgeHours: number, now = Date.now()) {
@@ -182,8 +183,21 @@ export async function persistUbersuggestDashboardSync(
     requestId: context.requestId,
     timestamp: input.checkedAt,
   });
+  const intentAudit = buildAuditLogDocument({
+    id: `auditLog.${randomUUID()}`,
+    actor: context.actor,
+    actorType: context.actorType,
+    action: "ubersuggest:sync-account-geo-intent",
+    objectType: "providerSnapshot",
+    objectId: accountId,
+    after: { status: "started", provider: "ubersuggest" },
+    requestId: context.requestId,
+    timestamp: input.checkedAt,
+  });
 
-  await client.transaction().create(accountDocument).create(geoDocument).create(auditDocument).commit();
+  await insertAdminAudit(intentAudit);
+  await client.transaction().create(accountDocument).create(geoDocument).commit();
+  await insertAdminAudit(auditDocument);
   return { accountId, geoId, checkedAt: input.checkedAt };
 }
 
@@ -220,19 +234,10 @@ export async function getUbersuggestDashboardData(historyLimit = 20) {
         intents[]{intent, value},
         prompts[]{promptText, topic, language, locId, intents, totalAnswers, userAverageRank, userTotalMentions, userVisibilityPercentage, topBrands},
         checkedAt
-      },
-      "history": *[_type == "researchSnapshot" && provider == "ubersuggest"] | order(checkedAt desc)[0...$limit]{
-        "id": _id,
-        keyword,
-        scope,
-        volume,
-        difficulty,
-        intent,
-        "serpCount": count(serp),
-        checkedAt
       }
     }`, { limit });
-    return { ...dashboardSchema.parse(raw), error: null };
+    const history = (await readAdminResearch(limit) ?? []).filter((row) => row.provider === "ubersuggest").slice(0, limit);
+    return { ...dashboardSchema.parse({ ...raw, history }), error: null };
   } catch {
     return { account: null, geo: null, history: [], error: "request-failed" as const };
   }

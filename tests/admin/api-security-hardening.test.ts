@@ -73,20 +73,24 @@ test("Preview disable is a same-origin POST and every current caller uses POST",
   assert.doesNotMatch(sanityConfig, /disable:\s*["']\/api\/preview\/disable/);
 });
 
-test("all current Admin-only Sanity documents use the authenticated Draft namespace", () => {
+test("Article writes stay in Sanity while operational records use the private Neon plane", () => {
   const lifecycle = read("lib/admin/suggestion-lifecycle.ts");
   const control = read("lib/admin/sanity-control.ts");
   const research = read("lib/admin/research.ts");
   const dashboard = read("lib/admin/ubersuggest-dashboard.ts");
   const seoAudit = read("lib/admin/seo-audit.ts");
+  const database = read("lib/admin/operations/database.ts");
 
   assert.match(lifecycle, /function privateAdminDocumentId[\s\S]*?return `drafts\.\$\{cleanId\}`/);
-  assert.match(control, /_id: privateAdminDocumentId\(input\.id\)/);
   assert.match(control, /suggestionId = privateAdminDocumentId\(baseSuggestionId\)/);
-  assert.match(research, /snapshotId = privateAdminDocumentId\(/);
+  assert.match(research, /createAdminResearchSnapshot/);
+  assert.doesNotMatch(research, /_type:\s*"researchSnapshot"/);
   assert.match(dashboard, /accountId = privateAdminDocumentId\(/);
   assert.match(dashboard, /geoId = privateAdminDocumentId\(/);
+  assert.match(database, /ccpun_admin\.audit_log/);
+  assert.match(database, /ccpun_admin\.seo_suggestion/);
   assert.doesNotMatch(seoAudit, /workflowDocumentId/);
+  assert.doesNotMatch(control, /_type:\s*"(?:auditLog|seoSuggestion)"/);
 });
 
 test("human edit and reject decisions are validated, authorized, revision-guarded, and audited", () => {
@@ -97,8 +101,9 @@ test("human edit and reject decisions are validated, authorized, revision-guarde
   const schema = read("cms/sanity/admin/schema/admin-types.ts");
 
   assert.match(control, /reviewDecisionSchema = z\.discriminatedUnion/);
-  assert.match(control, /privateAdminDocumentId\(parseSuggestionDocumentId\(input\.id\)\)/);
-  assert.match(control, /ifRevisionId\(suggestion\._rev\)/);
+  assert.match(control, /parseSuggestionDocumentId\(input\.id\)/);
+  assert.match(control, /decideAdminSeoSuggestion/);
+  assert.match(read("lib/admin/operations/database.ts"), /row_version=\s*row_version\+1/);
   assert.match(control, /seo-suggestion:edit/);
   assert.match(control, /seo-suggestion:reject/);
   assert.match(editRoute, /bodySchema\.safeParse/);

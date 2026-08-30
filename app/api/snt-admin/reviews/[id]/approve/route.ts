@@ -39,7 +39,7 @@ export async function POST(request: Request, context: RouteContext) {
       if (error.message === "INVALID_SUGGESTION_ID") {
         return NextResponse.json({ error: "invalid-suggestion-id", requestId }, { status: 400 });
       }
-      if (error.message === "SANITY_WRITE_NOT_CONFIGURED") {
+      if (["SANITY_WRITE_NOT_CONFIGURED", "ADMIN_DATABASE_NOT_CONFIGURED"].includes(error.message)) {
         return NextResponse.json({ error: "write-token-required", requestId }, { status: 503 });
       }
       if (error.message === "HUMAN_REVIEW_REQUIRED") {

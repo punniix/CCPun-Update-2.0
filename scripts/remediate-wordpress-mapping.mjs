@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from 'node:crypto';
+import { createHash } from 'node:crypto';
 import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -177,19 +177,17 @@ async function main() {
     return;
   }
 
-  const requestId = randomUUID();
+  requireProductionNeonAuditWriter();
   let transaction = client.transaction();
   for (const plan of plans) transaction = transaction.patch(plan.document._id, (patch) => patch.ifRevisionId(plan.document._rev).set(plan.set));
-  transaction = transaction.createIfNotExists({
-    _id: `drafts.auditLog.wordpress-mapping-${hash(JSON.stringify(summary))}`,
-    _type: 'auditLog', actor: 'codex-authorized-by-owner', actorType: 'system', action: 'wordpress-mapping:remediate-drafts',
-    objectType: 'article-batch', objectId: `wordpress-drafts:${documents.length}`, before: JSON.stringify({ articleDrafts: documents.length }),
-    after: JSON.stringify(summary), requestId, environment: 'local-production', timestamp: new Date().toISOString(),
-  });
   await transaction.commit({ tag: 'ccpun.wordpress-mapping-remediation' });
   const after = await client.fetch('count(*[_type == "article" && _id in path("drafts.**") && migration.platform == "WordPress"])');
   if (after !== documents.length) throw new Error(`Article count changed unexpectedly: ${documents.length} -> ${after}`);
   console.log(`PASS: ${JSON.stringify({ ...summary, articleDraftsAfter: after, published: false })}`);
+}
+
+function requireProductionNeonAuditWriter() {
+  throw new Error('Refusing Production WordPress remediation: Production Neon Admin audit writer is not configured');
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) await main();

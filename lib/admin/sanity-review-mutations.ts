@@ -1,79 +1,29 @@
-import {
-  frozenControlsForApply,
-  getApplyableFieldPath,
-  isAppliedSuggestionReplay,
-} from "./suggestion-lifecycle";
+import { frozenControlsForApply, getApplyableFieldPath, isAppliedSuggestionReplay } from "./suggestion-lifecycle";
 
-type PatchBuilder = {
-  ifRevisionId(revision: string): PatchBuilder;
-  set(values: Record<string, unknown>): PatchBuilder;
+type SanityPatch = {
+  ifRevisionId(revision: string): SanityPatch;
+  set(values: Record<string, unknown>): SanityPatch;
+  commit(options: { returnDocuments: true }): Promise<{ _rev?: string }>;
 };
 
-type ReviewTransaction = {
-  patch(id: string, update: (patch: PatchBuilder) => PatchBuilder): ReviewTransaction;
-  create(document: Record<string, unknown>): ReviewTransaction;
-  commit(): Promise<unknown>;
+export type ArticlePatchClient = {
+  patch(id: string): SanityPatch;
 };
 
-export type ReviewMutationClient = {
-  transaction(): unknown;
-};
+const ALLOWED_SEO_PATCH_PATHS = new Set(["seo.title", "seo.description", "seo.focusKeyword", "seo.searchIntent"]);
 
-function beginReviewTransaction(client: ReviewMutationClient) {
-  return client.transaction() as ReviewTransaction;
-}
-
-function isRevisionConflict(error: unknown) {
-  if (!error || typeof error !== "object") return false;
-  const candidate = error as { statusCode?: unknown; response?: { statusCode?: unknown } };
-  return candidate.statusCode === 409 || candidate.response?.statusCode === 409;
-}
-
-async function commitOrConflict(transaction: ReviewTransaction) {
-  try {
-    await transaction.commit();
-  } catch (error) {
-    if (isRevisionConflict(error)) throw new Error("SUGGESTION_CONFLICT");
-    throw error;
-  }
-}
-
-export async function commitSuggestionApproval(
-  client: ReviewMutationClient,
-  input: {
-    suggestionId: string;
-    suggestionRevision: string;
-    values: Record<string, unknown>;
-    auditDocument: Record<string, unknown>;
-  },
-) {
-  await commitOrConflict(
-    beginReviewTransaction(client)
-      .patch(input.suggestionId, (patch) => patch.ifRevisionId(input.suggestionRevision).set(input.values))
-      .create(input.auditDocument),
-  );
-}
-
-export async function commitSuggestionApplication(
-  client: ReviewMutationClient,
-  input: {
-    draftId: string;
-    draftRevision: string;
-    fieldPath: string;
-    value: string;
-    suggestionId: string;
-    suggestionRevision: string;
-    suggestionValues: Record<string, unknown>;
-    auditDocument: Record<string, unknown>;
-  },
+export async function patchArticleSeoField(
+  client: ArticlePatchClient,
+  input: { draftId: string; draftRevision: string; fieldPath: string; value: string },
 ) {
   if (!input.draftId.startsWith("drafts.")) throw new Error("TARGET_DRAFT_REQUIRED");
-  await commitOrConflict(
-    beginReviewTransaction(client)
-      .patch(input.draftId, (patch) => patch.ifRevisionId(input.draftRevision).set({ [input.fieldPath]: input.value }))
-      .patch(input.suggestionId, (patch) => patch.ifRevisionId(input.suggestionRevision).set(input.suggestionValues))
-      .create(input.auditDocument),
-  );
+  if (!ALLOWED_SEO_PATCH_PATHS.has(input.fieldPath)) throw new Error("SEO_FIELD_REQUIRED");
+  const document = await client.patch(input.draftId)
+    .ifRevisionId(input.draftRevision)
+    .set({ [input.fieldPath]: input.value })
+    .commit({ returnDocuments: true });
+  if (!document._rev) throw new Error("SANITY_MUTATION_RESULT_AMBIGUOUS");
+  return document._rev;
 }
 
 export function appliedSuggestionReplay(input: {

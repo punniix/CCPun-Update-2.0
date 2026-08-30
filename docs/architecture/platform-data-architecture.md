@@ -9,8 +9,8 @@ This document is the canonical repository map for runtime environments and data 
 ```text
 GitHub = code
 Vercel = runtime and deployment
-Sanity = editorial content and approved intelligence records
-Neon Postgres = operational state
+Sanity = editorial content, Draft/Published workflow and Article SEO fields
+Neon Postgres = private Admin and social operational state
 
 Production = real system
 UAT = isolated testing system
@@ -51,7 +51,13 @@ Production content types include `article`, `author` and `category`. Existing re
 
 Neon project `young-term-47483330` currently belongs to the UAT operational lane. Its existing `main` branch must not be relabelled or treated as Production without a read-only branch, database, schema, role, grant, migration-ledger and consumer inventory.
 
-The existing `ccpun_social` schema owns social operational state such as publication records, jobs, provider IDs, locks, retries, sync state, audit metadata and idempotency. It references Sanity content by document identity and editorial revision; it does not own article bodies, authors, categories or public SEO content.
+The existing `ccpun_social` schema owns social operational state such as publication records, jobs, provider IDs, locks, retries, sync state, audit metadata and idempotency. The separate `ccpun_admin` schema owns Control Plane `auditLog`, `researchSnapshot` and `seoSuggestion` workflow/state. Both schemas reference Sanity content by document identity/revision and neither owns article bodies, authors, categories or public SEO fields.
+
+`ccpun_admin` is introduced by the checksum-locked migration `20260830_website_42_admin_operations_v1` (`sha256:51f16b563368488362408f323f95863ecf8f277b6b725b96189fedddf1300e4f`). Runtime access uses only the server-side `CCPUN_ADMIN_DATABASE_URL` as role `ccpun_admin_runtime`; it must never fall back to the social connection, owner/backfill connection or a Sanity write token. The role is created without login/superuser/create/inherit/replication/bypass capability, preserves a separately enabled login on safe migration reruns, and receives only explicit `ccpun_admin` table/column grants; all `ccpun_social` rights are revoked. Every repository operation verifies the live database, current role, persistent `system_identity` row and migration ledger before its query. Runtime is allowed only for `admin-uat` and `local-uat`.
+
+`NOLOGIN` is the deliberate post-migration default. A human Neon owner must later enable `LOGIN` and issue a fresh password for this exact UAT role before configuring the Preview-only runtime URL; the migration/backfill owner URL is never reused. No Production runtime credential or branch is created by this cutover.
+
+The UAT target is pinned to project `young-term-47483330`, branch `br-crimson-mouse-az7ajkv8`, compute `ep-mute-frost-aztvz394`, database `neondb`. Only the exact direct or pooled hostname of that compute is accepted. One-time schema/backfill uses the separate ephemeral `CCPUN_ADMIN_BACKFILL_DATABASE_URL` and accepts only `neondb_owner` or `cloud_admin`; it refuses the runtime role. `--apply` requires the exact cutover baseline (`43` audit, `2` research, `19` suggestions) and is not complete until the source and target deterministic lineage digests match.
 
 Create a Production Neon branch only when an approved Production operational use case exists. Do not create a speculative worker, queue, database, schema or service.
 
@@ -88,8 +94,9 @@ Live Vercel variable names, types, environments and branch scopes must be read b
 |---|---|
 | Published and Draft editorial content | Sanity |
 | Public SEO fields attached to content | Sanity |
-| Private research and intelligence records | private Sanity boundary after permission verification |
-| Social copy and human approval state | Sanity |
+| Private research snapshots, Control Plane audit and SEO suggestion lifecycle | Neon `ccpun_admin` |
+| Article Draft/Published workflow, content, review state and public SEO fields | Sanity |
+| Social content variants and human editorial approval | Sanity |
 | Publication execution, retries, provider IDs and sync cursors | Neon |
 | Application code, schema source and migrations | GitHub |
 | Deployment/runtime configuration | Vercel |
@@ -106,6 +113,12 @@ UAT must never write Production Sanity, Production Neon or real provider state. 
 | misleading Sanity display names | rename eventually | live consumer/read-back verification; immutable project IDs remain unchanged |
 
 Nothing in this table authorizes deletion.
+
+Legacy Sanity `auditLog`, `researchSnapshot` and `seoSuggestion` records remain rollback evidence after cutover. Runtime code must not create new records of those types. Deleting legacy records requires a later explicit approval after hash/count parity and a rollback window.
+
+## Cross-store SEO apply
+
+An approved SEO suggestion never patches Article content and Neon state optimistically in parallel. The server claims the exact Neon suggestion row/version and request ID, re-reads the Sanity Draft and approved base/revision, patches only the approved `seo.*` field with Sanity `ifRevisionId`, then finalizes Neon with the returned Article revision and sanitized audit. A Sanity result without a returned revision, a failed Neon finalization, or any other ambiguous outcome moves the suggestion to `reconciliation-required`; it is never retried automatically. Human reconciliation must compare the exact Article revision and field value before any later action.
 
 ## Change order
 

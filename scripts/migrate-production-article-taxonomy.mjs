@@ -1,5 +1,4 @@
 import assert from "node:assert/strict";
-import { createHash } from "node:crypto";
 import { getCliClient } from "sanity/cli";
 
 const PROJECT_ID = "kyfxgjnq";
@@ -42,6 +41,10 @@ function parseMode(args) {
   if (!args.length || (args.length === 1 && args[0] === "--dry-run")) return "dry-run";
   if (args.length === 1 && args[0] === "--apply-production-taxonomy") return "apply";
   throw new Error("Use --dry-run or --apply-production-taxonomy only");
+}
+
+function requireProductionNeonAuditWriter() {
+  throw new Error("Refusing Production taxonomy mutation: Production Neon Admin audit writer is not configured");
 }
 
 function normalizeTags(tags, requiredTags) {
@@ -234,27 +237,11 @@ if (mode === "dry-run") {
   process.exit(0);
 }
 
-const fingerprint = createHash("sha256")
-  .update(JSON.stringify({ changes: changes.map(({ id, revision, set }) => ({ id, revision, set })), categories: categoriesToDelete.map(({ _id, _rev }) => ({ _id, _rev })) }))
-  .digest("hex")
-  .slice(0, 24);
+requireProductionNeonAuditWriter();
 let transaction = client.transaction();
 for (const change of changes) {
   transaction = transaction.patch(change.id, (patch) => patch.ifRevisionId(change.revision).set(change.set));
 }
 for (const category of categoriesToDelete) transaction = transaction.delete(category._id);
-transaction = transaction.createIfNotExists({
-  _id: `auditLog.production-taxonomy-${fingerprint}`,
-  _type: "auditLog",
-  actor: "production-taxonomy-migration",
-  actorType: "system",
-  action: "production-taxonomy:5-to-3",
-  objectType: "article-batch",
-  objectId: `production-taxonomy:${fingerprint}`,
-  before: JSON.stringify({ articles: summary.changedArticles.map(({ id, before }) => ({ id, ...before })), categories: summary.categoriesDeleted }),
-  after: JSON.stringify({ articles: summary.changedArticles.map(({ id, after }) => ({ id, ...after })), activeCategories: summary.activeCategoriesAfter }),
-  environment: "production",
-  timestamp: new Date().toISOString(),
-});
 await transaction.commit({ tag: "ccpun.production.taxonomy-5-to-3" });
-console.log(JSON.stringify({ ...summary, changed: changes.length, deletedCategories: categoriesToDelete.length, auditLogCreated: true }, null, 2));
+console.log(JSON.stringify({ ...summary, changed: changes.length, deletedCategories: categoriesToDelete.length, auditLogCreated: false }, null, 2));

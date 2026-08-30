@@ -120,7 +120,7 @@ AI may not:
 |---|---|---|
 | Local Mac `npm run local:uat` at `localhost:3100` | `ccb9lnw5/uat` | Full synthetic Draft/SEO/review/preview workflow isolated from Local Production |
 | Local Mac `CCPun Admin.app` | `kyfxgjnq/production` | Owner-authenticated Draft work on loopback only; CORS exists only while the local runtime is active |
-| Admin survivor branch Preview | `ccb9lnw5/uat` | Protected Admin feature/UAT lane with Production writes disabled |
+| Admin survivor branch Preview | `ccb9lnw5/uat` plus UAT Neon `ccpun_admin` | Protected Admin feature/UAT lane with Production writes disabled |
 | `admin.ccpun.com` / `ccpun-admin-prod` | `kyfxgjnq/production` | Real Draft → Review → Preview → Human Publish workflow |
 | `ccpun-web-v4-prod` public website | `production` Published perspective only | Public website rendering |
 
@@ -159,6 +159,12 @@ One shared invariant now governs Admin clients, public Sanity reads, Sanity Live
 
 Changing only `NEXT_PUBLIC_SANITY_DATASET`, project ID or `CCPUN_APP_ENV` is not enough to cross lanes. `local-uat` accepts only the exact Non-Production project/dataset and host `localhost:3100`, while `local-production` accepts only `localhost:3000`; both servers listen only on loopback `127.0.0.1`. They use separate Auth.js cookie namespaces and separate Next.js build directories so they can run concurrently without sharing browser or compiler state. A request using the other lane's Host/port returns `404`. `admin-uat` and `production-admin` require the immutable Admin survivor Project ID; Production Admin also requires `CCPUN_PRODUCTION_ADMIN_VERCEL_PROJECT_ID` to match it. Missing or mismatched identity disables Admin clients, Draft mutations and Studio. Public `production` returns 404 for `/snt-admin`, Admin APIs, `/studio` and Draft Preview routes.
 
+Operational Admin reads/writes additionally require the server-only `CCPUN_ADMIN_DATABASE_URL` with username `ccpun_admin_runtime` and the exact UAT compute `ep-mute-frost-aztvz394` (direct or pooled hostname only). Missing or malformed configuration fails closed and is never replaced with `CCPUN_SOCIAL_DATABASE_URL`, an owner/backfill URL, a Sanity token, or a Production credential. Every operation verifies `current_database()`, `current_user`, `ccpun_admin.system_identity` and the exact migration checksum before its business query. Only `admin-uat` and `local-uat` may pass this boundary.
+
+The migration creates `ccpun_admin_runtime` as `NOLOGIN`; therefore the first apply does **not** make the runtime connection usable. A safe rerun preserves an existing `LOGIN` state and password while reasserting every non-login restriction. After migration and read-back pass, a human Neon owner must enable `LOGIN` and set a newly generated password for this exact UAT role only, then construct `CCPUN_ADMIN_DATABASE_URL` from that credential. The password is entered directly in Neon/Postgres and the Vercel `ccpun-admin` Preview environment; it must never be committed, pasted into logs, reused for `CCPUN_ADMIN_BACKFILL_DATABASE_URL`, or scoped to Production. Keep the role `NOLOGIN` until this manual credential step is explicitly performed.
+
+UAT migration/backfill requires the exact identity variables `CCPUN_NEON_PROJECT_ID=young-term-47483330`, `CCPUN_NEON_BRANCH_ID=br-crimson-mouse-az7ajkv8`, `CCPUN_NEON_DATABASE=neondb`, `CCPUN_APP_ENV=local-uat` and a separately supplied `CCPUN_ADMIN_BACKFILL_DATABASE_URL` using `neondb_owner` or `cloud_admin`. The script defaults to dry-run; `--apply` always requires the recorded `43/2/19` cutover baseline and aborts on identity, checksum, count, source-hash or deterministic lineage-digest mismatch.
+
 Local UAT remains the feature-development lane. The separately approved `local-production` Draft lane starts through the single `CCPun Admin.app`, binds Next.js to `127.0.0.1`, serves only `localhost:3000`, requires Google/Auth.js plus the owner allowlist and pins Sanity to `kyfxgjnq/production`. The app adds only `http://localhost:3000` as a credentials-enabled Sanity CORS origin, verifies it before starting, records the owned process and removes the origin through `ปิดระบบ` or `ออกและปิดระบบ`. An occupied port, unverifiable CORS or non-loopback listener fails closed. Public Production, Vercel and DNS remain untouched.
 
 ### Historical A2 runtime safety stop
@@ -186,7 +192,7 @@ The A0 register and approved remediation are recorded in [`a0-production-content
 
 Studio and Draft Preview routes use the same Auth.js allowlist as the Control Plane. Studio additionally requires the current owner-level `draft:apply` permission. Local Production permits native Article creation/editing, Human Publish, Unpublish and scheduled Drafts for the authenticated owner only. Permanent Delete is hidden while a Published version exists, so a live Article must be Unpublished before its remaining Draft can be deleted. UAT keeps these actions disabled; the future Cloud Production Admin retains its narrower action set until a separate promotion review. This action filter is defense-in-depth, not a substitute for least-privilege Sanity membership and recoverable backups.
 
-The audit authority is intentionally split until a stronger provider integration is approved: `/snt-admin/audit` records Control Plane mutations with request IDs, while direct Studio Draft edits and Human Publish rely on Sanity History. Before Production Admin, verify Sanity History retention and least-privilege access, document administrator-email retention, and give the owner an explicit path to both histories. Do not claim the Control Plane log alone covers Studio actions.
+The audit authority is intentionally split: Neon `ccpun_admin.audit_log` records Control Plane mutations with request IDs, while direct Studio Draft edits and Human Publish rely on Sanity History. Before Production Admin, verify Sanity History retention and least-privilege access, document administrator-email retention, and give the owner an explicit path to both histories. Do not claim the Control Plane log alone covers Studio actions.
 
 ## Website 4.1 Owner-only release contract
 
@@ -203,7 +209,7 @@ Release evidence for candidate `0a60ba6656cf68516c431994281c349b66dc735c` on 202
 
 ### Retention and rollback
 
-- Control Plane audit documents and review records have no automatic deletion in Website 4.1. Keep them until the COO approves a later retention policy; do not add a purge job merely to complete this release.
+- Control Plane audit and review rows in Neon have no automatic deletion. Keep them and the legacy Sanity rollback copies until the COO approves a later retention policy; do not add a purge job merely to complete this release.
 - Sanity History remains the authority for direct Studio Draft edits and Human Publish. Human Publish is a separate explicit COO action and is not authorized by a code release.
 - Record the release commit and both survivor deployment IDs before promotion. Code rollback returns both survivor Projects to the previous verified Production commit; for this candidate the baseline is `ffdd20c75767ed3fe5fa66a0bcab122f09ed61a2`.
 - Data rollback uses the affected Draft revision in Sanity History. Never overwrite or republish a Published document automatically. Credential exposure requires provider revocation/rotation before local cleanup.
@@ -220,8 +226,9 @@ The candidate can move from Draft PR to final release approval after the documen
 | Missing Vercel system identity | Production Admin data plane and Studio stay disabled |
 | Public user probes private routes | Public `production` returns 404 before Admin routing |
 | AI/system attempts approval, Apply, Publish or Delete | Policy hard deny; whitelisted Draft mutation remains human-only |
-| Proposal or target changes after review | Frozen approval fields, current-value/revision checks and atomic transaction reject stale work |
-| Control Plane mutation succeeds without trace | Server request ID and audit document commit in the same transaction |
+| Proposal or target changes after review | Frozen approval fields, Neon row-version claim and exact Sanity revision/value checks reject stale work |
+| Cross-store result is ambiguous | Suggestion becomes `reconciliation-required`; automatic replay is forbidden |
+| Control Plane mutation succeeds without trace | Server request ID and sanitized Neon audit are finalized with the operational row |
 | Human publishes in Studio | Separate Sanity-authenticated Human Publish action; Sanity History is the audit source |
 
 ## Sanity Project Isolation

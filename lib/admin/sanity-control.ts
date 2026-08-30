@@ -4,13 +4,21 @@ import { randomUUID } from "node:crypto";
 import { createClient, groq } from "next-sanity";
 import { z } from "zod";
 import { getAdminEnvironment, isAdminDataPlaneAllowed, isAdminReadDataPlaneAllowed } from "./environment";
-import { safeAuditJson } from "./audit-sanitizer";
 import { getAdminSanityReadToken, getAdminSanityWriteToken } from "./sanity-credentials";
+import { appliedSuggestionReplay, patchArticleSeoField } from "./sanity-review-mutations";
 import {
-  appliedSuggestionReplay,
-  commitSuggestionApplication,
-  commitSuggestionApproval,
-} from "./sanity-review-mutations";
+  approveAdminSeoSuggestion,
+  buildAdminAudit,
+  claimAdminSuggestionApply,
+  createAdminSeoSuggestion,
+  decideAdminSeoSuggestion,
+  finalizeAdminSuggestionApply,
+  isAdminOperationsWriteReady,
+  mapSuggestionRow,
+  readSeoSuggestion,
+  readSeoSuggestions,
+  requireApplyReconciliation,
+} from "./operations/database";
 import {
   approvedBaseIsCurrent,
   canApplySuggestion,
@@ -115,7 +123,7 @@ export function getAdminSanityStatus(): AdminSanityStatus {
   return {
     configured: Boolean(baseClient),
     readReady: Boolean(baseClient && readToken),
-    writeReady: Boolean(baseClient && writeToken && isAdminDataPlaneAllowed(dataset)),
+    writeReady: Boolean(baseClient && writeToken && isAdminDataPlaneAllowed(dataset) && isAdminOperationsWriteReady()),
     projectId: projectId ?? null,
     dataset: dataset ?? null,
     environment: getAdminEnvironment(),
@@ -162,30 +170,6 @@ const articleIndexQuery = groq`*[_type == "article"] | order(_updatedAt desc) {
 
 const publishedArticleIdsQuery = groq`*[_type == "article"]._id`;
 
-const suggestionQueueQuery = groq`*[_type == "seoSuggestion"] | order(coalesce(createdAt, _createdAt) desc) {
-  "id": coalesce(_originalId, _id),
-  "articleId": targetDocument->_id,
-  "articleTitle": targetDocument->title,
-  type,
-  before,
-  after,
-  reason,
-  confidence,
-  riskLevel,
-  approvedAfter,
-  approvedType,
-  approvedRiskLevel,
-  status,
-  createdBy,
-  reviewedBy,
-  createdAt,
-  reviewedAt,
-  targetRevision,
-  approvedTargetRevision,
-  approvedTargetId,
-  "targetCurrentRevision": targetDocument->_rev
-}`;
-
 export async function listAdminArticles(): Promise<AdminContentResult> {
   const status = getAdminSanityStatus();
   if (!status.configured) return { status, rows: [], error: "not-configured" };
@@ -221,8 +205,27 @@ export async function listSeoSuggestions(): Promise<AdminReviewResult> {
   if (!client) return { status, rows: [], error: "read-token-required" };
 
   try {
-    const rows = await client.fetch(suggestionQueueQuery);
-    return { status, rows: z.array(suggestionRowSchema).parse(rows).filter(isCompatibleReviewSuggestion), error: null };
+    const stored = await readSeoSuggestions();
+    if (!stored) return { status, rows: [], error: "not-configured" };
+    const ids = [...new Set(stored.map((row) => row.target_document_id.replace(/^drafts\./, "")))];
+    const targets = await client.withConfig({ perspective: "raw" }).fetch(
+      groq`*[_type == "article" && (_id in $ids || _id in $draftIds)]{
+        "id": coalesce(_originalId, _id), "title": title, "revision": _rev, "isDraft": _id match "drafts.*"
+      }`,
+      { ids, draftIds: ids.map((id) => `drafts.${id}`) },
+    ) as Array<{ id: string; title?: string; revision: string; isDraft: boolean }>;
+    const targetById = new Map(targets.sort((a, b) => Number(b.isDraft) - Number(a.isDraft)).map((target) => [target.id, target]));
+    const rows = stored.map((row) => {
+      const mapped = mapSuggestionRow(row);
+      const target = targetById.get(mapped.articleId ?? "");
+      return { ...mapped, articleTitle: target?.title ?? null, targetCurrentRevision: target?.revision ?? null };
+    });
+    return {
+      status,
+      rows: z.array(suggestionRowSchema).parse(rows)
+        .filter((row) => row.status === "reconciliation-required" || isCompatibleReviewSuggestion(row)),
+      error: null,
+    };
   } catch {
     return { status, rows: [], error: "request-failed" };
   }
@@ -312,20 +315,7 @@ export function buildAuditLogDocument(input: {
   requestId: string;
   timestamp: string;
 }) {
-  return {
-    _id: privateAdminDocumentId(input.id),
-    _type: "auditLog",
-    actor: input.actor,
-    actorType: input.actorType,
-    action: input.action,
-    objectType: input.objectType,
-    objectId: input.objectId,
-    before: safeAuditJson(input.before),
-    after: safeAuditJson(input.after),
-    requestId: input.requestId,
-    environment: getAdminEnvironment(),
-    timestamp: input.timestamp,
-  };
+  return buildAdminAudit({ ...input, id: privateAdminDocumentId(input.id) });
 }
 
 export function isRevisionConflict(error: unknown) {
@@ -362,22 +352,6 @@ export async function createSeoSuggestion(
     ? deterministicAuditSuggestionId({ draftId, revision: target._rev, type: parsed.type })
     : `seoSuggestion.${randomUUID()}`;
   const suggestionId = privateAdminDocumentId(baseSuggestionId);
-  const suggestionDocument = {
-    _id: suggestionId,
-    _type: "seoSuggestion",
-    targetDocument: { _type: "reference", _ref: cleanId, _weak: true },
-    targetRevision: target._rev,
-    type: parsed.type,
-    before,
-    after: parsed.after,
-    reason: parsed.reason,
-    confidence: parsed.confidence,
-    riskLevel: parsed.riskLevel,
-    evidence: (parsed.evidence ?? []).map((item, index) => ({ _type: "seoEvidence", _key: `evidence-${index}`, ...item })),
-    status: "needs-human-review",
-    createdBy: parsed.createdBy,
-    createdAt: now,
-  };
   const auditDocument = buildAuditLogDocument({
     id: context.idempotentForAuditRevision
       ? `auditLog.${baseSuggestionId.slice("seoSuggestion.".length)}`
@@ -392,20 +366,12 @@ export async function createSeoSuggestion(
     timestamp: now,
   });
 
-  let transaction = rawClient.transaction();
-  if (context.idempotentForAuditRevision) {
-    transaction = transaction.createIfNotExists(suggestionDocument).createIfNotExists(auditDocument);
-  } else {
-    transaction = transaction.create(suggestionDocument).create(auditDocument);
-  }
-  await transaction.commit();
-
-  if (!context.idempotentForAuditRevision) return { _id: suggestionId, status: "needs-human-review" };
-  const existing = await rawClient.fetch(
-    groq`*[_id == $suggestionId && _type == "seoSuggestion"][0]{ "status": coalesce(status, "needs-human-review") }`,
-    { suggestionId },
-  );
-  return { _id: suggestionId, status: z.string().parse(existing?.status) };
+  const saved = await createAdminSeoSuggestion({
+    id: suggestionId, targetDocumentId: cleanId, targetRevision: target._rev, type: parsed.type, before,
+    after: parsed.after, reason: parsed.reason, confidence: parsed.confidence, riskLevel: parsed.riskLevel,
+    evidence: parsed.evidence, status: "needs-human-review", createdBy: parsed.createdBy, createdAt: now,
+  }, auditDocument, Boolean(context.idempotentForAuditRevision));
+  return { _id: saved.id, status: saved.status };
 }
 
 const reviewableSuggestionSchema = z.object({
@@ -430,17 +396,18 @@ export async function approveSeoSuggestion(input: {
   const client = requireWriteClient();
   if (!client) throw new Error("SANITY_WRITE_NOT_CONFIGURED");
 
-  const id = privateAdminDocumentId(parsedId);
+  const id = parsedId;
   const reviewedBy = z.string().min(1).max(320).parse(input.reviewedBy);
   const context = mutationContextSchema.parse(input);
   if (!isHumanReviewActor(context.actorType)) throw new Error("HUMAN_REVIEW_REQUIRED");
   const rawClient = client.withConfig({ perspective: "raw" });
-  const suggestionRaw = await rawClient.fetch(
-    groq`*[_id == $id && _type == "seoSuggestion"][0]{ _id, _rev, status, type, before, after, riskLevel, targetRevision, "targetId": targetDocument._ref }`,
-    { id },
-  );
-  if (!suggestionRaw) throw new Error("SUGGESTION_NOT_FOUND");
-  const suggestion = reviewableSuggestionSchema.parse(suggestionRaw);
+  const stored = await readSeoSuggestion(id);
+  if (!stored) throw new Error("SUGGESTION_NOT_FOUND");
+  const suggestion = reviewableSuggestionSchema.parse({
+    _id: stored.id, _rev: String(stored.row_version), status: stored.status, type: stored.suggestion_type,
+    before: stored.before_value, after: stored.after_value, riskLevel: stored.risk_level,
+    targetRevision: stored.target_revision, targetId: stored.target_document_id,
+  });
   if (!canApproveSuggestion(suggestion.status)) throw new Error("SUGGESTION_STATUS_CONFLICT");
   if (!suggestion.targetRevision || !suggestion.riskLevel) throw new Error("SUGGESTION_APPROVAL_INCOMPLETE");
 
@@ -482,21 +449,10 @@ export async function approveSeoSuggestion(input: {
     timestamp: reviewedAt,
   });
 
-  await commitSuggestionApproval(rawClient, {
-    suggestionId: id,
-    suggestionRevision: suggestion._rev,
-    values: {
-      status: "approved",
-      reviewedBy,
-      reviewedAt,
-      approvedAfter: suggestion.after,
-      approvedBaseValue: storedFieldValue(currentValue),
-      approvedType: suggestion.type,
-      approvedRiskLevel: suggestion.riskLevel,
-      approvedTargetId: suggestion.targetId,
-      approvedTargetRevision: target._rev,
-    },
-    auditDocument,
+  await approveAdminSeoSuggestion({
+    id, rowVersion: stored.row_version, reviewedBy, reviewedAt,
+    approvedBaseValue: storedFieldValue(currentValue), approvedTargetRevision: target._rev,
+    requestId: context.requestId, auditId: auditDocument.id,
   });
 
   return { id, status: "approved", reviewedAt };
@@ -522,30 +478,21 @@ export async function reviewSeoSuggestion(input: {
   actorType: "human" | "ai" | "system";
   requestId: string;
 }) {
-  const id = privateAdminDocumentId(parseSuggestionDocumentId(input.id));
+  const id = parseSuggestionDocumentId(input.id);
   const decision = reviewDecisionSchema.parse(input);
   const reviewer = z.string().min(1).max(320).parse(input.reviewedBy);
   const context = mutationContextSchema.parse(input);
   if (!isHumanReviewActor(context.actorType)) throw new Error("HUMAN_REVIEW_REQUIRED");
 
-  const client = requireWriteClient();
-  if (!client) throw new Error("SANITY_WRITE_NOT_CONFIGURED");
-  const rawClient = client.withConfig({ perspective: "raw" });
-  const raw = await rawClient.fetch(
-    groq`*[_id == $id && _type == "seoSuggestion"][0]{ _id, _rev, status }`,
-    { id },
-  );
-  if (!raw) throw new Error("SUGGESTION_NOT_FOUND");
-  const suggestion = pendingSuggestionSchema.parse(raw);
+  const stored = await readSeoSuggestion(id);
+  if (!stored) throw new Error("SUGGESTION_NOT_FOUND");
+  const suggestion = pendingSuggestionSchema.parse({ _id: stored.id, _rev: String(stored.row_version), status: stored.status });
   if (decision.decision === "edit" ? !canEditSuggestion(suggestion.status) : !canRejectSuggestion(suggestion.status)) {
     throw new Error("SUGGESTION_STATUS_CONFLICT");
   }
 
   const decidedAt = new Date().toISOString();
   const nextStatus = decision.decision === "reject" ? "rejected" : "needs-human-review";
-  const values = decision.decision === "edit"
-    ? { after: decision.after, reason: decision.reason, editedBy: reviewer, editedAt: decidedAt }
-    : { status: nextStatus, rejectionReason: decision.reason, reviewedBy: reviewer, reviewedAt: decidedAt };
   const auditDocument = buildAuditLogDocument({
     id: `auditLog.${randomUUID()}`,
     actor: reviewer,
@@ -559,15 +506,11 @@ export async function reviewSeoSuggestion(input: {
     timestamp: decidedAt,
   });
 
-  try {
-    await rawClient.transaction()
-      .patch(id, (patch) => patch.ifRevisionId(suggestion._rev).set(values))
-      .create(auditDocument)
-      .commit();
-  } catch (error) {
-    if (isRevisionConflict(error)) throw new Error("SUGGESTION_CONFLICT");
-    throw error;
-  }
+  await decideAdminSeoSuggestion({
+    id, rowVersion: stored.row_version, decision: decision.decision,
+    after: decision.decision === "edit" ? decision.after : undefined, reason: decision.reason,
+    reviewer, decidedAt, requestId: context.requestId, auditId: auditDocument.id,
+  });
 
   return decision.decision === "edit"
     ? { id, status: nextStatus, editedAt: decidedAt }
@@ -597,30 +540,22 @@ export async function applyApprovedSeoSuggestion(input: {
   const client = requireWriteClient();
   if (!client) throw new Error("SANITY_WRITE_NOT_CONFIGURED");
 
-  const id = privateAdminDocumentId(parsedId);
+  const id = parsedId;
   const appliedBy = z.string().min(1).max(320).parse(input.appliedBy);
   const context = mutationContextSchema.parse(input);
   if (!isHumanReviewActor(context.actorType)) throw new Error("HUMAN_REVIEW_REQUIRED");
 
   const rawClient = client.withConfig({ perspective: "raw" });
 
-  const suggestionRaw = await rawClient.fetch(
-    groq`*[_type == "seoSuggestion" && _id == $id][0]{
-      "id": _id,
-      "revision": _rev,
-      status,
-      approvedAfter,
-      approvedBaseValue,
-      approvedType,
-      approvedRiskLevel,
-      approvedTargetId,
-      approvedTargetRevision,
-      appliedAt
-    }`,
-    { id },
-  );
-  if (!suggestionRaw) throw new Error("SUGGESTION_NOT_FOUND");
-  const suggestion = applyableSuggestionSchema.parse(suggestionRaw);
+  const stored = await readSeoSuggestion(id);
+  if (!stored) throw new Error("SUGGESTION_NOT_FOUND");
+  const suggestion = applyableSuggestionSchema.parse({
+    id: stored.id, revision: String(stored.row_version), status: stored.status,
+    approvedAfter: stored.approved_after, approvedBaseValue: stored.approved_base_value,
+    approvedType: stored.approved_type, approvedRiskLevel: stored.approved_risk_level,
+    approvedTargetId: stored.approved_target_id, approvedTargetRevision: stored.approved_target_revision,
+    appliedAt: stored.applied_at instanceof Date ? stored.applied_at.toISOString() : stored.applied_at,
+  });
 
   const replay = appliedSuggestionReplay({ suggestionId: id, ...suggestion });
   if (replay) return replay;
@@ -672,16 +607,28 @@ export async function applyApprovedSeoSuggestion(input: {
     timestamp: appliedAt,
   });
 
-  await commitSuggestionApplication(rawClient, {
-    draftId,
-    draftRevision: target._rev,
-    fieldPath,
-    value: suggestion.approvedAfter,
-    suggestionId: id,
-    suggestionRevision: suggestion.revision,
-    suggestionValues: { status: "applied", appliedAt, appliedBy },
-    auditDocument,
-  });
+  const claimedVersion = await claimAdminSuggestionApply(id, stored.row_version, context.requestId, appliedAt);
+  let appliedRevision: string;
+  try {
+    appliedRevision = await patchArticleSeoField(rawClient, {
+      draftId, draftRevision: target._rev, fieldPath, value: suggestion.approvedAfter,
+    });
+  } catch (error) {
+    await requireApplyReconciliation(id, context.requestId, isRevisionConflict(error) ? "sanity-revision-conflict" : "sanity-result-ambiguous");
+    if (isRevisionConflict(error)) throw new Error("SUGGESTION_STALE_BASE");
+    throw new Error("APPLY_RECONCILIATION_REQUIRED");
+  }
+
+  try {
+    await finalizeAdminSuggestionApply({
+      id, rowVersion: claimedVersion, requestId: context.requestId, appliedBy, appliedAt,
+      appliedTargetRevision: appliedRevision, beforePresent: before !== null && before !== undefined && String(before).length > 0,
+      fieldPath, auditId: auditDocument.id, objectId: draftId,
+    });
+  } catch {
+    await requireApplyReconciliation(id, context.requestId, "neon-finalize-ambiguous");
+    throw new Error("APPLY_RECONCILIATION_REQUIRED");
+  }
 
   return {
     suggestionId: id,
