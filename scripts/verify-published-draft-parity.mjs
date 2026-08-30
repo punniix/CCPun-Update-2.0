@@ -5,8 +5,8 @@ const preparedPath = new URL('../../UAT-Reports/Published-Blog-Migration-2026-08
 const prepared = JSON.parse(await readFile(preparedPath, 'utf8'));
 const projectId = process.env.SANITY_API_PROJECT_ID || process.env.NEXT_PUBLIC_SANITY_PROJECT_ID;
 const dataset = process.env.SANITY_API_DATASET || process.env.NEXT_PUBLIC_SANITY_DATASET;
-const token = process.env.SANITY_API_READ_TOKEN || process.env.SANITY_API_WRITE_TOKEN;
-if (!projectId || !dataset || !token) throw new Error('Missing Sanity config');
+const token = process.env.SANITY_API_READ_TOKEN;
+if (!projectId || !dataset || !token) throw new Error('Missing Sanity read config');
 const client = createClient({ projectId, dataset, token, apiVersion: '2026-08-19', useCdn: false, perspective: 'raw' });
 const norm = (s='') => String(s).replace(/\s+/g, ' ').trim();
 const textOfBody = (body=[]) => {
