@@ -1,7 +1,7 @@
 import { CCPUN_VERCEL_PROJECT_IDS, parseAdminEnvironment, type AdminEnvironment } from "../environment";
 import { SYNTHETIC_MARKET_PROVIDER_FIXTURES } from "./providers/ubersuggest";
 
-export const WEBSITE_42_SEO_BRANCH = "codex/website-42-seo-ga4-manual-sync-20260828";
+export const WEBSITE_42_SEO_BRANCH = "codex/website-42-seo-observation-assembler-20260829";
 export const WEBSITE_42_SEO_RULE_VERSION = "seo-intelligence-core-v1";
 export const WEBSITE_42_SEO_BASELINE_VERSION = "synthetic-uat-v1";
 export const WEBSITE_42_SEO_SANITY_PROJECT_ID = "ccb9lnw5";
@@ -258,7 +258,7 @@ export function getSyntheticSeoIntelligenceSnapshot() {
     limitations: [
       "ข้อมูลทั้งหมดเป็น synthetic UAT และไม่ใช่ตัวเลขของ ccpun.com",
       "Baseline CTR เป็นกฎจำลองสำหรับทดสอบ detector ไม่ใช่ค่าเฉลี่ยจริงของ CCPun",
-      "GSC และ GA4 manual sync ยังไม่ป้อน detector; market provider เป็น pure synthetic adapter และยังไม่เรียก provider จริง",
+      "GSC manual sync ป้อน detector เฉพาะแถวที่จับคู่ URL, keyword governance และ Search Intent ได้แบบชัดเจน; GA4 ยังเป็นผลลัพธ์อ่านอย่างเดียวแยกต่างหาก",
       "ยังไม่มีการบันทึก opportunity, สร้าง proposal, แก้ Draft หรือเผยแพร่ Production",
     ],
   };

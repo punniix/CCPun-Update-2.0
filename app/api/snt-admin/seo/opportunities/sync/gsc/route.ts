@@ -7,6 +7,9 @@ import { hasAdminPermission } from "@/lib/admin/rbac";
 import { previousEqualDateRange } from "@/lib/admin/seo-intelligence/contracts";
 import { getSeoIntelligenceRuntimeStatus } from "@/lib/admin/seo-intelligence/foundation";
 import { fetchGscSearchAnalytics } from "@/lib/admin/seo-intelligence/providers/gsc";
+import { assembleGscObservations, buildGscObservationContexts } from "@/lib/admin/seo-intelligence/gsc-observations";
+import { detectSeoOpportunities } from "@/lib/admin/seo-intelligence/foundation";
+import { listPublishedSeoObservationArticles } from "@/lib/admin/sanity-control";
 
 const inputSchema = z.object({
   startDate: z.iso.date(),
@@ -51,6 +54,19 @@ export async function POST(request: Request) {
     // ponytail: one owner and one manual sync at a time; use a durable lock only when scheduled sync exists.
     const current = await fetchGscSearchAnalytics({ siteUrl, token, ...parsed.data, dimensions });
     const previous = await fetchGscSearchAnalytics({ siteUrl, token, ...comparison, dimensions });
+    const editorial = await listPublishedSeoObservationArticles();
+    const assembled = assembleGscObservations({
+      currentRows: current.rows,
+      previousRows: previous.rows,
+      contexts: editorial.error ? [] : buildGscObservationContexts(current.rows, editorial.rows),
+      fetchedAt: current.fetchedAt,
+      comparisonFetchedAt: previous.fetchedAt,
+      dateRange: { start: parsed.data.startDate, end: parsed.data.endDate },
+      comparisonDateRange: { start: comparison.startDate, end: comparison.endDate },
+      currentLimitations: [current.limitation, "Business value uses neutral 3/5 and seasonality remains unknown until editorial governance is explicit."],
+      previousLimitations: [previous.limitation],
+    });
+    const opportunities = detectSeoOpportunities(assembled.observations);
     return NextResponse.json({
       requestId,
       source: "gsc",
@@ -60,9 +76,18 @@ export async function POST(request: Request) {
       fetchedAt: current.fetchedAt,
       totalRows: current.rows.length,
       comparisonRows: previous.rows.length,
+      observationCount: assembled.observations.length,
+      skippedRows: assembled.skipped.length,
+      opportunityCount: opportunities.length,
+      opportunities: opportunities.slice(0, 100),
       sample: current.rows.slice(0, 100),
       truncated: current.truncated || previous.truncated,
-      limitations: [current.limitation, previous.limitation, "ตัวอย่างหน้า Admin จำกัด 100 แถวและยังไม่บันทึกข้อมูล"],
+      limitations: [
+        current.limitation,
+        previous.limitation,
+        ...(editorial.error ? ["Sanity editorial context unavailable; no GSC row entered the detector."] : []),
+        "Detector accepts only exact governed keyword and canonical URL matches; results are limited to 100 and are not persisted.",
+      ],
     }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     const code = error instanceof Error ? error.message : "";

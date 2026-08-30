@@ -119,6 +119,21 @@ export type AdminReviewResult = {
   error: "not-configured" | "read-token-required" | "request-failed" | null;
 };
 
+const publishedSeoObservationArticleSchema = z.object({
+  id: z.string().min(1),
+  slug: z.string().min(1),
+  category: z.string().min(1),
+  categorySlug: z.string().min(1),
+  focusKeyword: z.string().nullish(),
+  secondaryKeywords: z.array(z.string()).nullish(),
+  searchIntent: z.string().nullish(),
+  noindex: z.boolean().nullish(),
+  publishedAt: z.string().nullish(),
+  updatedAt: z.string().datetime(),
+});
+
+export type PublishedSeoObservationArticle = z.infer<typeof publishedSeoObservationArticleSchema>;
+
 export function getAdminSanityStatus(): AdminSanityStatus {
   return {
     configured: Boolean(baseClient),
@@ -170,6 +185,19 @@ const articleIndexQuery = groq`*[_type == "article"] | order(_updatedAt desc) {
 
 const publishedArticleIdsQuery = groq`*[_type == "article"]._id`;
 
+const publishedSeoObservationArticlesQuery = groq`*[_type == "article" && defined(slug.current)] {
+  "id": _id,
+  "slug": slug.current,
+  "category": category->title,
+  "categorySlug": category->slug.current,
+  "focusKeyword": seo.focusKeyword,
+  "secondaryKeywords": seo.secondaryKeywords,
+  "searchIntent": seo.searchIntent,
+  "noindex": seo.noindex,
+  publishedAt,
+  "updatedAt": _updatedAt
+}`;
+
 export async function listAdminArticles(): Promise<AdminContentResult> {
   const status = getAdminSanityStatus();
   if (!status.configured) return { status, rows: [], error: "not-configured" };
@@ -194,6 +222,23 @@ export async function listAdminArticles(): Promise<AdminContentResult> {
     };
   } catch {
     return { status, rows: [], error: "request-failed" };
+  }
+}
+
+export async function listPublishedSeoObservationArticles(): Promise<{
+  rows: PublishedSeoObservationArticle[];
+  error: "not-configured" | "read-token-required" | "request-failed" | null;
+}> {
+  if (!baseClient) return { rows: [], error: "not-configured" };
+  const client = requireReadClient("published");
+  if (!client) return { rows: [], error: "read-token-required" };
+  try {
+    return {
+      rows: z.array(publishedSeoObservationArticleSchema).parse(await client.fetch(publishedSeoObservationArticlesQuery)),
+      error: null,
+    };
+  } catch {
+    return { rows: [], error: "request-failed" };
   }
 }
 
