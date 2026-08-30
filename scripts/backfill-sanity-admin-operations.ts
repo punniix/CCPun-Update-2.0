@@ -237,7 +237,7 @@ async function main() {
   const connectionString = process.env.CCPUN_ADMIN_BACKFILL_DATABASE_URL?.trim();
   if (!connectionString) throw new Error("CCPUN_ADMIN_BACKFILL_DATABASE_URL is required");
   const connectionUrl = new URL(connectionString);
-  const endpointHosts = new Set([`${TARGET.endpointId}.ap-southeast-1.aws.neon.tech`, `${TARGET.endpointId}-pooler.ap-southeast-1.aws.neon.tech`]);
+  const endpointHosts = new Set([`${TARGET.endpointId}.c-3.ap-southeast-1.aws.neon.tech`, `${TARGET.endpointId}-pooler.c-3.ap-southeast-1.aws.neon.tech`]);
   if (connectionUrl.protocol !== "postgresql:" || !endpointHosts.has(connectionUrl.hostname)) throw new Error("Backfill URL must use the exact UAT Neon endpoint");
   if (decodeURIComponent(connectionUrl.pathname.slice(1)) !== TARGET.database) throw new Error("Backfill URL database mismatch");
   if (!["neondb_owner", "cloud_admin"].includes(decodeURIComponent(connectionUrl.username))) {

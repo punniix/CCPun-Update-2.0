@@ -64,7 +64,7 @@ test("runtime operational records use only CCPUN_ADMIN_DATABASE_URL", () => {
 test("runtime identity validation accepts only the exact UAT lane, resource, role and database", () => {
   const valid = {
     environment: "admin-uat", projectId: "young-term-47483330", branchId: "br-crimson-mouse-az7ajkv8", database: "neondb",
-    connectionString: "postgresql://ccpun_admin_runtime:secret@ep-mute-frost-aztvz394-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require",
+    connectionString: "postgresql://ccpun_admin_runtime:secret@ep-mute-frost-aztvz394-pooler.c-3.ap-southeast-1.aws.neon.tech/neondb?sslmode=require",
   };
   assert.equal(isAdminOperationsRuntimeIdentityValid(valid), true);
   for (const changed of [
@@ -72,6 +72,7 @@ test("runtime identity validation accepts only the exact UAT lane, resource, rol
     { connectionString: "postgresql://neondb_owner:secret@example.neon.tech/neondb" },
     { connectionString: "postgresql://ccpun_admin_runtime:secret@example.neon.tech/other" },
     { connectionString: "postgresql://ccpun_admin_runtime:secret@evil.example/neondb" },
+    { connectionString: "postgresql://ccpun_admin_runtime:secret@ep-mute-frost-aztvz394-pooler.ap-southeast-1.aws.neon.tech/neondb" },
     { connectionString: "postgresql://ccpun_admin_runtime:secret@ep-cloned-branch-123456.ap-southeast-1.aws.neon.tech/neondb" },
   ]) assert.equal(isAdminOperationsRuntimeIdentityValid({ ...valid, ...changed }), false);
 });

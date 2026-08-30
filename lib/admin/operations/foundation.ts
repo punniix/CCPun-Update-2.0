@@ -9,8 +9,8 @@ export const ADMIN_OPERATIONS_IDENTITY = {
 } as const;
 
 const ADMIN_OPERATIONS_HOSTS = new Set([
-  `${ADMIN_OPERATIONS_IDENTITY.endpointId}.ap-southeast-1.aws.neon.tech`,
-  `${ADMIN_OPERATIONS_IDENTITY.endpointId}-pooler.ap-southeast-1.aws.neon.tech`,
+  `${ADMIN_OPERATIONS_IDENTITY.endpointId}.c-3.ap-southeast-1.aws.neon.tech`,
+  `${ADMIN_OPERATIONS_IDENTITY.endpointId}-pooler.c-3.ap-southeast-1.aws.neon.tech`,
 ]);
 
 export type AdminOperationsRuntimeIdentity = {
