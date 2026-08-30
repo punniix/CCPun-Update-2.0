@@ -187,7 +187,7 @@ test("duplicate identity, unknown categories, and ambiguous target references fa
   );
 });
 
-test("apply uses revision guards and creates exactly one atomic audit without article creation", async () => {
+test("apply requires durable Neon intent and success audits around the revision-guarded Sanity mutation", async () => {
   const operations: Array<Record<string, unknown>> = [];
   let transactionCount = 0;
   let commitCount = 0;
@@ -233,12 +233,13 @@ test("apply uses revision guards and creates exactly one atomic audit without ar
     tags: [],
   }], [lifeCategory]);
 
-  const result = await applyTaxonomyMigration(client, plan, "2026-08-22T00:00:00.000Z");
+  const audits: Array<Record<string, unknown>> = [];
+  const result = await applyTaxonomyMigration(client, plan, "2026-08-22T00:00:00.000Z", async (audit) => { audits.push(audit); });
   assert.deepEqual(result, { changed: 1, categoriesCreated: 3, auditLogCreated: true });
   assert.equal(transactionCount, 1);
   assert.equal(commitCount, 1);
   assert.equal(operations.filter((operation) => operation.kind === "patch").length, 1);
-  assert.equal(operations.filter((operation) => operation.kind === "createIfNotExists").length, 4);
+  assert.equal(operations.filter((operation) => operation.kind === "createIfNotExists").length, 3);
   const articlePatch = operations.find((operation) => operation.kind === "patch");
   assert.deepEqual(articlePatch, {
     kind: "patch",
@@ -249,11 +250,7 @@ test("apply uses revision guards and creates exactly one atomic audit without ar
       tags: ["ประกันสุขภาพ"],
     },
   });
-  const audit = operations.find(
-    (operation) => operation.kind === "createIfNotExists" && (operation.document as Record<string, unknown> | undefined)?._type === "auditLog",
-  )?.document as Record<string, unknown>;
-  assert.equal(audit._type, "auditLog");
-  assert.equal(audit.action, "uat-taxonomy:normalize-drafts");
+  assert.deepEqual(audits.map((audit) => audit.action), ["uat-taxonomy:normalize-intent", "uat-taxonomy:normalize-success"]);
   assert.doesNotMatch(JSON.stringify(operations), /body|publishedAt|delete|createOrReplace/);
 });
 

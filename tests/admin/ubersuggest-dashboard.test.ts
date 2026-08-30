@@ -46,10 +46,12 @@ test("Ubersuggest snapshots contain no OAuth credentials and stay hidden from St
   assert.match(studioPolicy, /"ubersuggestGeoSnapshot"/);
 });
 
-test("Ubersuggest sync writes account GEO and audit atomically while reusing Sanity research history", () => {
+test("Ubersuggest keeps account GEO in Sanity and stores audit plus research history in Neon", () => {
   assert.match(snapshots, /getAdminSanityResearchWriteToken/);
-  assert.match(snapshots, /transaction\(\)\.create\(accountDocument\)\.create\(geoDocument\)\.create\(auditDocument\)\.commit\(\)/);
-  assert.match(snapshots, /_type == "researchSnapshot" && provider == "ubersuggest"/);
+  assert.match(snapshots, /transaction\(\)\.create\(accountDocument\)\.create\(geoDocument\)\.commit\(\)/);
+  assert.match(snapshots, /insertAdminAudit\(auditDocument\)/);
+  assert.match(snapshots, /readAdminResearch\(limit\)/);
+  assert.doesNotMatch(snapshots, /_type == "researchSnapshot"/);
   assert.match(route, /SYNC_CACHE_HOURS = 1/);
   assert.match(route, /research:provider-query/);
   assert.match(route, /identity\.actorType !== "human"/);

@@ -1,136 +1,58 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {
-  appliedSuggestionReplay,
-  commitSuggestionApplication,
-  commitSuggestionApproval,
-  type ReviewMutationClient,
-} from "../../lib/admin/sanity-review-mutations";
+import { appliedSuggestionReplay, patchArticleSeoField, type ArticlePatchClient } from "../../lib/admin/sanity-review-mutations";
 
-type Operation =
-  | { type: "patch"; id: string; revision: string; values: Record<string, unknown> }
-  | { type: "create"; document: Record<string, unknown> }
-  | { type: "commit" };
-
-function fakeClient(error?: unknown) {
-  const operations: Operation[] = [];
-  const transaction = {
-    patch(id: string, update: (patch: { ifRevisionId(revision: string): unknown }) => unknown) {
-      let revision = "";
-      const patch = {
-        ifRevisionId(value: string) {
-          revision = value;
-          return {
-            set(values: Record<string, unknown>) {
-              operations.push({ type: "patch", id, revision, values });
-              return patch;
-            },
-          };
-        },
-      };
-      update(patch);
-      return transaction;
-    },
-    create(document: Record<string, unknown>) {
-      operations.push({ type: "create", document });
-      return transaction;
-    },
-    async commit() {
-      operations.push({ type: "commit" });
-      if (error) throw error;
-    },
+function fakeClient(result: { _rev?: string } = { _rev: "article-rev-2" }) {
+  const calls: unknown[] = [];
+  const patch = {
+    ifRevisionId(revision: string) { calls.push(["revision", revision]); return patch; },
+    set(values: Record<string, unknown>) { calls.push(["set", values]); return patch; },
+    async commit(options: { returnDocuments: true }) { calls.push(["commit", options]); return result; },
   };
-  return { client: { transaction: () => transaction } as unknown as ReviewMutationClient, operations };
+  return { client: { patch(id: string) { calls.push(["patch", id]); return patch; } } as ArticlePatchClient, calls };
 }
 
-test("approval maps Sanity revision conflicts without losing its audit transaction", async () => {
-  const conflict = fakeClient({ statusCode: 409 });
-  await assert.rejects(
-    commitSuggestionApproval(conflict.client, {
-      suggestionId: "drafts.seoSuggestion.audit.0123456789abcdef0123456789abcdef",
-      suggestionRevision: "suggestion-rev-1",
-      values: { status: "approved" },
-      auditDocument: { _id: "drafts.auditLog.approve", _type: "auditLog" },
-    }),
-    /SUGGESTION_CONFLICT/,
-  );
-  assert.deepEqual(conflict.operations.map(({ type }) => type), ["patch", "create", "commit"]);
-});
-
-test("apply patches only the Draft and review record in one transaction", async () => {
+test("cross-store apply patches only the exact Sanity Article draft revision", async () => {
   const fake = fakeClient();
-  await commitSuggestionApplication(fake.client, {
-    draftId: "drafts.article-1",
-    draftRevision: "article-rev-1",
-    fieldPath: "seo.title",
-    value: "Reviewed title",
-    suggestionId: "drafts.seoSuggestion.audit.0123456789abcdef0123456789abcdef",
-    suggestionRevision: "suggestion-rev-1",
-    suggestionValues: { status: "applied" },
-    auditDocument: { _id: "drafts.auditLog.apply", _type: "auditLog" },
+  const revision = await patchArticleSeoField(fake.client, {
+    draftId: "drafts.article-1", draftRevision: "article-rev-1", fieldPath: "seo.title", value: "Reviewed title",
   });
-
-  assert.deepEqual(fake.operations, [
-    { type: "patch", id: "drafts.article-1", revision: "article-rev-1", values: { "seo.title": "Reviewed title" } },
-    { type: "patch", id: "drafts.seoSuggestion.audit.0123456789abcdef0123456789abcdef", revision: "suggestion-rev-1", values: { status: "applied" } },
-    { type: "create", document: { _id: "drafts.auditLog.apply", _type: "auditLog" } },
-    { type: "commit" },
+  assert.equal(revision, "article-rev-2");
+  assert.deepEqual(fake.calls, [
+    ["patch", "drafts.article-1"], ["revision", "article-rev-1"],
+    ["set", { "seo.title": "Reviewed title" }], ["commit", { returnDocuments: true }],
   ]);
-  assert.equal(fake.operations.some((operation) => "publish" in operation), false);
 });
 
-test("apply maps either Draft or suggestion revision conflict to a stable conflict", async () => {
-  const conflict = fakeClient({ response: { statusCode: 409 } });
-  await assert.rejects(
-    commitSuggestionApplication(conflict.client, {
-      draftId: "drafts.article-1",
-      draftRevision: "stale-article-rev",
-      fieldPath: "seo.title",
-      value: "Reviewed title",
-      suggestionId: "drafts.seoSuggestion.audit.0123456789abcdef0123456789abcdef",
-      suggestionRevision: "stale-suggestion-rev",
-      suggestionValues: { status: "applied" },
-      auditDocument: { _id: "drafts.auditLog.apply-conflict", _type: "auditLog" },
-    }),
-    /SUGGESTION_CONFLICT/,
-  );
-  assert.deepEqual(conflict.operations.map(({ type }) => type), ["patch", "patch", "create", "commit"]);
+test("cross-store apply rejects published targets and ambiguous Sanity results", async () => {
+  const fake = fakeClient({});
+  await assert.rejects(patchArticleSeoField(fake.client, {
+    draftId: "article-1", draftRevision: "rev", fieldPath: "seo.title", value: "x",
+  }), /TARGET_DRAFT_REQUIRED/);
+  await assert.rejects(patchArticleSeoField(fake.client, {
+    draftId: "drafts.article-1", draftRevision: "rev", fieldPath: "seo.title", value: "x",
+  }), /SANITY_MUTATION_RESULT_AMBIGUOUS/);
 });
 
-test("apply rejects a Published target before opening a transaction", async () => {
-  const fake = fakeClient();
-  await assert.rejects(
-    commitSuggestionApplication(fake.client, {
-      draftId: "article-1",
-      draftRevision: "article-rev-1",
-      fieldPath: "seo.title",
-      value: "Unsafe title",
-      suggestionId: "drafts.seoSuggestion.audit.0123456789abcdef0123456789abcdef",
-      suggestionRevision: "suggestion-rev-1",
-      suggestionValues: { status: "applied" },
-      auditDocument: { _id: "drafts.auditLog.apply", _type: "auditLog" },
-    }),
-    /TARGET_DRAFT_REQUIRED/,
-  );
-  assert.deepEqual(fake.operations, []);
+test("cross-store apply accepts only the four exact supported SEO field paths", async () => {
+  for (const fieldPath of ["seo.title", "seo.description", "seo.focusKeyword", "seo.searchIntent"]) {
+    await patchArticleSeoField(fakeClient().client, { draftId: "drafts.article-1", draftRevision: "rev", fieldPath, value: "x" });
+  }
+  for (const fieldPath of ["seo", "seo.ogTitle", "seo.title.extra", "seo.__proto__"]) {
+    await assert.rejects(patchArticleSeoField(fakeClient().client, {
+      draftId: "drafts.article-1", draftRevision: "rev", fieldPath, value: "x",
+    }), /SEO_FIELD_REQUIRED/);
+  }
 });
 
-test("an applied replay is idempotent and requires no mutation client", () => {
+test("an applied replay is idempotent and performs no mutation", () => {
   assert.deepEqual(appliedSuggestionReplay({
     suggestionId: "drafts.seoSuggestion.audit.0123456789abcdef0123456789abcdef",
-    status: "applied",
-    approvedAfter: "Reviewed title",
-    approvedType: "seo-title",
-    approvedRiskLevel: "low",
-    approvedTargetId: "article-1",
-    appliedAt: "2026-08-29T00:00:00.000Z",
+    status: "applied", approvedAfter: "Reviewed title", approvedType: "seo-title", approvedRiskLevel: "low",
+    approvedTargetId: "article-1", appliedAt: "2026-08-29T00:00:00.000Z",
   }), {
     suggestionId: "drafts.seoSuggestion.audit.0123456789abcdef0123456789abcdef",
-    draftId: "drafts.article-1",
-    fieldPath: "seo.title",
-    before: null,
-    after: "Reviewed title",
-    appliedAt: "2026-08-29T00:00:00.000Z",
-    alreadyApplied: true,
+    draftId: "drafts.article-1", fieldPath: "seo.title", before: null, after: "Reviewed title",
+    appliedAt: "2026-08-29T00:00:00.000Z", alreadyApplied: true,
   });
 });

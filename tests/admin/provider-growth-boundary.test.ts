@@ -50,16 +50,17 @@ test("provider calls stay bounded and expose only stable friendly errors", () =>
   assert.doesNotMatch(researchPage, />ตรวจเมื่อ</);
 });
 
-test("provider retries reuse fresh snapshots and production research uses its own persistence token", () => {
+test("provider retries reuse fresh Neon snapshots without credential fallback", () => {
   assert.match(researchRoute, /findFreshResearchSnapshot\("ubersuggest"/);
   assert.match(researchRoute, /const inFlight = new Map/);
   assert.match(researchRoute, /research:provider-query/);
   assert.match(researchRoute, /PROVIDER_RATE_LIMIT/);
   assert.match(researchRoute, /Retry-After/);
-  assert.match(research, /keywordKey == \$keywordKey/);
-  assert.match(research, /update\(`\$\{parsed\.provider\}\|\$\{keywordKey\}\|\$\{day\}`\)/);
-  const credentials = readFileSync(new URL("../../lib/admin/sanity-credentials.ts", import.meta.url), "utf8");
-  assert.match(credentials, /environment === "local-production"\s*\? process\.env\.SANITY_PRODUCTION_RESEARCH_WRITE_TOKEN\s*: process\.env\.SANITY_API_WRITE_TOKEN/);
+  assert.match(research, /findAdminResearchSnapshot/);
+  assert.match(research, /update\(`\$\{parsed\.provider\}\|\$\{keywordKey\}\|\$\{checkedAt\.slice\(0, 10\)\}`\)/);
+  const operations = readFileSync(new URL("../../lib/admin/operations/database.ts", import.meta.url), "utf8");
+  assert.match(operations, /process\.env\.CCPUN_ADMIN_DATABASE_URL/);
+  assert.doesNotMatch(operations, /SANITY_[A-Z0-9_]*TOKEN/);
 });
 
 test("growth sources fail independently and GEO is explicitly non-ranking", () => {

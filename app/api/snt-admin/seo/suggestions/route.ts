@@ -49,7 +49,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ id: suggestion._id, status: "needs-human-review", requestId }, { status: 201 });
   } catch (error) {
-    if (error instanceof Error && error.message === "SANITY_WRITE_NOT_CONFIGURED") {
+    if (error instanceof Error && ["SANITY_WRITE_NOT_CONFIGURED", "ADMIN_DATABASE_NOT_CONFIGURED"].includes(error.message)) {
       return NextResponse.json({ error: "write-token-required" }, { status: 503 });
     }
     if (error instanceof Error && error.message === "TARGET_DRAFT_NOT_FOUND") {

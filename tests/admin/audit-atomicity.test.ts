@@ -13,24 +13,20 @@ const sanityControl = readFileSync(new URL("../../lib/admin/sanity-control.ts", 
 const studioScore = readFileSync(new URL("../../cms/sanity/components/SeoScoreInput.tsx", import.meta.url), "utf8");
 const seoDetailPage = readFileSync(new URL("../../app/snt-admin/(protected)/seo/[id]/page.tsx", import.meta.url), "utf8");
 
-test("research and persisted SEO audit mutations commit their audit document atomically", () => {
-  assert.match(
-    researchService,
-    /transaction\.create\(snapshotDocument\)\.create\(auditDocument\)\.commit\(\)/,
-  );
-  assert.match(researchService, /transaction\.createIfNotExists\(snapshotDocument\)\.createIfNotExists\(auditDocument\)\.commit\(\)/);
-  assert.match(
-    seoAuditService,
-    /transaction\(\)\.patch\([\s\S]+\)\.create\(auditDocument\)\.commit\(\)/,
-  );
-  assert.match(seoAuditService, /patch\.ifRevisionId\(article\.revision\)/);
+test("research and audit records use Neon while Article audit snapshots keep exact Sanity revisions", () => {
+  const operations = readFileSync(new URL("../../lib/admin/operations/database.ts", import.meta.url), "utf8");
+  assert.match(researchService, /createAdminResearchSnapshot/);
+  assert.match(operations, /WITH inserted AS[\s\S]*ccpun_admin\.research_snapshot[\s\S]*ccpun_admin\.audit_log/);
+  assert.match(seoAuditService, /patch\(targetId\)\.ifRevisionId\(article\.revision\)/);
+  assert.match(seoAuditService, /insertAdminAudit\(auditDocument\)/);
+  assert.doesNotMatch(researchService, /_type:\s*"researchSnapshot"/);
   assert.doesNotMatch(researchRoute, /appendAuditLog/);
   assert.doesNotMatch(seoAuditRoute, /appendAuditLog/);
 });
 
 test("audits and generated proposals stay bound to one article revision", () => {
   assert.match(seoAuditService, /"revision": _rev/);
-  assert.match(seoAuditService, /patch\.ifRevisionId\(article\.revision\)/);
+  assert.match(seoAuditService, /ifRevisionId\(article\.revision\)/);
   assert.match(proposalRoute, /audit\.sourceRevision !== contextData\.revision/);
   assert.match(proposalRoute, /expectedTargetRevision: audit\.sourceRevision/);
   assert.match(sanityControl, /target\._rev !== context\.expectedTargetRevision/);

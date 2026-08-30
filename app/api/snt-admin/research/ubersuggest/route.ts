@@ -67,7 +67,7 @@ export async function POST(request: Request) {
     if (code === "UBERSUGGEST_AUTH_REQUIRED") return NextResponse.json({ error: "provider-auth-required", requestId }, { status: 401 });
     if (code === "UBERSUGGEST_TIMEOUT") return NextResponse.json({ error: "provider-timeout", requestId }, { status: 504 });
     if (code === "UBERSUGGEST_INVALID_RESPONSE") return NextResponse.json({ error: "provider-invalid-response", requestId }, { status: 502 });
-    if (code === "SANITY_WRITE_NOT_CONFIGURED") return NextResponse.json({ error: "research-write-not-configured", requestId }, { status: 503 });
+    if (["SANITY_WRITE_NOT_CONFIGURED", "ADMIN_DATABASE_NOT_CONFIGURED"].includes(code)) return NextResponse.json({ error: "research-write-not-configured", requestId }, { status: 503 });
     return NextResponse.json({ error: "provider-tool-failed", requestId }, { status: 502 });
   } finally {
     if (inFlight.get(key) === task) inFlight.delete(key);

@@ -1,7 +1,8 @@
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { pathToFileURL } from "node:url";
 import { createClient } from "@sanity/client";
 import { ACTIVE_ARTICLE_CATEGORIES, normalizeArticleTaxonomy } from "../lib/content/taxonomy";
+import { appendScriptAdminAudit } from "./admin-operations-audit";
 
 const UAT_PROJECT_ID = "ccb9lnw5";
 const UAT_DATASET = "uat";
@@ -290,8 +291,17 @@ export async function applyTaxonomyMigration(
   client: TransactionClient,
   plan: TaxonomyMigrationPlan,
   timestamp = new Date().toISOString(),
+  appendAudit: typeof appendScriptAdminAudit | undefined = undefined,
 ) {
   if (!plan.changes.length && !plan.categoryCreates.length) return { changed: 0, categoriesCreated: 0, auditLogCreated: false };
+  if (!appendAudit) throw new Error("Refusing taxonomy mutation without Neon Admin audit");
+
+  const auditId = auditIdFor(plan);
+  const requestId = randomUUID();
+  await appendAudit({
+    id: `${auditId}.intent`, action: "uat-taxonomy:normalize-intent", objectId: `uat-taxonomy:${plan.changes.length}`,
+    requestId, timestamp, after: { status: "started" },
+  });
 
   let transaction = client.transaction();
   for (const category of plan.categoryCreates) transaction = transaction.createIfNotExists(category);
@@ -300,27 +310,11 @@ export async function applyTaxonomyMigration(
     transaction = transaction.patch(change.id, (patch) => patch.ifRevisionId(change.revision).set(change.set));
   }
 
-  const summary = plan.changes.map(({ id, logicalId, changedFields, before, after }) => ({
-    id,
-    logicalId,
-    changedFields,
-    before,
-    after,
-  }));
-  transaction = transaction.createIfNotExists({
-    _id: auditIdFor(plan),
-    _type: "auditLog",
-    actor: "taxonomy-migration",
-    actorType: "system",
-    action: "uat-taxonomy:normalize-drafts",
-    objectType: "article-batch",
-    objectId: `uat-taxonomy:${plan.changes.length}`,
-    before: JSON.stringify(summary.map(({ id, logicalId, changedFields, before }) => ({ id, logicalId, changedFields, before }))),
-    after: JSON.stringify(summary.map(({ id, logicalId, changedFields, after }) => ({ id, logicalId, changedFields, after }))),
-    environment: "uat",
-    timestamp,
-  });
   await transaction.commit({ tag: "ccpun.uat.taxonomy-normalization" });
+  await appendAudit({
+    id: `${auditId}.success`, action: "uat-taxonomy:normalize-success", objectId: `uat-taxonomy:${plan.changes.length}`,
+    requestId, timestamp, after: { status: "succeeded" },
+  });
   return { changed: plan.changes.length, categoriesCreated: plan.categoryCreates.length, auditLogCreated: true };
 }
 
@@ -391,7 +385,7 @@ export async function main(args = process.argv.slice(2), environment: Environmen
     return report;
   }
 
-  const result = await applyTaxonomyMigration(client as unknown as TransactionClient, plan);
+  const result = await applyTaxonomyMigration(client as unknown as TransactionClient, plan, new Date().toISOString(), appendScriptAdminAudit);
   console.log(JSON.stringify({ ...report, ...result }, null, 2));
   return { ...report, ...result };
 }

@@ -53,7 +53,7 @@ export async function POST() {
     if (code === "UBERSUGGEST_PROJECT_NOT_FOUND") return NextResponse.json({ error: "provider-project-not-found", requestId }, { status: 404 });
     if (code === "UBERSUGGEST_TIMEOUT") return NextResponse.json({ error: "provider-timeout", requestId }, { status: 504 });
     if (code === "UBERSUGGEST_INVALID_RESPONSE") return NextResponse.json({ error: "provider-invalid-response", requestId }, { status: 502 });
-    if (code === "SANITY_WRITE_NOT_CONFIGURED") return NextResponse.json({ error: "research-write-not-configured", requestId }, { status: 503 });
+    if (["SANITY_WRITE_NOT_CONFIGURED", "ADMIN_DATABASE_NOT_CONFIGURED"].includes(code)) return NextResponse.json({ error: "research-write-not-configured", requestId }, { status: 503 });
     return NextResponse.json({ error: "provider-tool-failed", requestId }, { status: 502 });
   } finally {
     if (syncInFlight === task) syncInFlight = null;
