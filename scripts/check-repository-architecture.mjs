@@ -10,6 +10,10 @@ const sourceExtensions = new Set([".js", ".jsx", ".mjs", ".ts", ".tsx"]);
 const read = (file) => readFileSync(file, "utf8");
 const sourceFiles = files.filter((file) => sourceExtensions.has(extname(file)));
 
+for (const pointer of ["HANDOFF.md", "docs/current-work.md", "docs/architecture.md"]) {
+  assert.ok(files.includes(pointer), `missing repository pointer: ${pointer}`);
+}
+
 const allowedTopLevelDirectories = new Set([
   ".agents", ".github", ".impeccable", ".qwen", ".windsurf", "app", "cms", "components",
   "db", "docs", "features", "hooks", "lib", "public", "qa", "scripts", "skills", "tests", "tools",
@@ -51,6 +55,14 @@ for (const file of sourceFiles.filter((file) => file.startsWith("features/"))) {
   for (const match of read(file).matchAll(/@\/features\/([^/'"]+)/g)) {
     assert.equal(match[1], owner, `cross-feature import from ${file} to ${match[1]}`);
   }
+}
+
+for (const file of sourceFiles) {
+  assert.doesNotMatch(
+    read(file),
+    /SANITY_[A-Z0-9_]*READ_TOKEN\s*\|\|\s*process\.env\.SANITY_[A-Z0-9_]*WRITE_TOKEN/,
+    `read credentials must never fall back to write credentials: ${file}`,
+  );
 }
 
 assert.equal(read("lib/nav-config.json"), read("public/nav-config.json"), "public nav compatibility mirror drifted");
