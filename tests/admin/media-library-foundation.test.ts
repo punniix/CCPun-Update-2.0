@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import { CCPUN_VERCEL_PROJECT_IDS } from "../../lib/admin/environment";
 import {
+  getGoogleDrivePickerPublicConfig,
   getMediaStorageProviderState,
   isMediaLibraryEnabled,
   MEDIA_OPERATIONAL_TABLES,
@@ -16,6 +17,7 @@ import {
   WEBSITE_42_MEDIA_SANITY_DATASET,
   WEBSITE_42_MEDIA_SANITY_PROJECT_ID,
 } from "../../lib/admin/media/foundation";
+import { parseDriveTokenResponse } from "../../features/admin/media/GoogleDrivePickerPanel";
 import {
   MAX_MEDIA_UPLOAD_INTENT_BODY_BYTES,
   validateMediaUploadIntentHttpRequest,
@@ -52,6 +54,38 @@ test("Media Library requires the exact Admin UAT branch and data plane", () => {
   ]) {
     assert.equal(isMediaLibraryEnabled({ ...enabledInput, ...change }), false, JSON.stringify(change));
   }
+});
+
+test("Drive Picker accepts only exact public configuration and one-hour drive.file tokens", () => {
+  const config = {
+    NEXT_PUBLIC_CCPUN_GOOGLE_DRIVE_PICKER_API_KEY: "AIzaSyExamplePickerKey1234567890",
+    NEXT_PUBLIC_CCPUN_GOOGLE_DRIVE_APP_ID: "123456789012",
+    NEXT_PUBLIC_CCPUN_GOOGLE_DRIVE_OAUTH_CLIENT_ID: "123456789012-example.apps.googleusercontent.com",
+  };
+  assert.deepEqual(getGoogleDrivePickerPublicConfig(config), {
+    apiKey: config.NEXT_PUBLIC_CCPUN_GOOGLE_DRIVE_PICKER_API_KEY,
+    appId: config.NEXT_PUBLIC_CCPUN_GOOGLE_DRIVE_APP_ID,
+    clientId: config.NEXT_PUBLIC_CCPUN_GOOGLE_DRIVE_OAUTH_CLIENT_ID,
+  });
+  assert.equal(getGoogleDrivePickerPublicConfig({ ...config, NEXT_PUBLIC_CCPUN_GOOGLE_DRIVE_APP_ID: "not-a-project-number" }), null);
+
+  const nowMs = 1_787_920_000_000;
+  const parsed = parseDriveTokenResponse({
+    access_token: "ephemeral-test-token",
+    expires_in: 3_600,
+    scope: "https://www.googleapis.com/auth/drive.file",
+  }, nowMs);
+  assert.equal(parsed?.authorization.expiresAtMs, nowMs + 3_600_000);
+  assert.equal(parseDriveTokenResponse({
+    access_token: "ephemeral-test-token",
+    expires_in: 3_600,
+    scope: "https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.readonly",
+  }, nowMs), null);
+  assert.equal(parseDriveTokenResponse({
+    access_token: "ephemeral-test-token",
+    expires_in: 3_601,
+    scope: "https://www.googleapis.com/auth/drive.file",
+  }, nowMs), null);
 });
 
 test("Synthetic media fixtures are deterministic metadata without storage URLs", () => {
@@ -219,6 +253,7 @@ test("Media migration is additive, checksum-locked and provider-neutral", () => 
 test("Distribution UAT owns the Media Library presentation without a new Admin navigation item", () => {
   const page = read("features/admin/social/page.tsx");
   const mediaSection = read("features/admin/media/MediaLibraryUatSection.tsx");
+  const pickerPanel = read("features/admin/media/GoogleDrivePickerPanel.tsx");
   const route = read("app/snt-admin/(protected)/distribution/page.tsx");
   const navigation = read("app/snt-admin/(protected)/layout.tsx");
   assert.match(page, /getMediaLibraryRuntimeStatus/);
@@ -226,10 +261,18 @@ test("Distribution UAT owns the Media Library presentation without a new Admin n
   assert.doesNotMatch(mediaSection, /text-white\/45/);
   assert.match(mediaSection, /text-white\/55/);
   assert.match(mediaSection, /GOOGLE DRIVE · SELECTED FILE ONLY/);
-  assert.match(mediaSection, /เลือกไฟล์จาก Google Drive/);
-  assert.match(mediaSection, /Refresh metadata/);
+  assert.match(pickerPanel, /เลือกไฟล์จาก Google Drive/);
+  assert.match(pickerPanel, /Refresh metadata/);
   assert.match(mediaSection, /Manual OAuth \/ Picker/);
-  assert.equal((mediaSection.match(/disabled aria-disabled="true"/g) ?? []).length, 2);
+  assert.match(pickerPanel, /https:\/\/accounts\.google\.com\/gsi\/client/);
+  assert.match(pickerPanel, /https:\/\/apis\.google\.com\/js\/api\.js/);
+  assert.match(pickerPanel, /include_granted_scopes: false/);
+  assert.match(pickerPanel, /new picker\.PickerBuilder\(\)/);
+  assert.match(pickerPanel, /setMode\(picker\.DocsViewMode\.LIST\)/);
+  assert.match(pickerPanel, /setAppId\(config!\.appId\)/);
+  assert.match(pickerPanel, /fetch\("\/api\/snt-admin\/media\/"/);
+  assert.match(pickerPanel, /clearAuthorization\(\)/);
+  assert.doesNotMatch(pickerPanel, /localStorage|sessionStorage|document\.cookie|refresh_token/i);
   assert.equal(route.trim(), 'export { metadata, default } from "@/features/admin/social/page";');
   assert.equal((navigation.match(/\{ href: "\/snt-admin\/distribution\/"/g) ?? []).length, 1);
 });

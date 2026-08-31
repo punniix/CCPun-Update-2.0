@@ -37,7 +37,7 @@ function readinessLabel(readiness: Awaited<ReturnType<typeof getSocialDatabaseRe
 }
 
 export default async function SocialFoundationUatPage() {
-  await requireAdminPermission("social:read");
+  const identity = await requireAdminPermission("social:read");
   const runtime = getSocialFoundationRuntimeStatus();
   if (!runtime.enabled && getSocialOperationsRuntimeStatus().enabled) {
     redirect("/snt-admin/distribution/operations/");
@@ -45,7 +45,7 @@ export default async function SocialFoundationUatPage() {
   const mediaRuntime = getMediaLibraryRuntimeStatus();
   if (!runtime.enabled && !mediaRuntime.enabled) notFound();
 
-  if (mediaRuntime.enabled) return <MediaLibraryUatSection />;
+  if (mediaRuntime.enabled) return <MediaLibraryUatSection googleAccountEmail={identity.actor} />;
 
   const snapshot = socialFoundationSnapshotSchema.parse(SYNTHETIC_SOCIAL_FOUNDATION);
   const database = await getSocialDatabaseReadiness();
