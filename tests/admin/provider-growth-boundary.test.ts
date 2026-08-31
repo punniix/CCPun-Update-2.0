@@ -73,6 +73,18 @@ test("growth sources fail independently and GEO is explicitly non-ranking", () =
   assert.match(geoPage, /ไม่ใช่คะแนนหรือการรับประกันว่า AI จะอ้างอิง/);
 });
 
+test("SEO detail tolerates an unavailable proposal database and opens the exact Studio document", () => {
+  const operations = readFileSync(new URL("../../lib/admin/operations/database.ts", import.meta.url), "utf8");
+  const proposalRead = operations.slice(
+    operations.indexOf("export async function findAdminProposalResearch"),
+    operations.indexOf("export async function createAdminResearchSnapshot"),
+  );
+  assert.match(proposalRead, /if \(!sql\) return null/);
+  assert.doesNotMatch(proposalRead, /ADMIN_DATABASE_NOT_CONFIGURED/);
+  assert.match(geoPage, /getStudioArticleEditHref\(id\)/);
+  assert.doesNotMatch(geoPage, /\/studio\/structure\/article;/);
+});
+
 test("growth UI exposes freshness, comparison, loading, empty, and error states without fake metrics", () => {
   assert.match(growthPage, /ช่วงข้อมูล:/);
   assert.match(growthPage, /อัปเดตล่าสุด:/);

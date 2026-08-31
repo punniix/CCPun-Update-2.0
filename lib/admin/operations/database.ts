@@ -139,7 +139,7 @@ export async function findAdminResearchSnapshot(provider: string, keywordKey: st
 
 export async function findAdminProposalResearch(keywordKey: string, freshAfter: string) {
   const sql = await sqlClient();
-  if (!sql) throw new Error("ADMIN_DATABASE_NOT_CONFIGURED");
+  if (!sql) return null;
   const rows = await sql.query(
     `SELECT provider,intent,checked_at FROM ccpun_admin.research_snapshot
      WHERE keyword_key=$1 AND provider IN ('gsc','ubersuggest','serp') AND intent IS NOT NULL AND checked_at >= $2::timestamptz
