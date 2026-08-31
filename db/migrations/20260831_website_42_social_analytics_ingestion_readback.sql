@@ -63,8 +63,11 @@ SELECT
     FROM pg_class AS relation
     JOIN pg_namespace AS namespace ON namespace.oid = relation.relnamespace
     WHERE namespace.nspname = 'ccpun_social'
-      AND relation.relkind = 'S'
-      AND has_sequence_privilege('ccpun_social_runtime', relation.oid, 'USAGE,SELECT,UPDATE')
+      AND CASE
+        WHEN relation.relkind = 'S'
+          THEN has_sequence_privilege('ccpun_social_runtime', relation.oid, 'USAGE,SELECT,UPDATE')
+        ELSE false
+      END
   ) AS sequences_denied,
   NOT has_table_privilege('ccpun_social_runtime', 'ccpun_social.social_metric_snapshot', 'UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER')
     AND NOT has_table_privilege('ccpun_social_runtime', 'ccpun_social.social_provider_sync_state', 'DELETE,TRUNCATE,REFERENCES,TRIGGER')
