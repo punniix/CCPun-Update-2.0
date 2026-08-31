@@ -7,11 +7,12 @@ if (typeof window !== "undefined") throw new Error("SOCIAL_PROVIDER_READINESS_SE
 export const WEBSITE_42_SOCIAL_PROVIDER_BRANCH = "codex/website-42-social-provider-readonly-20260831";
 export const WEBSITE_42_SOCIAL_ANALYTICS_BRANCH = "codex/website-42-social-analytics-ingestion-20260831";
 export const SOCIAL_READ_ONLY_SCOPES = {
-  meta: ["pages_show_list", "instagram_basic"],
+  meta: ["pages_show_list", "pages_read_engagement", "instagram_basic"],
+  youtube: ["https://www.googleapis.com/auth/youtube.readonly"],
   tiktok: ["user.info.basic", "video.list"],
 } as const;
 
-const providerSchema = z.enum(["meta", "tiktok"]);
+const providerSchema = z.enum(["meta", "youtube", "tiktok"]);
 
 function exactScopes(value: string | undefined, expected: readonly string[]) {
   const scopes = value?.split(",").map((scope) => scope.trim()).filter(Boolean) ?? [];
@@ -31,8 +32,9 @@ export function getSocialProviderReadiness(
     && [WEBSITE_42_SOCIAL_PROVIDER_BRANCH, WEBSITE_42_SOCIAL_ANALYTICS_BRANCH].includes(env.VERCEL_GIT_COMMIT_REF?.trim() ?? "")
     && env.NEXT_PUBLIC_SANITY_PROJECT_ID?.trim() === WEBSITE_42_SANITY_PROJECT_ID
     && env.NEXT_PUBLIC_SANITY_DATASET?.trim() === WEBSITE_42_SANITY_DATASET;
-  const scopeVariable = provider === "meta" ? "CCPUN_META_GRANTED_SCOPES" : "CCPUN_TIKTOK_GRANTED_SCOPES";
-  const tokenVariable = provider === "meta" ? "CCPUN_META_ACCESS_TOKEN" : "CCPUN_TIKTOK_ACCESS_TOKEN";
+  const prefix = provider === "meta" ? "META" : provider === "youtube" ? "YOUTUBE" : "TIKTOK";
+  const scopeVariable = `CCPUN_${prefix}_GRANTED_SCOPES`;
+  const tokenVariable = `CCPUN_${prefix}_ACCESS_TOKEN`;
   const graphVersion = provider === "meta" ? env.CCPUN_META_GRAPH_VERSION?.trim() : undefined;
   const scopeReady = exactScopes(env[scopeVariable], SOCIAL_READ_ONLY_SCOPES[provider]);
   const tokenReady = Boolean(env[tokenVariable]?.trim());

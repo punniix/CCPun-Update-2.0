@@ -104,7 +104,7 @@ Purpose: Page/Instagram discovery first, then historical analytics, then separat
 
 1. Create or select a Meta **Development** app for CCPUN UAT. Keep it separate from any future Production app.
 2. Configure one exact UAT OAuth callback only after the route exists in the reviewed Preview.
-3. Start with the already-modeled discovery permissions `pages_show_list` and `instagram_basic`.
+3. Start with the already-modeled read permissions `pages_show_list`, `pages_read_engagement` and `instagram_basic`.
 4. Select the Facebook Page explicitly; do not auto-select when multiple Pages are returned.
 5. Verify whether an Instagram professional account is linked and show `not-linked` when absent.
 6. Add Insights or publishing permissions only after checking the current Meta App Dashboard/App Review requirements for the exact intended endpoint and content type.

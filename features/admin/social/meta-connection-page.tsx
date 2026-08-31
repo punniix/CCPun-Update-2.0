@@ -31,7 +31,7 @@ export default async function MetaConnectionUatPage() {
         <div>
           <h1 className="text-3xl font-semibold">Meta Connection</h1>
           <p className="mt-3 max-w-3xl text-sm leading-6 text-white/70">
-            ตรวจ Fixture และอ่านรายชื่อ Facebook Page กับบัญชี Instagram เมื่อคุณกด Sync เท่านั้น ไม่มีสิทธิ์โพสต์หรืออ่าน Insights
+            ตรวจ Fixture และอ่าน Facebook Page, Instagram และ native counters ของโพสต์ล่าสุดเมื่อคุณกด Sync เท่านั้น ไม่มีสิทธิ์โพสต์
           </p>
         </div>
         <Link href="/snt-admin/distribution/operations/" className="inline-flex min-h-11 items-center rounded-xl border border-white/10 px-4 py-2.5 text-sm text-white/70 hover:bg-white/5">
@@ -76,7 +76,7 @@ export default async function MetaConnectionUatPage() {
       </section>
 
       <section role="note" className="mt-7 rounded-3xl border border-amber-200/20 bg-amber-200/[0.05] p-5 text-sm leading-6 text-amber-50/80">
-        สิทธิ์จำลอง: {connection.grantedScopes.join(" + ")} · ไม่มี publishing scopes · ไม่มี insights scopes · ไม่มีข้อมูล credential
+        สิทธิ์จำลอง: {connection.grantedScopes.join(" + ")} · ไม่มี publishing scopes · ไม่มีข้อมูล credential
       </section>
       <MetaReadOnlyPanel ready={readiness.status === "manual-sync-ready"} missing={missing} />
     </div>
