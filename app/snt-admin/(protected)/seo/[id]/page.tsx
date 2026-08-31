@@ -8,6 +8,7 @@ import { getSeoProposalContext, runSeoAudit } from "@/lib/admin/seo-audit";
 import { getAdminSanityStatus } from "@/lib/admin/sanity-control";
 import { isStudioDataPlaneAllowed } from "@/lib/admin/environment";
 import { buildDeterministicSeoProposals } from "@/lib/admin/seo-proposals";
+import { getStudioArticleEditHref } from "@/cms/sanity/policy/studio-policy";
 
 export const metadata: Metadata = { title: "รายละเอียดผลตรวจ SEO" };
 
@@ -26,7 +27,7 @@ export default async function SeoAuditDetailPage({ params }: PageProps) {
   const failed = audit.checks.filter((check) => !check.passed);
   const readiness = audit.contentReadiness;
   const geoAudit = audit.geoAudit;
-  const studioHref = `/studio/structure/article;${encodeURIComponent(id.replace(/^drafts\./, ""))}`;
+  const studioHref = getStudioArticleEditHref(id);
   const status = getAdminSanityStatus();
   const studioReady = isStudioDataPlaneAllowed(status.dataset ?? undefined);
   const isDraft = audit.articleId.startsWith("drafts.");
