@@ -47,19 +47,26 @@ test("readback avoids broad catalog checks and verifies every write boundary", (
   assert.doesNotMatch(readback, /pg_toast/);
 });
 
-test("manual TikTok persistence route stays human-only, same-origin and provider-write free", () => {
-  const route = read("app/api/snt-admin/social/analytics/sync/tiktok/route.ts");
+test("manual provider persistence stays human-only, same-origin and provider-write free", () => {
+  const route = read("app/api/snt-admin/social/analytics/sync/[provider]/route.ts");
   const service = read("lib/admin/social/analytics-ingestion.ts");
   const panel = read("features/admin/social/provider-readonly-panels.tsx");
+  const dashboard = read("features/admin/social/analytics-page.tsx");
   assert.match(route, /getAdminIdentity\(\)/);
   assert.match(route, /identity\.actorType !== "human"/);
   assert.match(route, /hasAdminPermission\(identity\.role, "social:read"\)/);
   assert.match(route, /isSameOriginAdminMutation\(request\.url, request\.headers\.get\("origin"\)\)/);
-  assert.match(route, /export async function POST\(request: Request\)/);
+  assert.match(route, /socialAnalyticsProviderSchema\.safeParse/);
+  assert.match(route, /export async function POST\(request: Request/);
   assert.doesNotMatch(route, /export async function (?:GET|PUT|PATCH|DELETE)/);
-  assert.match(service, /publication\.status='published' AND variant\.channel='tiktok'/);
+  assert.match(service, /variant\.channel IN \('facebook','instagram','youtube','tiktok'\)/);
+  assert.match(service, /fetchMetaReadOnlyDiscovery/);
+  assert.match(service, /fetchYouTubeReadOnlyDiscovery/);
+  assert.match(service, /fetchTikTokReadOnlyDiscovery/);
   assert.match(service, /ON CONFLICT \(id\) DO NOTHING/);
   assert.match(service, /collection_mode/);
   assert.doesNotMatch(service, /video\.upload|video\.publish|setInterval|cron/);
   assert.match(panel, /Sync และบันทึกสถิติย้อนหลัง/);
+  assert.match(dashboard, /ไม่รวม Views\/Reach ข้ามแพลตฟอร์ม/);
+  assert.match(dashboard, /metric\.delta/);
 });

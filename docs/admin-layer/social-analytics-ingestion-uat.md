@@ -1,6 +1,6 @@
 # Social Analytics Ingestion UAT
 
-This stacked lane adds owner-triggered TikTok historical metric snapshots to the existing Neon UAT resource. It does not create infrastructure, store provider tokens, poll in the background, or call a provider write endpoint. Meta/Instagram Insights remain deferred because their additional read scopes have not been approved.
+This stacked lane adds owner-triggered Meta/Instagram, YouTube and TikTok historical metric snapshots to the existing Neon UAT resource. It does not create infrastructure, store provider tokens, poll in the background, or call a provider write endpoint. Deep Meta reach and YouTube watch-time remain deferred until their additional read scopes are approved.
 
 ## Exact Preview lane
 
@@ -14,7 +14,7 @@ This stacked lane adds owner-triggered TikTok historical metric snapshots to the
 - `CCPUN_SOCIAL_DATA_MODE=synthetic`
 - `CCPUN_SOCIAL_PROVIDER_READS_ENABLED=1`
 - `CCPUN_SOCIAL_ANALYTICS_INGESTION_ENABLED=1`
-- TikTok read credential remains server-only with `CCPUN_TIKTOK_GRANTED_SCOPES=user.info.basic,video.list`
+- Provider credentials remain server-only and use only the exact read scope sets documented in `social-provider-readonly-uat.md`
 
 The existing Admin Auth variables remain required. Never bind this lane to `Production`, `v4-production`, `admin.ccpun.com`, or `ccpun-web`.
 
@@ -36,10 +36,10 @@ Bind these values to the exact Preview branch only:
 - `CCPUN_NEON_DATABASE=neondb`
 - `CCPUN_SOCIAL_DATABASE_URL` — Sensitive connection for `ccpun_social_runtime`, never an owner role
 
-The application re-verifies the runtime role, database, migration checksum and stored resource identity before each manual sync. It stores only exact-ID matched metrics, the TikTok provider account ID, cursor, sanitized sync state and execution audit. Unmatched video IDs remain visible in the response and are not inserted.
+The application re-verifies the runtime role, database, migration checksum and stored resource identity before each manual sync. It stores only exact-ID matched native metrics, provider account ID, cursor when one exists, sanitized sync state and execution audit. Unmatched object IDs remain visible in the response and are not inserted. The same provider-neutral schema already admits `meta`, `youtube` and `tiktok`, so no new migration or infrastructure is needed.
 
 ## UAT and rollback
 
-After authenticated Preview login, open `/snt-admin/distribution/connections/tiktok/` and press **Sync และบันทึกสถิติย้อนหลัง**. Read back `social_metric_snapshot`, `social_provider_sync_state` and the matching `social_execution_audit` row without displaying credentials. Confirm no provider POST/upload/publish, cron or Production deployment occurred.
+After authenticated Preview login, open each provider Connection page and press **Sync และบันทึกสถิติย้อนหลัง**. Then open `/snt-admin/distribution/analytics/` to inspect latest values and per-metric deltas. Read back `social_metric_snapshot`, `social_provider_sync_state` and matching `social_execution_audit` rows without displaying credentials. Confirm no provider upload/publish, cron or Production deployment occurred.
 
 Rollback is configuration-only: remove or disable `CCPUN_SOCIAL_ANALYTICS_INGESTION_ENABLED` and `CCPUN_SOCIAL_DATABASE_URL` on this Preview branch, then redeploy Preview. Keep the additive UAT tables for audit and recovery; dropping them requires separate destructive approval.

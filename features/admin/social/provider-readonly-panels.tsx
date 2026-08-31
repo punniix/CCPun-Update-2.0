@@ -8,6 +8,7 @@ const errorLabel: Record<string, string> = {
   "provider-rate-limited": "Provider จำกัดการเรียกชั่วคราว",
   "provider-timeout": "Provider ตอบช้าเกินกำหนด",
   "provider-invalid-response": "Provider ส่งข้อมูลไม่ตรงสัญญา",
+  "provider-selection-required": "พบหลายบัญชี กรุณาระบุบัญชีที่จะเก็บสถิติก่อน",
   "provider-unavailable": "Provider ยังไม่พร้อมใช้งาน",
   "database-not-ready": "Neon UAT ยังไม่พร้อมรับสถิติ",
   "database-unavailable": "Neon UAT ติดต่อไม่ได้ชั่วคราว",
@@ -35,7 +36,7 @@ function engagementRate(views: number, engagements: number) {
   return views > 0 ? `${((engagements / views) * 100).toLocaleString("th-TH", { maximumFractionDigits: 1 })}%` : "—";
 }
 
-export function MetaReadOnlyPanel({ ready, missing }: { ready: boolean; missing: string[] }) {
+export function MetaReadOnlyPanel({ ready, analyticsReady, missing }: { ready: boolean; analyticsReady: boolean; missing: string[] }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<null | {
@@ -45,11 +46,14 @@ export function MetaReadOnlyPanel({ ready, missing }: { ready: boolean; missing:
     facebookPosts: Array<{ id: string; text: string; publishedAt: string; metrics: { likes?: number; comments?: number; shares?: number } }>;
     instagramMedia: Array<{ id: string; text: string; publishedAt: string; metrics: { likes?: number; comments?: number } }>;
   }>(null);
+  const [stored, setStored] = useState<number | null>(null);
   async function sync() {
     setLoading(true);
     setError(null);
     try {
-      setResult((await manualSync("/api/snt-admin/social/providers/meta/discovery/")).discovery as typeof result);
+      const response = await manualSync(analyticsReady ? "/api/snt-admin/social/analytics/sync/meta/" : "/api/snt-admin/social/providers/meta/discovery/");
+      setResult(response.discovery as typeof result);
+      setStored(response.persistence?.matchedSnapshots ?? null);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Sync ไม่สำเร็จ");
     } finally {
@@ -62,9 +66,10 @@ export function MetaReadOnlyPanel({ ready, missing }: { ready: boolean; missing:
       <p className="mt-2 text-sm text-white/65">อ่าน Page, Instagram และ native counters ของโพสต์ล่าสุด เพื่อหาเนื้อหาที่ควรต่อยอด โดยไม่โพสต์หรือแก้ข้อมูลต้นทาง</p>
       {!ready ? <p className="mt-3 text-xs text-amber-200">รอตั้งค่า: {missing.join(", ")}</p> : null}
       <button type="button" disabled={!ready || loading} onClick={sync} className="mt-4 min-h-11 rounded-xl bg-emerald-200 px-4 py-2.5 text-sm font-semibold text-[#111827] disabled:cursor-not-allowed disabled:opacity-40">
-        {loading ? "กำลังอ่าน…" : "Sync Meta แบบอ่านอย่างเดียว"}
+        {loading ? "กำลังอ่าน…" : analyticsReady ? "Sync และบันทึกสถิติย้อนหลัง" : "Sync Meta แบบอ่านอย่างเดียว"}
       </button>
       {error ? <p role="alert" className="mt-3 text-sm text-rose-200">{error}</p> : null}
+      {stored !== null ? <p role="status" className="mt-3 text-sm text-emerald-200">บันทึก Snapshot ที่ตรงกับโพสต์ CCPun แล้ว {stored} รายการ</p> : null}
       {result ? <div className="mt-5">
         <p className="text-xs text-white/45">อัปเดตล่าสุด {new Date(result.fetchedAt).toLocaleString("th-TH")}</p>
         <DecisionCards items={[
@@ -83,7 +88,7 @@ export function MetaReadOnlyPanel({ ready, missing }: { ready: boolean; missing:
   );
 }
 
-export function YouTubeReadOnlyPanel({ ready, missing }: { ready: boolean; missing: string[] }) {
+export function YouTubeReadOnlyPanel({ ready, analyticsReady, missing }: { ready: boolean; analyticsReady: boolean; missing: string[] }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<null | {
@@ -91,11 +96,14 @@ export function YouTubeReadOnlyPanel({ ready, missing }: { ready: boolean; missi
     channel: { title: string; metrics: { viewCount: number; subscriberCount?: number; videoCount: number } };
     videos: Array<{ id: string; title: string; publishedAt: string; metrics: { views?: number; likes?: number; comments?: number } }>;
   }>(null);
+  const [stored, setStored] = useState<number | null>(null);
   async function sync() {
     setLoading(true);
     setError(null);
     try {
-      setResult(await manualSync("/api/snt-admin/social/providers/youtube/discovery/") as typeof result);
+      const response = await manualSync(analyticsReady ? "/api/snt-admin/social/analytics/sync/youtube/" : "/api/snt-admin/social/providers/youtube/discovery/");
+      setResult(response.discovery as typeof result);
+      setStored(response.persistence?.matchedSnapshots ?? null);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Sync ไม่สำเร็จ");
     } finally {
@@ -111,9 +119,10 @@ export function YouTubeReadOnlyPanel({ ready, missing }: { ready: boolean; missi
       <p className="mt-2 text-sm text-white/65">อ่าน Channel และวิดีโอล่าสุดเพื่อเห็นยอดดูและ engagement โดยไม่อัปโหลด แก้ไข หรือลบวิดีโอ</p>
       {!ready ? <p className="mt-3 text-xs text-amber-200">รอตั้งค่า: {missing.join(", ")}</p> : null}
       <button type="button" disabled={!ready || loading} onClick={sync} className="mt-4 min-h-11 rounded-xl bg-red-200 px-4 py-2.5 text-sm font-semibold text-[#111827] disabled:cursor-not-allowed disabled:opacity-40">
-        {loading ? "กำลังอ่าน…" : "Sync YouTube แบบอ่านอย่างเดียว"}
+        {loading ? "กำลังอ่าน…" : analyticsReady ? "Sync และบันทึกสถิติย้อนหลัง" : "Sync YouTube แบบอ่านอย่างเดียว"}
       </button>
       {error ? <p role="alert" className="mt-3 text-sm text-rose-200">{error}</p> : null}
+      {stored !== null ? <p role="status" className="mt-3 text-sm text-emerald-200">บันทึก Snapshot ที่ตรงกับวิดีโอ CCPun แล้ว {stored} รายการ</p> : null}
       {result ? <div className="mt-5">
         <div className="flex flex-wrap items-center justify-between gap-2"><div className="font-semibold">{result.channel.title}</div><div className="text-xs text-white/45">อัปเดต {new Date(result.fetchedAt).toLocaleString("th-TH")}</div></div>
         <DecisionCards items={[
