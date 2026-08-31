@@ -43,10 +43,10 @@ test("Adapter rejects provider mismatch, credential-shaped input and future evid
   assert.throws(() => adaptUbersuggestResearch({ keyword: "x", provider: "ubersuggest" }, { now: "invalid" }), /MARKET_ADAPTER_OPTIONS_INVALID/);
 });
 
-test("Provider-state UI is synthetic and exposes no live refresh action", () => {
+test("Organic performance UI no longer mixes synthetic market-provider cards", () => {
   const page = read("features/admin/seo/opportunities/page.tsx");
-  assert.match(page, /Market provider states/);
-  assert.match(page, /สถานะจำลอง/);
-  assert.match(page, /untrusted external data/);
+  assert.doesNotMatch(page, /Market provider states/);
+  assert.doesNotMatch(page, /สถานะจำลอง/);
+  assert.doesNotMatch(page, /untrusted external data/);
   assert.doesNotMatch(page, /refreshMarket|syncMarket|connectUbersuggest/);
 });
