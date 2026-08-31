@@ -12,7 +12,7 @@ const read = (path: string) => readFileSync(new URL(`../../${path}`, import.meta
 const discovery = {
   mode: "synthetic-uat" as const,
   authorizationState: "active" as const,
-  grantedScopes: [...META_MINIMUM_READ_SCOPES] as ["pages_show_list", "instagram_basic"],
+  grantedScopes: [...META_MINIMUM_READ_SCOPES] as ["pages_show_list", "pages_read_engagement", "instagram_basic"],
   selectedPageId: "page-1",
   pages: [
     { id: "page-1", name: "Page One", instagramAccount: { id: "ig-1", username: "page.one" } },
@@ -26,7 +26,7 @@ test("Meta discovery normalizes Page selection and missing Instagram without pro
   assert.equal(connection.pages[0]?.selected, true);
   assert.deepEqual(connection.pages[1]?.instagram, { status: "not-linked", username: null });
   assert.equal(connection.providerRequestAllowed, false);
-  assert.deepEqual(connection.grantedScopes, ["pages_show_list", "instagram_basic"]);
+  assert.deepEqual(connection.grantedScopes, ["pages_show_list", "pages_read_engagement", "instagram_basic"]);
   assert.equal(connection.grantedScopes.some((scope) => /publish|insights/i.test(scope)), false);
   assert.doesNotMatch(JSON.stringify(connection), /token|secret/i);
 });

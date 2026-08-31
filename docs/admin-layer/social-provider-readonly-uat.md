@@ -1,6 +1,6 @@
 # Social Provider Read-only UAT
 
-This lane prepares owner-triggered Facebook, Instagram and TikTok reads without adding a worker, scheduler, token database or provider write capability.
+This lane prepares owner-triggered Facebook, Instagram, YouTube and TikTok reads without adding a worker, scheduler, token database or provider write capability.
 
 ## Exact deployment lane
 
@@ -23,9 +23,19 @@ Required Preview variables for the exact branch:
 
 - `CCPUN_META_ACCESS_TOKEN` — server-only Secret
 - `CCPUN_META_GRAPH_VERSION` — Config copied from the approved Meta app's current Graph API version; the application intentionally has no guessed default
-- `CCPUN_META_GRANTED_SCOPES=pages_show_list,instagram_basic`
+- `CCPUN_META_GRANTED_SCOPES=pages_show_list,pages_read_engagement,instagram_basic`
+- `CCPUN_META_PAGE_ID` — optional explicit Page selection; required when the account manages more than one Page
 
-The accepted scope set is exact. Publishing, Page-management and Insights permissions are rejected in this phase. Manual Sync reads `/me/accounts` with a Bearer header and requests only Page identity plus the linked Instagram business account identity. The response never includes the credential.
+The accepted scope set is exact. Publishing and Page-management permissions are rejected. Manual Sync reads Page/Instagram identity plus native engagement counters for at most 20 recent items. The response never includes the User or Page credential.
+
+## YouTube manual connection
+
+Required Preview variables for the exact branch:
+
+- `CCPUN_YOUTUBE_ACCESS_TOKEN` — server-only Secret
+- `CCPUN_YOUTUBE_GRANTED_SCOPES=https://www.googleapis.com/auth/youtube.readonly`
+
+One owner click reads the authorized Channel and at most 20 recent uploads with native view, like and comment counters. Watch time and retention remain deferred until the owner approves `yt-analytics.readonly`; upload/update/delete scopes are rejected.
 
 ## TikTok manual connection
 
@@ -41,7 +51,7 @@ The accepted scope set follows TikTok's Display API read permissions. `video.upl
 - no token, raw provider response, metric, Page selection or cursor is persisted
 - no background refresh, webhook, polling loop or cron exists
 - TikTok metrics enter the internal normalized contract only when a video ID exactly matches an existing TikTok `platformObjectId`; unmatched IDs remain explicit
-- Meta Insights remains deferred until account discovery passes and the owner separately approves the additional read permissions
+- Meta reach/deep Insights and YouTube watch-time remain deferred until the owner separately approves the additional read permissions
 - Neon remains the future owner of selected provider IDs, cursors, sync state and historical metric snapshots; this PR does not add or apply a migration
 
 This keeps the first UAT credential rotation reversible and adds no fixed infrastructure cost.
