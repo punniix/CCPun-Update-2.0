@@ -5,6 +5,7 @@ import { WEBSITE_42_SANITY_DATASET, WEBSITE_42_SANITY_PROJECT_ID } from "./found
 if (typeof window !== "undefined") throw new Error("SOCIAL_PROVIDER_READINESS_SERVER_ONLY");
 
 export const WEBSITE_42_SOCIAL_PROVIDER_BRANCH = "codex/website-42-social-provider-readonly-20260831";
+export const WEBSITE_42_SOCIAL_ANALYTICS_BRANCH = "codex/website-42-social-analytics-ingestion-20260831";
 export const SOCIAL_READ_ONLY_SCOPES = {
   meta: ["pages_show_list", "instagram_basic"],
   tiktok: ["user.info.basic", "video.list"],
@@ -27,7 +28,7 @@ export function getSocialProviderReadiness(
   const laneReady = env.CCPUN_SOCIAL_PROVIDER_READS_ENABLED === "1"
     && environment === "admin-uat"
     && projectId === CCPUN_VERCEL_PROJECT_IDS.adminProduction
-    && env.VERCEL_GIT_COMMIT_REF?.trim() === WEBSITE_42_SOCIAL_PROVIDER_BRANCH
+    && [WEBSITE_42_SOCIAL_PROVIDER_BRANCH, WEBSITE_42_SOCIAL_ANALYTICS_BRANCH].includes(env.VERCEL_GIT_COMMIT_REF?.trim() ?? "")
     && env.NEXT_PUBLIC_SANITY_PROJECT_ID?.trim() === WEBSITE_42_SANITY_PROJECT_ID
     && env.NEXT_PUBLIC_SANITY_DATASET?.trim() === WEBSITE_42_SANITY_DATASET;
   const scopeVariable = provider === "meta" ? "CCPUN_META_GRANTED_SCOPES" : "CCPUN_TIKTOK_GRANTED_SCOPES";
