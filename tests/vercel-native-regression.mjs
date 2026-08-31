@@ -345,6 +345,10 @@ assert.equal((securityPolicy.match(/https:\/\/\*\.sanity-cdn\.com/g) ?? []).leng
 assert.equal((securityPolicy.match(/https:\/\/sanity-cdn\.com/g) ?? []).length, 1);
 assert.doesNotMatch(securityPolicy, /\*\.api\.sanity\.io/);
 assert.match(securityPolicy, /IS_DEVELOPMENT \? ["'] 'unsafe-eval'["'] : ["']["']/);
+assert.match(securityPolicy, /CCPUN_MEDIA_LIBRARY_ENABLED === ["']1["']/);
+assert.match(securityPolicy, /GOOGLE_DRIVE_PICKER_SCRIPT_SOURCES[\s\S]*?accounts\.google\.com[\s\S]*?apis\.google\.com/);
+assert.match(securityPolicy, /GOOGLE_DRIVE_PICKER_FRAME_SOURCES[\s\S]*?docs\.google\.com[\s\S]*?drive\.google\.com/);
+assert.match(securityPolicy, /Cross-Origin-Opener-Policy["'], value: ["']same-origin-allow-popups/);
 
 assert.match(studioPage, /["']darkreader-lock["']:\s*["']true["']/);
 
