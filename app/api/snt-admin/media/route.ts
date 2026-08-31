@@ -89,6 +89,7 @@ export async function POST(request: Request) {
     selectedItemId: validation.data.selectedFileId,
     accessToken: validation.data.accessToken,
     authorization: validation.data.authorization,
+    expectedAccountEmail: identity.actor,
     nowMs,
   });
   if (!result.projected) {
@@ -97,6 +98,9 @@ export async function POST(request: Request) {
     }
     if (result.reason === "provider-unavailable" || result.reason === "metadata-unverifiable") {
       return NextResponse.json({ error: "drive-provider-unavailable" }, { status: 502, headers: NO_STORE_HEADERS });
+    }
+    if (result.reason === "account-mismatch") {
+      return NextResponse.json({ error: "drive-account-denied" }, { status: 403, headers: NO_STORE_HEADERS });
     }
     return NextResponse.json({ error: "selected-file-denied" }, { status: 403, headers: NO_STORE_HEADERS });
   }

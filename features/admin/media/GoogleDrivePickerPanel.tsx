@@ -47,6 +47,7 @@ declare global {
       accounts?: { oauth2?: { initTokenClient(config: {
         client_id: string;
         scope: string;
+        login_hint: string;
         include_granted_scopes: boolean;
         callback: (response: TokenResponse) => void;
         error_callback: () => void;
@@ -91,7 +92,13 @@ function isDriveItem(value: unknown): value is DriveItem {
     typeof item.mimeType === "string" && typeof item.modifiedTime === "string";
 }
 
-export default function GoogleDrivePickerPanel({ config }: { config: PickerConfig | null }) {
+export default function GoogleDrivePickerPanel({
+  config,
+  googleAccountEmail,
+}: {
+  config: PickerConfig | null;
+  googleAccountEmail: string;
+}) {
   const [identityReady, setIdentityReady] = useState(false);
   const [pickerReady, setPickerReady] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -160,6 +167,7 @@ export default function GoogleDrivePickerPanel({ config }: { config: PickerConfi
     oauth.initTokenClient({
       client_id: config.clientId,
       scope: DRIVE_FILE_SCOPE,
+      login_hint: googleAccountEmail,
       include_granted_scopes: false,
       callback: (response) => {
         const parsed = parseDriveTokenResponse(response, Date.now());

@@ -41,6 +41,7 @@ export const googleDriveInteractiveAuthorizationSchema = z.strictObject({
 export type GoogleDriveInteractiveAuthorization = z.infer<typeof googleDriveInteractiveAuthorizationSchema>;
 
 const googleDriveAccessTokenSchema = z.string().trim().min(1).max(8_192);
+const googleDriveAccountEmailSchema = z.string().trim().email().max(254).transform((value) => value.toLowerCase());
 
 export const googleDriveSelectedFileRequestSchema = z.strictObject({
   selectedFileId: googleDriveFileIdSchema,
@@ -207,6 +208,37 @@ function driveMetadataUrl(fileId: string): string {
 
 type GoogleDriveApiItem = z.infer<typeof googleDriveApiItemSchema>;
 
+const googleDriveAboutSchema = z.object({
+  user: z.object({ emailAddress: z.string() }),
+});
+
+async function verifyGoogleDriveAccount(input: {
+  expectedAccountEmail: unknown;
+  accessToken: string;
+  signal?: AbortSignal;
+  fetchImpl: typeof fetch;
+}): Promise<"verified" | "account-mismatch" | "metadata-unverifiable" | "provider-unavailable"> {
+  const expectedEmail = googleDriveAccountEmailSchema.safeParse(input.expectedAccountEmail);
+  const accessToken = googleDriveAccessTokenSchema.safeParse(input.accessToken);
+  if (!expectedEmail.success || !accessToken.success) return "account-mismatch";
+
+  let response: Response;
+  try {
+    response = await input.fetchImpl("https://www.googleapis.com/drive/v3/about?fields=user(emailAddress)", {
+      headers: { Authorization: `Bearer ${accessToken.data}` },
+      signal: input.signal ?? AbortSignal.timeout(5_000),
+    });
+  } catch {
+    return "provider-unavailable";
+  }
+  if (!response.ok) return "provider-unavailable";
+
+  const about = googleDriveAboutSchema.safeParse(await response.json().catch(() => null));
+  if (!about.success) return "metadata-unverifiable";
+  const actualEmail = googleDriveAccountEmailSchema.safeParse(about.data.user.emailAddress);
+  return actualEmail.success && actualEmail.data === expectedEmail.data ? "verified" : "account-mismatch";
+}
+
 async function fetchGoogleDriveAncestry(input: {
   rootFolderIds: readonly unknown[];
   selectedItemId: unknown;
@@ -305,6 +337,7 @@ export type GoogleDriveSelectedFileProjectionResult =
         | "invalid-authorization"
         | "not-yet-valid"
         | "expired"
+        | "account-mismatch"
         | "provider-unavailable"
         | "selected-file-denied"
         | "selected-item-is-folder"
@@ -316,6 +349,7 @@ export async function fetchGoogleDriveSelectedFileProjection(input: {
   selectedItemId: unknown;
   accessToken: string;
   authorization: unknown;
+  expectedAccountEmail: unknown;
   nowMs: number;
   signal?: AbortSignal;
   fetchImpl?: typeof fetch;
@@ -326,12 +360,21 @@ export async function fetchGoogleDriveSelectedFileProjection(input: {
   const authorization = evaluateGoogleDriveInteractiveAuthorization(input.authorization, input.nowMs);
   if (!authorization.usable) return { projected: false, reason: authorization.reason };
 
+  const fetchImpl = input.fetchImpl ?? fetch;
+  const account = await verifyGoogleDriveAccount({
+    expectedAccountEmail: input.expectedAccountEmail,
+    accessToken: input.accessToken,
+    signal: input.signal,
+    fetchImpl,
+  });
+  if (account !== "verified") return { projected: false, reason: account };
+
   const ancestry = await fetchGoogleDriveAncestry({
     rootFolderIds: rootFolderIds.data,
     selectedItemId: input.selectedItemId,
     accessToken: input.accessToken,
     signal: input.signal,
-    fetchImpl: input.fetchImpl,
+    fetchImpl,
   });
   if (!ancestry.ok) {
     return {

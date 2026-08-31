@@ -26,6 +26,7 @@ const validAuthorization = {
   issuedAtMs: 1_000,
   expiresAtMs: 3_601_000,
 } as const;
+const expectedAccountEmail = "owner@ccpun.com";
 
 const evaluate = (items: readonly GoogleDriveNormalizedItem[] = SYNTHETIC_GOOGLE_DRIVE_ITEMS, rootFolderId = SYNTHETIC_GOOGLE_DRIVE_ROOT_FOLDER_ID) =>
   evaluateGoogleDriveRootBoundary({
@@ -239,9 +240,13 @@ test("selected-file projection verifies either approved root and returns only sa
     selectedItemId: SYNTHETIC_GOOGLE_DRIVE_FILE_ID,
     accessToken: "synthetic-memory-only-token",
     authorization: validAuthorization,
+    expectedAccountEmail,
     nowMs: 2_000,
     fetchImpl: async (input) => {
       const url = new URL(String(input));
+      if (url.pathname.endsWith("/about")) {
+        return new Response(JSON.stringify({ user: { emailAddress: "OWNER@ccpun.com" } }));
+      }
       const id = decodeURIComponent(url.pathname.split("/").at(-1)!);
       seenFields.push(url.searchParams.get("fields") ?? "");
       const item = enrichedItems.get(id);
@@ -268,11 +273,39 @@ test("selected-file projection verifies either approved root and returns only sa
   assert.equal(/accessToken|refreshToken|owners|permissions|emailAddress|body/i.test(serialized), false);
 });
 
+test("selected-file projection binds the ephemeral token to the authenticated Admin account", async () => {
+  const seen: Array<{ path: string; authorization: string | null }> = [];
+  const result = await fetchGoogleDriveSelectedFileProjection({
+    rootFolderIds: [SYNTHETIC_GOOGLE_DRIVE_ROOT_FOLDER_ID],
+    selectedItemId: SYNTHETIC_GOOGLE_DRIVE_FILE_ID,
+    accessToken: "synthetic-memory-only-token",
+    authorization: validAuthorization,
+    expectedAccountEmail,
+    nowMs: 2_000,
+    fetchImpl: async (input, init) => {
+      const url = new URL(String(input));
+      seen.push({ path: url.pathname, authorization: new Headers(init?.headers).get("authorization") });
+      return new Response(JSON.stringify({ user: { emailAddress: "other@example.com" } }));
+    },
+  });
+
+  assert.deepEqual(result, { projected: false, reason: "account-mismatch" });
+  assert.deepEqual(seen, [{
+    path: "/drive/v3/about",
+    authorization: "Bearer synthetic-memory-only-token",
+  }]);
+  assert.equal(JSON.stringify(result).includes(expectedAccountEmail), false);
+  assert.equal(JSON.stringify(result).includes("synthetic-memory-only-token"), false);
+});
+
 test("selected-file projection denies wrong roots, expired authorization and folders without provider writes", async () => {
   let fetchCount = 0;
   const fetchImpl = async (input: URL | RequestInfo) => {
     fetchCount += 1;
     const url = new URL(String(input));
+    if (url.pathname.endsWith("/about")) {
+      return new Response(JSON.stringify({ user: { emailAddress: expectedAccountEmail } }));
+    }
     const id = decodeURIComponent(url.pathname.split("/").at(-1)!);
     const item = SYNTHETIC_GOOGLE_DRIVE_ITEMS.find((candidate) => candidate.id === id);
     return new Response(item ? JSON.stringify(item) : null, { status: item ? 200 : 404 });
@@ -283,6 +316,7 @@ test("selected-file projection denies wrong roots, expired authorization and fol
     selectedItemId: SYNTHETIC_GOOGLE_DRIVE_FILE_ID,
     accessToken: "synthetic-memory-only-token",
     authorization: validAuthorization,
+    expectedAccountEmail,
     nowMs: validAuthorization.expiresAtMs,
     fetchImpl,
   });
@@ -294,6 +328,7 @@ test("selected-file projection denies wrong roots, expired authorization and fol
     selectedItemId: SYNTHETIC_GOOGLE_DRIVE_FILE_ID,
     accessToken: "synthetic-memory-only-token",
     authorization: validAuthorization,
+    expectedAccountEmail,
     nowMs: 2_000,
     fetchImpl,
   });
@@ -306,6 +341,7 @@ test("selected-file projection denies wrong roots, expired authorization and fol
     selectedItemId: SYNTHETIC_GOOGLE_DRIVE_ROOT_FOLDER_ID,
     accessToken: "synthetic-memory-only-token",
     authorization: validAuthorization,
+    expectedAccountEmail,
     nowMs: 2_000,
     fetchImpl,
   });

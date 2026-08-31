@@ -23,7 +23,7 @@ function formatBytes(byteSize: number) {
   return `${Math.ceil(byteSize / 1_000)} KB`;
 }
 
-export default function MediaLibraryUatSection() {
+export default function MediaLibraryUatSection({ googleAccountEmail }: { googleAccountEmail: string }) {
   const snapshot = mediaLibrarySnapshotSchema.parse(SYNTHETIC_MEDIA_LIBRARY);
   const storage = getMediaStorageProviderState();
   const drivePickerConfig = getGoogleDrivePickerPublicConfig();
@@ -64,7 +64,7 @@ export default function MediaLibraryUatSection() {
             {drivePickerConfig ? "Manual OAuth / Picker พร้อม" : "รอ Manual OAuth / Picker"}
           </span>
         </div>
-        <GoogleDrivePickerPanel config={drivePickerConfig} />
+        <GoogleDrivePickerPanel config={drivePickerConfig} googleAccountEmail={googleAccountEmail} />
       </section>
 
       <div className="mt-6 grid gap-4 lg:grid-cols-2">
