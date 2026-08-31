@@ -23,6 +23,8 @@ export default auth((request) => {
   const isStudioPage = pathname.startsWith("/studio");
   const isPreviewApi = pathname.startsWith("/api/preview");
   const isAuthApi = pathname === "/api/auth" || pathname.startsWith("/api/auth/");
+  const isAdminRoot = pathname === "/";
+  const isAdminSurfacePath = isAdminPage || isAdminApi || isStudioPage || isPreviewApi;
   const isPublicBootstrapPath =
     pathname.startsWith("/_next/static/") ||
     pathname.startsWith("/_next/image") ||
@@ -50,6 +52,13 @@ export default auth((request) => {
       return NextResponse.json({ error: "invalid-origin" }, { status: 403 });
     }
     if (isAuthApi || isPublicBootstrapPath) return NextResponse.next();
+    if (isAdminRoot) {
+      if (role) return NextResponse.redirect(new URL("/snt-admin/dashboard/", request.url));
+      return NextResponse.next();
+    }
+    if (!isAdminSurfacePath) {
+      return new NextResponse("Not Found", { status: 404 });
+    }
     if (isLoginPage) {
       if (role) return NextResponse.redirect(new URL("/snt-admin/dashboard/", request.url));
       return NextResponse.next();
