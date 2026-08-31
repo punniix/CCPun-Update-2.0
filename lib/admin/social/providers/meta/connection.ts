@@ -5,7 +5,7 @@ export const META_MINIMUM_READ_SCOPES = ["pages_show_list", "instagram_basic"] a
 const boundedId = z.string().trim().min(1).max(120).regex(/^[A-Za-z0-9_.:-]+$/);
 
 export const metaConnectionDiscoverySchema = z.object({
-  mode: z.literal("synthetic-uat"),
+  mode: z.enum(["synthetic-uat", "provider-read-only"]),
   authorizationState: z.enum(["not-connected", "active", "expired", "revoked"]),
   grantedScopes: z.tuple([
     z.literal(META_MINIMUM_READ_SCOPES[0]),
@@ -56,8 +56,13 @@ export function normalizeMetaConnection(input: MetaConnectionDiscovery) {
         ? { status: "linked" as const, username: page.instagramAccount.username }
         : { status: "not-linked" as const, username: null },
     })),
-    providerRequestAllowed: false as const,
-    limitations: [
+    providerRequestAllowed: discovery.mode === "provider-read-only",
+    providerWriteAllowed: false as const,
+    limitations: discovery.mode === "provider-read-only" ? [
+      "ข้อมูลมาจากการกด Sync แบบอ่านอย่างเดียวและไม่ถูกบันทึก",
+      "สิทธิ์จำกัดเฉพาะรายชื่อ Page และการเชื่อม Instagram เบื้องต้น",
+      "ไม่มี publishing หรือ insights scope",
+    ] : [
       "ข้อมูลเป็น synthetic UAT และไม่ได้เรียก Meta API",
       "สิทธิ์จำกัดเฉพาะรายชื่อ Page และการเชื่อม Instagram เบื้องต้น",
       "ไม่มีสิทธิ์เผยแพร่โพสต์หรืออ่าน Insights",

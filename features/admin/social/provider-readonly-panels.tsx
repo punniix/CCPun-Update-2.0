@@ -1,0 +1,98 @@
+"use client";
+
+import { useState } from "react";
+
+const errorLabel: Record<string, string> = {
+  "provider-not-connected": "ยังตั้งค่า Provider ไม่ครบ",
+  "provider-auth-required": "Token หมดอายุหรือสิทธิ์ไม่ครบ",
+  "provider-rate-limited": "Provider จำกัดการเรียกชั่วคราว",
+  "provider-timeout": "Provider ตอบช้าเกินกำหนด",
+  "provider-invalid-response": "Provider ส่งข้อมูลไม่ตรงสัญญา",
+  "provider-unavailable": "Provider ยังไม่พร้อมใช้งาน",
+  "sync-in-progress": "กำลัง Sync อยู่",
+};
+
+async function manualSync(endpoint: string) {
+  const response = await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json" } });
+  const body = await response.json().catch(() => null) as { error?: string; discovery?: unknown } | null;
+  if (!response.ok || !body?.discovery) throw new Error(errorLabel[body?.error ?? ""] ?? "Sync ไม่สำเร็จ");
+  return body.discovery;
+}
+
+export function MetaReadOnlyPanel({ ready, missing }: { ready: boolean; missing: string[] }) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<null | {
+    status: string;
+    pages: Array<{ id: string; name: string; selected: boolean; instagram: { status: string; username: string | null } }>;
+  }>(null);
+  async function sync() {
+    setLoading(true);
+    setError(null);
+    try {
+      setResult(await manualSync("/api/snt-admin/social/providers/meta/discovery/") as typeof result);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Sync ไม่สำเร็จ");
+    } finally {
+      setLoading(false);
+    }
+  }
+  return (
+    <section className="mt-8 rounded-3xl border border-emerald-200/15 bg-emerald-200/[0.04] p-5">
+      <div className="text-xs font-semibold uppercase tracking-wide text-emerald-200">Meta API · Manual read-only</div>
+      <p className="mt-2 text-sm text-white/65">อ่านรายชื่อ Facebook Page และบัญชี Instagram ที่เชื่อมอยู่เท่านั้น ไม่อ่าน Insights และไม่โพสต์</p>
+      {!ready ? <p className="mt-3 text-xs text-amber-200">รอตั้งค่า: {missing.join(", ")}</p> : null}
+      <button type="button" disabled={!ready || loading} onClick={sync} className="mt-4 min-h-11 rounded-xl bg-emerald-200 px-4 py-2.5 text-sm font-semibold text-[#111827] disabled:cursor-not-allowed disabled:opacity-40">
+        {loading ? "กำลังอ่าน…" : "Sync Meta แบบอ่านอย่างเดียว"}
+      </button>
+      {error ? <p role="alert" className="mt-3 text-sm text-rose-200">{error}</p> : null}
+      {result ? <div className="mt-5 grid gap-3 lg:grid-cols-2">{result.pages.map((page) => (
+        <article key={page.id} className="rounded-2xl border border-white/10 bg-black/10 p-4">
+          <div className="font-semibold">{page.name}</div>
+          <div className="mt-2 text-sm text-white/60">{page.instagram.status === "linked" ? `Instagram @${page.instagram.username}` : "ยังไม่มี Instagram ที่เชื่อม"}</div>
+        </article>
+      ))}</div> : null}
+    </section>
+  );
+}
+
+export function TikTokReadOnlyPanel({ ready, missing }: { ready: boolean; missing: string[] }) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<null | {
+    profile: { displayName: string };
+    videos: Array<{ id: string; title: string; publishedAt: string; metrics: { viewCount?: number; likeCount?: number; commentCount?: number; shareCount?: number } }>;
+  }>(null);
+  async function sync() {
+    setLoading(true);
+    setError(null);
+    try {
+      setResult(await manualSync("/api/snt-admin/social/providers/tiktok/discovery/") as typeof result);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Sync ไม่สำเร็จ");
+    } finally {
+      setLoading(false);
+    }
+  }
+  return (
+    <section className="mt-7 rounded-3xl border border-cyan-200/15 bg-cyan-200/[0.04] p-5">
+      <div className="text-xs font-semibold uppercase tracking-wide text-cyan-200">TikTok Display API · Manual read-only</div>
+      <p className="mt-2 text-sm text-white/65">อ่านโปรไฟล์ วิดีโอล่าสุด และตัวเลข Native ของวิดีโอ ไม่อัปโหลด Draft และไม่โพสต์</p>
+      {!ready ? <p className="mt-3 text-xs text-amber-200">รอตั้งค่า: {missing.join(", ")}</p> : null}
+      <button type="button" disabled={!ready || loading} onClick={sync} className="mt-4 min-h-11 rounded-xl bg-cyan-200 px-4 py-2.5 text-sm font-semibold text-[#111827] disabled:cursor-not-allowed disabled:opacity-40">
+        {loading ? "กำลังอ่าน…" : "Sync TikTok แบบอ่านอย่างเดียว"}
+      </button>
+      {error ? <p role="alert" className="mt-3 text-sm text-rose-200">{error}</p> : null}
+      {result ? <div className="mt-5">
+        <div className="font-semibold">{result.profile.displayName}</div>
+        <div className="mt-3 grid gap-3 lg:grid-cols-2">{result.videos.map((video) => (
+          <article key={video.id} className="rounded-2xl border border-white/10 bg-black/10 p-4">
+            <div className="font-semibold">{video.title || "วิดีโอไม่มีชื่อ"}</div>
+            <div className="mt-2 text-xs text-white/45">{video.publishedAt.slice(0, 10)}</div>
+            <div className="mt-3 text-sm text-white/65">Views {video.metrics.viewCount?.toLocaleString("th-TH") ?? "—"} · Likes {video.metrics.likeCount?.toLocaleString("th-TH") ?? "—"}</div>
+          </article>
+        ))}</div>
+      </div> : null}
+    </section>
+  );
+}

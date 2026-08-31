@@ -11,6 +11,7 @@ import {
   WEBSITE_42_SANITY_DATASET,
   WEBSITE_42_SANITY_PROJECT_ID,
 } from "./foundation";
+import { WEBSITE_42_SOCIAL_PROVIDER_BRANCH } from "./provider-readonly";
 
 export const WEBSITE_42_SOCIAL_OPERATIONS_BRANCH = "codex/website-42-social-media-integration-20260829";
 
@@ -262,7 +263,7 @@ export function isSocialOperationsEnabled(input: {
     && input.dataMode === "synthetic"
     && input.environment === "admin-uat"
     && input.projectId === CCPUN_VERCEL_PROJECT_IDS.adminProduction
-    && input.gitBranch === WEBSITE_42_SOCIAL_OPERATIONS_BRANCH
+    && [WEBSITE_42_SOCIAL_OPERATIONS_BRANCH, WEBSITE_42_SOCIAL_PROVIDER_BRANCH].includes(input.gitBranch ?? "")
     && input.sanityProjectId === WEBSITE_42_SANITY_PROJECT_ID
     && input.sanityDataset === WEBSITE_42_SANITY_DATASET;
 }

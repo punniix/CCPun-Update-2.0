@@ -128,6 +128,14 @@ const contracts: Record<string, RouteContract> = {
     methods: ["GET"], identity: /getAdminIdentity\(\)/, authorization: /"social:read"/,
     validation: { file: "app/api/snt-admin/social/providers/meta/connection/route.ts", pattern: /isConfiguredAdminOrigin\(request\.url, process\.env\.AUTH_URL\)/, exception: "Sensitive GET adds an exact configured-origin check." },
   },
+  "app/api/snt-admin/social/providers/meta/discovery/route.ts": {
+    methods: ["POST"], identity: /getAdminIdentity\(\)/, authorization: /"social:read"/,
+    validation: { file: "app/api/snt-admin/social/providers/meta/discovery/route.ts", pattern: /isSameOriginAdminMutation\(request\.url, request\.headers\.get\("origin"\)\)/, exception: "No request body; provider selection is server-owned." },
+  },
+  "app/api/snt-admin/social/providers/tiktok/discovery/route.ts": {
+    methods: ["POST"], identity: /getAdminIdentity\(\)/, authorization: /"social:read"/,
+    validation: { file: "app/api/snt-admin/social/providers/tiktok/discovery/route.ts", pattern: /isSameOriginAdminMutation\(request\.url, request\.headers\.get\("origin"\)\)/, exception: "No request body; provider selection is server-owned." },
+  },
 };
 
 test("every Admin API route has an explicit reviewed contract", () => {

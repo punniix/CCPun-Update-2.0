@@ -1,0 +1,58 @@
+import { z } from "zod";
+import { CCPUN_VERCEL_PROJECT_IDS, parseAdminEnvironment } from "../environment";
+import { WEBSITE_42_SANITY_DATASET, WEBSITE_42_SANITY_PROJECT_ID } from "./foundation";
+
+if (typeof window !== "undefined") throw new Error("SOCIAL_PROVIDER_READINESS_SERVER_ONLY");
+
+export const WEBSITE_42_SOCIAL_PROVIDER_BRANCH = "codex/website-42-social-provider-readonly-20260831";
+export const SOCIAL_READ_ONLY_SCOPES = {
+  meta: ["pages_show_list", "instagram_basic"],
+  tiktok: ["user.info.basic", "video.list"],
+} as const;
+
+const providerSchema = z.enum(["meta", "tiktok"]);
+
+function exactScopes(value: string | undefined, expected: readonly string[]) {
+  const scopes = value?.split(",").map((scope) => scope.trim()).filter(Boolean) ?? [];
+  return scopes.length === expected.length && expected.every((scope) => scopes.includes(scope));
+}
+
+export function getSocialProviderReadiness(
+  providerValue: unknown,
+  env: Record<string, string | undefined> = process.env,
+) {
+  const provider = providerSchema.parse(providerValue);
+  const environment = parseAdminEnvironment(env.CCPUN_APP_ENV);
+  const projectId = env.VERCEL_PROJECT_ID?.trim() || env.NEXT_PUBLIC_CCPUN_VERCEL_PROJECT_ID?.trim();
+  const laneReady = env.CCPUN_SOCIAL_PROVIDER_READS_ENABLED === "1"
+    && environment === "admin-uat"
+    && projectId === CCPUN_VERCEL_PROJECT_IDS.adminProduction
+    && env.VERCEL_GIT_COMMIT_REF?.trim() === WEBSITE_42_SOCIAL_PROVIDER_BRANCH
+    && env.NEXT_PUBLIC_SANITY_PROJECT_ID?.trim() === WEBSITE_42_SANITY_PROJECT_ID
+    && env.NEXT_PUBLIC_SANITY_DATASET?.trim() === WEBSITE_42_SANITY_DATASET;
+  const scopeVariable = provider === "meta" ? "CCPUN_META_GRANTED_SCOPES" : "CCPUN_TIKTOK_GRANTED_SCOPES";
+  const tokenVariable = provider === "meta" ? "CCPUN_META_ACCESS_TOKEN" : "CCPUN_TIKTOK_ACCESS_TOKEN";
+  const graphVersion = provider === "meta" ? env.CCPUN_META_GRAPH_VERSION?.trim() : undefined;
+  const scopeReady = exactScopes(env[scopeVariable], SOCIAL_READ_ONLY_SCOPES[provider]);
+  const tokenReady = Boolean(env[tokenVariable]?.trim());
+  const versionReady = provider !== "meta" || /^v\d{1,2}\.\d{1,2}$/.test(graphVersion ?? "");
+
+  return {
+    provider,
+    mode: "manual-read-only" as const,
+    status: laneReady && scopeReady && tokenReady && versionReady
+      ? "manual-sync-ready" as const
+      : "configuration-required" as const,
+    laneReady,
+    required: [
+      { name: "CCPUN_SOCIAL_PROVIDER_READS_ENABLED", present: env.CCPUN_SOCIAL_PROVIDER_READS_ENABLED === "1", valid: laneReady },
+      { name: scopeVariable, present: Boolean(env[scopeVariable]?.trim()), valid: scopeReady },
+      { name: tokenVariable, present: tokenReady, valid: tokenReady },
+      ...(provider === "meta" ? [{ name: "CCPUN_META_GRAPH_VERSION", present: Boolean(graphVersion), valid: versionReady }] : []),
+    ],
+    scopes: [...SOCIAL_READ_ONLY_SCOPES[provider]],
+    providerWriteAllowed: false as const,
+    backgroundSyncAllowed: false as const,
+    limitation: "เจ้าของต้องกด Sync เอง ข้อมูลไม่ถูกบันทึก และไม่มี publishing/upload scope",
+  };
+}
