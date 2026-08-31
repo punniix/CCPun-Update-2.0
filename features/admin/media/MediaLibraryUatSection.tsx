@@ -1,8 +1,10 @@
 import {
+  getGoogleDrivePickerPublicConfig,
   getMediaStorageProviderState,
   mediaLibrarySnapshotSchema,
   SYNTHETIC_MEDIA_LIBRARY,
 } from "@/lib/admin/media/foundation";
+import GoogleDrivePickerPanel from "./GoogleDrivePickerPanel";
 
 const kindLabel = {
   image: "รูปภาพ",
@@ -24,6 +26,7 @@ function formatBytes(byteSize: number) {
 export default function MediaLibraryUatSection() {
   const snapshot = mediaLibrarySnapshotSchema.parse(SYNTHETIC_MEDIA_LIBRARY);
   const storage = getMediaStorageProviderState();
+  const drivePickerConfig = getGoogleDrivePickerPublicConfig();
 
   return (
     <section aria-labelledby="media-library-title">
@@ -58,24 +61,10 @@ export default function MediaLibraryUatSection() {
             </p>
           </div>
           <span className="rounded-full border border-amber-200/20 bg-amber-200/[0.06] px-3 py-1 text-xs text-amber-100">
-            รอ Manual OAuth / Picker
+            {drivePickerConfig ? "Manual OAuth / Picker พร้อม" : "รอ Manual OAuth / Picker"}
           </span>
         </div>
-
-        <div className="mt-5 rounded-2xl border border-dashed border-white/15 bg-black/10 p-4">
-          <div className="text-sm font-medium text-white/80">ยังไม่ได้เลือกไฟล์</div>
-          <p role="status" className="mt-2 text-sm leading-6 text-white/60">
-            ต้องตั้งค่า Google Picker และให้เจ้าของอนุญาตสิทธิ์ <code>drive.file</code> แบบชั่วคราวก่อน ปุ่มจะยังปิดเพื่อไม่สร้าง client ID, API key หรือ token สมมติ
-          </p>
-          <div className="mt-4 flex flex-wrap gap-3">
-            <button type="button" disabled aria-disabled="true" className="cursor-not-allowed rounded-xl border border-white/10 px-4 py-2 text-sm text-white/40">
-              เลือกไฟล์จาก Google Drive
-            </button>
-            <button type="button" disabled aria-disabled="true" className="cursor-not-allowed rounded-xl border border-white/10 px-4 py-2 text-sm text-white/40">
-              Refresh metadata
-            </button>
-          </div>
-        </div>
+        <GoogleDrivePickerPanel config={drivePickerConfig} />
       </section>
 
       <div className="mt-6 grid gap-4 lg:grid-cols-2">

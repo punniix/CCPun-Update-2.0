@@ -1,6 +1,6 @@
 # Website 4.2 Phase 2 — Media Library Foundation
 
-Status: synthetic Admin UAT foundation only. No storage provider, media bytes, real account, platform request, Sanity write, or Production mutation.
+Status: owner-triggered Google Picker read-only UAT. No upload, media bytes, refresh token, Sanity write, Neon write, or Production mutation.
 
 ## Ownership
 
@@ -21,7 +21,7 @@ The runtime enables only when every condition matches:
 - flag is exactly `1`
 - `CCPUN_APP_ENV=admin-uat`
 - Vercel project is the Admin survivor
-- Git branch is exactly `codex/website-42-social-media-integration-20260829`
+- Git branch is exactly `codex/website-42-drive-picker-20260831`
 - Sanity is exactly `ccb9lnw5/uat`
 
 The default is disabled. Unknown environment, branch, project, or dataset values fail closed.
@@ -78,17 +78,18 @@ The Admin UAT API now supports a manual selected-file refresh. It accepts strict
 
 Successful responses project only `id`, `name`, `mimeType`, `modifiedTime`, `webViewLink`, `thumbnailLink` and `iconLink`. Drive response fields such as body/content, bytes, permissions, owners and email addresses are discarded by the server schema. The token, configured root IDs, ancestry evidence and raw provider response never appear in the response.
 
-The UI preserves the synthetic Media Library and shows the selected-file/Refresh surface in a disabled `Manual OAuth / Picker` state until the required Picker configuration and owner authorization are completed. It does not accept pasted tokens or invent client values. The projection remains a view of Drive, not another document store, and does not crawl folders, search unselected files, request `drive` or `drive.readonly`, proxy private bytes through Vercel, or create a provider connection.
+The UI preserves the synthetic Media Library and enables the selected-file/Refresh surface only when the three public Picker identifiers and two server-only root IDs are configured on the exact Preview branch. Google Identity Services requests one short-lived `drive.file` token from an owner click, Google Picker returns one selected file ID, and the existing server route verifies current metadata plus ancestry. The token is cleared from browser memory after that request. The UI does not accept pasted tokens or invent client values. The projection remains a view of Drive, not another document store, and does not crawl folders, search unselected files, request `drive` or `drive.readonly`, proxy private bytes through Vercel, or create a provider connection.
 
 No dependency, table or migration is added for this projection. Nothing is written to Sanity, Neon, disk, browser storage or logs. Adding immutable Drive file/root IDs and durable audit evidence remains a blocked write-lane design/migration gate before any real import can be enabled.
 
 ### Required manual Picker/OAuth configuration
 
-The code does not create an OAuth client or provider credential. Before enabling the UI, the owner must authorize or select an already approved Google provider client and configure these exact names only in `ccpun-admin` Preview for branch `codex/website-42-social-media-integration-20260829`:
+The code does not create an OAuth client or provider credential. Before enabling the UI, the owner must authorize or select an already approved Google provider client and configure these exact names only in `ccpun-admin` Preview for branch `codex/website-42-drive-picker-20260831`:
 
 - `CCPUN_GOOGLE_DRIVE_ADMIN_ROOT_FOLDER_ID` — server-only immutable ID for `Website 4.2 — Admin Control Plane`; nonsecret identifier, never returned to the browser.
 - `CCPUN_GOOGLE_DRIVE_MEDIA_ROOT_FOLDER_ID` — server-only immutable ID for `Website 4.2 — Media Library`; nonsecret identifier, never returned to the browser.
 - `NEXT_PUBLIC_CCPUN_GOOGLE_DRIVE_PICKER_API_KEY` — browser-visible Google Picker developer key restricted to the approved Admin Preview origin and Picker API.
+- `NEXT_PUBLIC_CCPUN_GOOGLE_DRIVE_APP_ID` — browser-visible numeric Google Cloud project number used as the Picker App ID.
 - `NEXT_PUBLIC_CCPUN_GOOGLE_DRIVE_OAUTH_CLIENT_ID` — browser-visible ID of the approved Google provider OAuth client; do not substitute the Admin-login client by implication.
 
 The owner must complete Google sign-in/consent manually with only `https://www.googleapis.com/auth/drive.file`. The returned access token and its issue/expiry metadata stay in the active browser memory and POST body only; they are not Vercel environment variables. No client secret or refresh token belongs in this flow. If either Picker public variable, either root ID, or manual authorization is absent, the UI/route remains disabled or fails closed.

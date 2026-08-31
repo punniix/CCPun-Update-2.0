@@ -5,7 +5,7 @@ import {
   type AdminEnvironment,
 } from "../environment";
 
-export const WEBSITE_42_MEDIA_LIBRARY_BRANCH = "codex/website-42-social-media-integration-20260829";
+export const WEBSITE_42_MEDIA_LIBRARY_BRANCH = "codex/website-42-drive-picker-20260831";
 export const WEBSITE_42_MEDIA_SANITY_PROJECT_ID = "ccb9lnw5";
 export const WEBSITE_42_MEDIA_SANITY_DATASET = "uat";
 
@@ -143,6 +143,23 @@ export function getMediaLibraryRuntimeStatus() {
       sanityDataset,
     }),
   };
+}
+
+const drivePickerConfigSchema = z.strictObject({
+  apiKey: z.string().trim().min(20).max(200),
+  appId: z.string().trim().regex(/^\d{6,30}$/),
+  clientId: z.string().trim().max(200).regex(/^\d+-[a-z0-9-]+\.apps\.googleusercontent\.com$/),
+});
+
+export function getGoogleDrivePickerPublicConfig(
+  env: Record<string, string | undefined> = process.env,
+) {
+  const parsed = drivePickerConfigSchema.safeParse({
+    apiKey: env.NEXT_PUBLIC_CCPUN_GOOGLE_DRIVE_PICKER_API_KEY,
+    appId: env.NEXT_PUBLIC_CCPUN_GOOGLE_DRIVE_APP_ID,
+    clientId: env.NEXT_PUBLIC_CCPUN_GOOGLE_DRIVE_OAUTH_CLIENT_ID,
+  });
+  return parsed.success ? parsed.data : null;
 }
 
 export const SYNTHETIC_MEDIA_LIBRARY: MediaLibrarySnapshot = {

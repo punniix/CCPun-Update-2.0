@@ -50,7 +50,7 @@ test("Website 4.3 and its historical UX branch build only in the Web survivor", 
 });
 
 test("Website 4.2 and Admin-only branches build only in the Admin survivor", () => {
-  for (const branch of ["admin/review-queue", "codex/admin-oauth", "codex/website-42-social-foundation", "codex/website-42-social-media-integration-20260829"]) {
+  for (const branch of ["admin/review-queue", "codex/admin-oauth", "codex/website-42-social-foundation", "codex/website-42-social-media-integration-20260829", "codex/website-42-drive-picker-20260831"]) {
     const input = { environment: "preview", branch };
     assert.equal(shouldBuild({ ...input, projectId: web }), false);
     assert.equal(shouldBuild({ ...input, projectId: admin }), true);
