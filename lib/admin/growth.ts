@@ -2,6 +2,8 @@ import "server-only";
 
 import { z } from "zod";
 import { formatGrowthComparison } from "./growth-comparison";
+import { getGoogleDataAccessToken } from "./seo-intelligence/google-data-auth";
+import { getSeoGoogleProviderReadiness } from "./seo-intelligence/provider-readiness";
 
 export type GrowthSourceResult = {
   source: "gsc" | "ga4" | "vercel";
@@ -57,14 +59,14 @@ function previousGa4Totals(data: z.infer<typeof ga4Schema> | null) {
 }
 
 export async function readGscSummary(): Promise<GrowthSourceResult> {
-  const token = process.env.CCPUN_GSC_ACCESS_TOKEN?.trim();
   const siteUrl = process.env.CCPUN_GSC_SITE_URL?.trim();
-  if (!token || !siteUrl) return { source: "gsc", state: "not-connected", metrics: [], limitation: "ยังไม่ได้อนุมัติการเชื่อม Google Search Console แบบอ่านอย่างเดียว" };
+  if (getSeoGoogleProviderReadiness("gsc").status !== "manual-sync-ready" || !siteUrl) return { source: "gsc", state: "not-connected", metrics: [], limitation: "ยังไม่ได้อนุมัติการเชื่อม Google Search Console แบบอ่านอย่างเดียว" };
   const startDate = bangkokDate(27);
   const endDate = bangkokDate();
   const previousStartDate = bangkokDate(55);
   const previousEndDate = bangkokDate(28);
   try {
+    const token = await getGoogleDataAccessToken();
     const query = (rangeStart: string, rangeEnd: string) => providerFetch(`https://searchconsole.googleapis.com/webmasters/v3/sites/${encodeURIComponent(siteUrl)}/searchAnalytics/query`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
@@ -93,14 +95,14 @@ export async function readGscSummary(): Promise<GrowthSourceResult> {
 }
 
 export async function readGa4Summary(): Promise<GrowthSourceResult> {
-  const token = process.env.CCPUN_GA4_ACCESS_TOKEN?.trim();
   const propertyId = process.env.CCPUN_GA4_PROPERTY_ID?.trim();
-  if (!token || !propertyId) return { source: "ga4", state: "not-connected", metrics: [], limitation: "ยังไม่ได้อนุมัติการเชื่อม GA4 แบบอ่านอย่างเดียว" };
+  if (getSeoGoogleProviderReadiness("ga4").status !== "manual-sync-ready" || !propertyId) return { source: "ga4", state: "not-connected", metrics: [], limitation: "ยังไม่ได้อนุมัติการเชื่อม GA4 แบบอ่านอย่างเดียว" };
   const startDate = bangkokDate(27);
   const endDate = bangkokDate();
   const previousStartDate = bangkokDate(55);
   const previousEndDate = bangkokDate(28);
   try {
+    const token = await getGoogleDataAccessToken();
     const report = (rangeStart: string, rangeEnd: string) => providerFetch(`https://analyticsdata.googleapis.com/v1beta/properties/${encodeURIComponent(propertyId)}:runReport`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },

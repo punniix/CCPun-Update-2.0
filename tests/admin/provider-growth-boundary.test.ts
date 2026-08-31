@@ -65,6 +65,8 @@ test("provider retries reuse fresh Neon snapshots without credential fallback", 
 
 test("growth sources fail independently and GEO is explicitly non-ranking", () => {
   assert.match(growth, /Promise\.all\(\[readGscSummary\(\), readGa4Summary\(\), readVercelHealth\(\)\]\)/);
+  assert.match(growth, /getGoogleDataAccessToken/);
+  assert.doesNotMatch(growth, /CCPUN_(?:GSC|GA4)_ACCESS_TOKEN/);
   assert.match(growth, /state: "not-connected"/);
   assert.match(growth, /state: "unavailable"/);
   assert.match(growth, /GA4_TOTALS_MISSING/);

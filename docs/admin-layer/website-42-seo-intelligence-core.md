@@ -1,5 +1,23 @@
 # Website 4.2 SEO Intelligence Core
 
+The preparation branch exposes an authenticated, same-origin readiness endpoint at
+`/api/snt-admin/seo/providers/readiness?provider=gsc|ga4`. It returns required variable
+names, presence, identifier validity, minimum read-only scope, and limitations only.
+It never returns values. UAT uses one owner-authorized offline OAuth connection stored as
+branch-scoped Vercel Secrets. The server exchanges the refresh token for a short-lived access
+token only when the owner presses a manual Sync control. Admin login OAuth remains separate.
+
+Required Preview-only variables:
+
+- `CCPUN_GOOGLE_DATA_CLIENT_ID`
+- `CCPUN_GOOGLE_DATA_CLIENT_SECRET`
+- `CCPUN_GOOGLE_DATA_REFRESH_TOKEN`
+- `CCPUN_GSC_SITE_URL` (`sc-domain:ccpun.com` or the exact verified URL-prefix property)
+- `CCPUN_GA4_PROPERTY_ID` (numeric Property ID, not a `G-...` Measurement ID)
+
+The OAuth grant must contain only `webmasters.readonly` and `analytics.readonly`. Reconnect is
+an explicit owner action. No token is stored in Sanity, returned to the browser or logged.
+
 Status: synthetic, read-only Admin UAT foundation.
 
 This batch adds deterministic detectors for CTR underperformance, position 4–15 opportunities, content decay and persistent query/page cannibalization. It uses fixed synthetic observations only. The provisional CTR baseline, detector thresholds, priority components, evidence and limitations are visible in code and the Admin UAT page.

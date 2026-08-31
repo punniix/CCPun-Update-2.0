@@ -10,6 +10,7 @@ import {
   isBrandedQuery,
   isSeoIntelligenceEnabled,
   SYNTHETIC_SEO_OBSERVATIONS,
+  WEBSITE_42_GOOGLE_PROVIDER_BRANCH,
   WEBSITE_42_SEO_BRANCH,
   WEBSITE_42_SEO_SANITY_DATASET,
   WEBSITE_42_SEO_SANITY_PROJECT_ID,
@@ -27,11 +28,13 @@ const enabledInput = {
 
 test("SEO Intelligence opens only on the exact Admin UAT branch and data plane", () => {
   assert.equal(isSeoIntelligenceEnabled(enabledInput), true);
+  assert.equal(isSeoIntelligenceEnabled({ ...enabledInput, gitBranch: WEBSITE_42_GOOGLE_PROVIDER_BRANCH }), true);
   for (const change of [
     { flag: "true" },
     { environment: "production-admin" as const },
     { projectId: CCPUN_VERCEL_PROJECT_IDS.web },
     { gitBranch: "v4-production" },
+    { gitBranch: "codex/unapproved-preview" },
     { sanityProjectId: "kyfxgjnq" },
     { sanityDataset: "production" },
   ]) assert.equal(isSeoIntelligenceEnabled({ ...enabledInput, ...change }), false, JSON.stringify(change));
@@ -215,7 +218,8 @@ test("GSC manual sync is human-only, exact-origin, bounded and read-only", () =>
   assert.match(route, /provider-rate-limited/);
   assert.match(route, /provider-timeout/);
   assert.match(route, /provider-invalid-response/);
-  assert.match(route, /CCPUN_GSC_ACCESS_TOKEN/);
+  assert.match(route, /getGoogleDataAccessToken/);
+  assert.match(route, /CCPUN_GSC_SITE_URL/);
   assert.match(route, /export async function POST\(request: Request\)/);
   assert.doesNotMatch(route, /export async function (?:GET|PUT|PATCH|DELETE)/);
   assert.doesNotMatch(route, /createClient|\.(?:mutate|create|patch|delete)\(|console\./i);
@@ -268,7 +272,8 @@ test("GA4 manual sync is human-only, exact-origin, branch-gated and read-only", 
   assert.match(route, /isConfiguredAdminOrigin/);
   assert.match(route, /isSameOriginAdminMutation/);
   assert.match(route, /getSeoIntelligenceRuntimeStatus\(\)\.enabled/);
-  assert.match(route, /CCPUN_GA4_ACCESS_TOKEN/);
+  assert.match(route, /getGoogleDataAccessToken/);
+  assert.match(route, /CCPUN_GA4_PROPERTY_ID/);
   assert.match(route, /current\.rows\.slice\(0, 100\)/);
   assert.match(route, /state: comparison \? "ready" : "partial"/);
   assert.match(route, /export async function POST\(request: Request\)/);

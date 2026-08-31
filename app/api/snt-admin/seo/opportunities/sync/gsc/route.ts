@@ -6,6 +6,7 @@ import { getAdminIdentity } from "@/lib/admin/identity";
 import { hasAdminPermission } from "@/lib/admin/rbac";
 import { previousEqualDateRange } from "@/lib/admin/seo-intelligence/contracts";
 import { getSeoIntelligenceRuntimeStatus } from "@/lib/admin/seo-intelligence/foundation";
+import { getGoogleDataAccessToken } from "@/lib/admin/seo-intelligence/google-data-auth";
 import { fetchGscSearchAnalytics } from "@/lib/admin/seo-intelligence/providers/gsc";
 import { assembleGscObservations, buildGscObservationContexts } from "@/lib/admin/seo-intelligence/gsc-observations";
 import { detectSeoOpportunities } from "@/lib/admin/seo-intelligence/foundation";
@@ -41,9 +42,8 @@ export async function POST(request: Request) {
   const parsed = inputSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "invalid-input" }, { status: 400 });
 
-  const token = process.env.CCPUN_GSC_ACCESS_TOKEN?.trim();
   const siteUrl = process.env.CCPUN_GSC_SITE_URL?.trim();
-  if (!token || !siteUrl) return NextResponse.json({ error: "provider-not-connected" }, { status: 409 });
+  if (!siteUrl) return NextResponse.json({ error: "provider-not-connected" }, { status: 409 });
   if (syncInFlight) return NextResponse.json({ error: "sync-in-progress" }, { status: 409 });
 
   syncInFlight = true;
@@ -52,6 +52,7 @@ export async function POST(request: Request) {
   const comparison = previousEqualDateRange(parsed.data.startDate, parsed.data.endDate);
   try {
     // ponytail: one owner and one manual sync at a time; use a durable lock only when scheduled sync exists.
+    const token = await getGoogleDataAccessToken();
     const current = await fetchGscSearchAnalytics({ siteUrl, token, ...parsed.data, dimensions });
     const previous = await fetchGscSearchAnalytics({ siteUrl, token, ...comparison, dimensions });
     const editorial = await listPublishedSeoObservationArticles();
@@ -91,6 +92,11 @@ export async function POST(request: Request) {
     }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     const code = error instanceof Error ? error.message : "";
+    if (code === "GOOGLE_DATA_NOT_CONFIGURED") return NextResponse.json({ error: "provider-not-connected", requestId }, { status: 409 });
+    if (code === "GOOGLE_DATA_AUTH_REQUIRED") return NextResponse.json({ error: "provider-auth-required", requestId }, { status: 401 });
+    if (code === "GOOGLE_DATA_RATE_LIMITED") return NextResponse.json({ error: "provider-rate-limited", requestId }, { status: 429, headers: { "Retry-After": "60" } });
+    if (code === "GOOGLE_DATA_TIMEOUT") return NextResponse.json({ error: "provider-timeout", requestId }, { status: 504 });
+    if (code === "GOOGLE_DATA_INVALID_RESPONSE") return NextResponse.json({ error: "provider-invalid-response", requestId }, { status: 502 });
     if (code === "GSC_AUTH_REQUIRED") return NextResponse.json({ error: "provider-auth-required", requestId }, { status: 401 });
     if (code === "GSC_RATE_LIMITED") return NextResponse.json({ error: "provider-rate-limited", requestId }, { status: 429, headers: { "Retry-After": "60" } });
     if (code === "GSC_TIMEOUT") return NextResponse.json({ error: "provider-timeout", requestId }, { status: 504 });

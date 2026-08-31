@@ -2,6 +2,7 @@ import { CCPUN_VERCEL_PROJECT_IDS, parseAdminEnvironment, type AdminEnvironment 
 import { SYNTHETIC_MARKET_PROVIDER_FIXTURES } from "./providers/ubersuggest";
 
 export const WEBSITE_42_SEO_BRANCH = "codex/website-42-seo-observation-assembler-20260829";
+export const WEBSITE_42_GOOGLE_PROVIDER_BRANCH = "codex/website-42-google-provider-prep-20260829";
 export const WEBSITE_42_SEO_RULE_VERSION = "seo-intelligence-core-v1";
 export const WEBSITE_42_SEO_BASELINE_VERSION = "synthetic-uat-v1";
 export const WEBSITE_42_SEO_SANITY_PROJECT_ID = "ccb9lnw5";
@@ -275,7 +276,7 @@ export function isSeoIntelligenceEnabled(input: {
   return input.flag === "1" &&
     input.environment === "admin-uat" &&
     input.projectId === CCPUN_VERCEL_PROJECT_IDS.adminProduction &&
-    input.gitBranch === WEBSITE_42_SEO_BRANCH &&
+    (input.gitBranch === WEBSITE_42_SEO_BRANCH || input.gitBranch === WEBSITE_42_GOOGLE_PROVIDER_BRANCH) &&
     input.sanityProjectId === WEBSITE_42_SEO_SANITY_PROJECT_ID &&
     input.sanityDataset === WEBSITE_42_SEO_SANITY_DATASET;
 }
