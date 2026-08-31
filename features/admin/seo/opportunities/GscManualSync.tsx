@@ -12,6 +12,13 @@ type SyncResult = {
   skippedRows: number;
   opportunityCount: number;
   opportunities: Array<{ id: string; type: string; page: string; evidence: Array<{ label: string; value: string }>; limitations: string[] }>;
+  sample: Array<{
+    dimensions: { query?: string; page?: string; device?: string; country?: string };
+    clicks: number;
+    impressions: number;
+    ctr: number;
+    position: number;
+  }>;
 };
 
 const errorMessage: Record<string, string> = {
@@ -29,6 +36,8 @@ export default function GscManualSync({ defaultStartDate, defaultEndDate }: { de
   const [state, setState] = useState<"idle" | "running" | "done" | "error">("idle");
   const [message, setMessage] = useState("");
   const [result, setResult] = useState<SyncResult | null>(null);
+  const topRows = [...(result?.sample ?? [])].sort((a, b) => b.impressions - a.impressions).slice(0, 10);
+  const maxImpressions = topRows[0]?.impressions ?? 0;
 
   async function sync() {
     if (state === "running") return;
@@ -84,6 +93,35 @@ export default function GscManualSync({ defaultStartDate, defaultEndDate }: { de
           <div className="rounded-xl border border-white/5 bg-black/10 p-3"><div className="text-xs text-white/45">Observations ที่ยืนยันบริบทแล้ว</div><div className="mt-1 font-semibold">{result.observationCount.toLocaleString("th-TH")}</div></div>
           <div className="rounded-xl border border-white/5 bg-black/10 p-3"><div className="text-xs text-white/45">แถวที่ไม่เดาบริบท</div><div className="mt-1 font-semibold">{result.skippedRows.toLocaleString("th-TH")}</div></div>
           <div className="rounded-xl border border-white/5 bg-black/10 p-3"><div className="text-xs text-white/45">Opportunities</div><div className="mt-1 font-semibold">{result.opportunityCount.toLocaleString("th-TH")}</div></div>
+          <section aria-labelledby="gsc-top-rows-title" className="sm:col-span-3 rounded-2xl border border-white/10 bg-black/10 p-4">
+            <h3 id="gsc-top-rows-title" className="font-semibold">Top 10 จากข้อมูลจริง · เรียงตาม Impressions</h3>
+            {topRows.length ? (
+              <ol className="mt-4 space-y-4">
+                {topRows.map((row, index) => {
+                  const label = row.dimensions.query?.trim() || row.dimensions.page?.trim() || "ไม่ระบุ query/page";
+                  const width = maxImpressions > 0 ? Math.min(100, Math.max(0, (row.impressions / maxImpressions) * 100)) : 0;
+                  return (
+                    <li key={`${label}:${row.dimensions.page ?? ""}:${row.dimensions.device ?? ""}:${row.dimensions.country ?? ""}:${index}`}>
+                      <div className="flex min-w-0 items-baseline justify-between gap-3 text-sm">
+                        <span className="truncate text-white/80" title={label}>{label}</span>
+                        <span className="shrink-0 font-semibold text-[#f4df9b]">{row.impressions.toLocaleString("th-TH")}</span>
+                      </div>
+                      <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-white/10" aria-hidden="true">
+                        <div className="h-full rounded-full bg-[#e0c985]" style={{ width: `${width}%` }} />
+                      </div>
+                      <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-white/55 sm:grid-cols-4">
+                        <div><dt className="inline">Clicks </dt><dd className="inline text-white/75">{row.clicks.toLocaleString("th-TH")}</dd></div>
+                        <div><dt className="inline">Impressions </dt><dd className="inline text-white/75">{row.impressions.toLocaleString("th-TH")}</dd></div>
+                        <div><dt className="inline">CTR </dt><dd className="inline text-white/75">{(row.ctr * 100).toFixed(1)}%</dd></div>
+                        <div><dt className="inline">Position </dt><dd className="inline text-white/75">{row.position.toFixed(1)}</dd></div>
+                      </dl>
+                      {row.dimensions.query && row.dimensions.page ? <p className="mt-1 truncate text-xs text-white/40" title={row.dimensions.page}>{row.dimensions.page}</p> : null}
+                    </li>
+                  );
+                })}
+              </ol>
+            ) : <p className="mt-3 text-sm text-white/55">ช่วงวันที่เลือกไม่มี query หรือ page ที่นำมาแสดงกราฟได้</p>}
+          </section>
           {result.opportunities.slice(0, 5).map((opportunity) => (
             <article key={opportunity.id} className="sm:col-span-3 rounded-xl border border-white/10 bg-black/10 p-3">
               <div className="text-xs font-semibold text-[#e0c985]">{opportunity.type}</div>

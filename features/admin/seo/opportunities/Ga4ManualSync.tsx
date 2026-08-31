@@ -9,6 +9,7 @@ type SyncResult = {
   timeZone: string | null;
   current: Period;
   comparison: Period | null;
+  sample: Array<{ landingPage: string; sessions: number; engagedSessions: number; engagementRate: number }>;
   truncated: boolean;
   limitations: string[];
 };
@@ -28,6 +29,8 @@ export default function Ga4ManualSync({ defaultStartDate, defaultEndDate }: { de
   const [state, setState] = useState<"idle" | "running" | "done" | "error">("idle");
   const [message, setMessage] = useState("");
   const [result, setResult] = useState<SyncResult | null>(null);
+  const topRows = [...(result?.sample ?? [])].sort((a, b) => b.sessions - a.sessions).slice(0, 10);
+  const maxSessions = topRows[0]?.sessions ?? 0;
 
   async function sync() {
     if (state === "running") return;
@@ -81,6 +84,32 @@ export default function Ga4ManualSync({ defaultStartDate, defaultEndDate }: { de
           <div className="rounded-xl border border-white/5 bg-black/10 p-3"><div className="text-xs text-white/45">Engaged Sessions</div><div className="mt-1 font-semibold">{result.current.engagedSessions.toLocaleString("th-TH")}</div></div>
           <div className="rounded-xl border border-white/5 bg-black/10 p-3"><div className="text-xs text-white/45">Engagement Rate</div><div className="mt-1 font-semibold">{(result.current.engagementRate * 100).toFixed(1)}%</div></div>
           <div className="rounded-xl border border-white/5 bg-black/10 p-3"><div className="text-xs text-white/45">Landing Pages</div><div className="mt-1 font-semibold">{result.current.rows.toLocaleString("th-TH")}</div></div>
+          <section aria-labelledby="ga4-top-rows-title" className="sm:col-span-4 rounded-2xl border border-white/10 bg-black/10 p-4">
+            <h3 id="ga4-top-rows-title" className="font-semibold">Top 10 Organic Landing Pages · เรียงตาม Sessions</h3>
+            {topRows.length ? (
+              <ol className="mt-4 space-y-4">
+                {topRows.map((row, index) => {
+                  const width = maxSessions > 0 ? Math.min(100, Math.max(0, (row.sessions / maxSessions) * 100)) : 0;
+                  return (
+                    <li key={`${row.landingPage}:${index}`}>
+                      <div className="flex min-w-0 items-baseline justify-between gap-3 text-sm">
+                        <span className="truncate text-white/80" title={row.landingPage}>{row.landingPage}</span>
+                        <span className="shrink-0 font-semibold text-[#f4df9b]">{row.sessions.toLocaleString("th-TH")}</span>
+                      </div>
+                      <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-white/10" aria-hidden="true">
+                        <div className="h-full rounded-full bg-[#e0c985]" style={{ width: `${width}%` }} />
+                      </div>
+                      <dl className="mt-2 grid grid-cols-1 gap-x-3 gap-y-1 text-xs text-white/55 sm:grid-cols-3">
+                        <div><dt className="inline">Sessions </dt><dd className="inline text-white/75">{row.sessions.toLocaleString("th-TH")}</dd></div>
+                        <div><dt className="inline">Engaged Sessions </dt><dd className="inline text-white/75">{row.engagedSessions.toLocaleString("th-TH")}</dd></div>
+                        <div><dt className="inline">Engagement Rate </dt><dd className="inline text-white/75">{(row.engagementRate * 100).toFixed(1)}%</dd></div>
+                      </dl>
+                    </li>
+                  );
+                })}
+              </ol>
+            ) : <p className="mt-3 text-sm text-white/55">ช่วงวันที่เลือกไม่มี Organic landing page ที่นำมาแสดงกราฟได้</p>}
+          </section>
           <p className="sm:col-span-4 text-xs leading-5 text-amber-100/70">{result.state === "partial" ? "ช่วงเปรียบเทียบยังดึงไม่สำเร็จ · " : ""}{result.truncated ? "ข้อมูลชนขีดจำกัดรอบนี้ · " : ""}{result.timeZone ? `Timezone ${result.timeZone} · ` : ""}{result.limitations.join(" · ")}</p>
         </div>
       ) : null}

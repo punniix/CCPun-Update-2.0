@@ -227,6 +227,10 @@ test("GSC manual sync is human-only, exact-origin, bounded and read-only", () =>
   assert.match(control, /กำลัง Sync/);
   assert.match(control, /role="alert"/);
   assert.match(control, /ไม่บันทึก DB\/Sanity/);
+  assert.match(control, /\.sort\(\(a, b\) => b\.impressions - a\.impressions\)\.slice\(0, 10\)/);
+  assert.match(control, /row\.clicks/);
+  assert.match(control, /row\.ctr/);
+  assert.match(control, /row\.position/);
 });
 
 test("GA4 landing-page normalization derives engagement and exposes report limitations", () => {
@@ -282,6 +286,9 @@ test("GA4 manual sync is human-only, exact-origin, branch-gated and read-only", 
   assert.match(control, /type="date"/);
   assert.match(control, /Organic Landing Pages/);
   assert.match(control, /ไม่บันทึก DB\/Sanity/);
+  assert.match(control, /\.sort\(\(a, b\) => b\.sessions - a\.sessions\)\.slice\(0, 10\)/);
+  assert.match(control, /row\.engagedSessions/);
+  assert.match(control, /row\.engagementRate/);
 });
 
 test("SEO opportunities API is authenticated, exact-origin and GET-only", () => {

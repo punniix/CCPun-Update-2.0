@@ -36,9 +36,9 @@ export default async function SeoOpportunitiesUatPage() {
     <div>
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <p className="text-xs font-semibold tracking-[0.12em] text-[#e0c985]">WEBSITE 4.2 · SYNTHETIC UAT</p>
+          <p className="text-xs font-semibold tracking-[0.12em] text-[#e0c985]">WEBSITE 4.2 · MANUAL READ-ONLY UAT</p>
           <h1 className="mt-2 text-3xl font-semibold">SEO Opportunities</h1>
-          <p className="mt-3 max-w-3xl text-sm leading-6 text-white/70">ทดสอบกฎตรวจหาโอกาสจากหลักฐานจำลอง คะแนนทุกส่วนอธิบายและคำนวณซ้ำได้ ระบบยังไม่เรียก provider จริง ไม่สร้างข้อเสนอ และไม่แก้บทความ</p>
+          <p className="mt-3 max-w-3xl text-sm leading-6 text-white/70">ปุ่ม Manual Sync เรียก GSC และ GA4 จริงแบบอ่านอย่างเดียวเมื่อคุณกด ส่วนการ์ด Opportunities ด้านล่างยังใช้หลักฐานจำลองเพื่อทดสอบกฎ ระบบไม่สร้างข้อเสนอและไม่แก้บทความ</p>
         </div>
         <Link href="/snt-admin/seo/" className="inline-flex min-h-11 items-center rounded-xl border border-white/10 px-4 py-2.5 text-sm text-white/70 hover:bg-white/5">กลับ SEO Control Center</Link>
       </div>
