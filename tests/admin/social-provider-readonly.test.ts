@@ -33,7 +33,7 @@ test("Provider readiness requires the exact UAT lane and exact read-only scopes"
   assert.equal(getSocialProviderReadiness("tiktok", { ...lane, CCPUN_TIKTOK_ACCESS_TOKEN: "x", CCPUN_TIKTOK_GRANTED_SCOPES: "user.info.basic,video.list", CCPUN_APP_ENV: "production-admin" }).status, "configuration-required");
 });
 
-test("Meta discovery uses bearer auth and returns only sanitized Page and Instagram identity", async () => {
+test("Meta discovery accepts a scoped system-user token and returns only sanitized Page and Instagram identity", async () => {
   const requests: Array<{ url: string; authorization: string }> = [];
   const result = await fetchMetaReadOnlyDiscovery({
     ...lane,
@@ -44,7 +44,7 @@ test("Meta discovery uses bearer auth and returns only sanitized Page and Instag
     const url = String(input);
     requests.push({ url, authorization: new Headers(init?.headers).get("authorization") ?? "" });
     if (url.includes("/me/accounts")) return new Response(JSON.stringify({ data: [
-      { id: "page-1", name: "CCPun", access_token: "page-access", instagram_business_account: { id: "ig-1", username: "ccpun" } },
+      { id: "page-1", name: "CCPun", instagram_business_account: { id: "ig-1", username: "ccpun" } },
     ] }), { status: 200 });
     if (url.includes("/published_posts")) return new Response(JSON.stringify({ data: [{
       id: "facebook-post-1", message: "One", created_time: "2026-08-31T10:00:00+00:00",
@@ -53,14 +53,13 @@ test("Meta discovery uses bearer auth and returns only sanitized Page and Instag
     return new Response(JSON.stringify({ data: [{ id: "ig-post-1", caption: "IG", media_type: "IMAGE", timestamp: "2026-08-31T10:00:00+00:00", like_count: 20, comments_count: 4 }] }));
   });
   assert.match(requests[0]!.url, /^https:\/\/graph\.facebook\.com\/v24\.0\/me\/accounts\?/);
-  assert.equal(requests.every((request) => !request.url.includes("meta-access") && !request.url.includes("page-access")), true);
-  assert.deepEqual(requests.map((request) => request.authorization), ["Bearer meta-access", "Bearer page-access", "Bearer page-access"]);
+  assert.equal(requests.every((request) => !request.url.includes("meta-access")), true);
+  assert.deepEqual(requests.map((request) => request.authorization), ["Bearer meta-access", "Bearer meta-access", "Bearer meta-access"]);
   assert.equal(result.mode, "provider-read-only");
   assert.equal(result.status, "connected");
   assert.equal(result.providerRequestAllowed, true);
   assert.equal(result.providerWriteAllowed, false);
   assert.equal(JSON.stringify(result).includes("meta-access"), false);
-  assert.equal(JSON.stringify(result).includes("page-access"), false);
   assert.deepEqual(result.facebookPosts[0]?.metrics, { likes: 10, comments: 2, shares: 3 });
   const matched = matchMetaHistoricalAnalytics([
     { publicationId: "facebook-publication", platform: "facebook", platformObjectId: "facebook-post-1" },
