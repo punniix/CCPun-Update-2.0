@@ -4,13 +4,10 @@ import { z } from "zod";
 import { isConfiguredAdminOrigin, isSameOriginAdminMutation } from "@/lib/admin/auth-config";
 import { getAdminIdentity } from "@/lib/admin/identity";
 import { hasAdminPermission } from "@/lib/admin/rbac";
-import { previousEqualDateRange } from "@/lib/admin/seo-intelligence/contracts";
+import { joinGscDashboardRows, previousEqualDateRange } from "@/lib/admin/seo-intelligence/contracts";
 import { getSeoIntelligenceRuntimeStatus } from "@/lib/admin/seo-intelligence/foundation";
 import { getGoogleDataAccessToken } from "@/lib/admin/seo-intelligence/google-data-auth";
-import { fetchGscSearchAnalytics } from "@/lib/admin/seo-intelligence/providers/gsc";
-import { assembleGscObservations, buildGscObservationContexts } from "@/lib/admin/seo-intelligence/gsc-observations";
-import { detectSeoOpportunities } from "@/lib/admin/seo-intelligence/foundation";
-import { listPublishedSeoObservationArticles } from "@/lib/admin/sanity-control";
+import { fetchGscSearchAnalytics, fetchGscSearchAnalyticsTotals } from "@/lib/admin/seo-intelligence/providers/gsc";
 
 const inputSchema = z.object({
   startDate: z.iso.date(),
@@ -26,6 +23,15 @@ const inputSchema = z.object({
 });
 
 let syncInFlight = false;
+
+function providerError(error: unknown) {
+  const code = error instanceof Error ? error.message : "";
+  if (code === "GSC_AUTH_REQUIRED") return "provider-auth-required";
+  if (code === "GSC_RATE_LIMITED") return "provider-rate-limited";
+  if (code === "GSC_TIMEOUT") return "provider-timeout";
+  if (code === "GSC_INVALID_RESPONSE") return "provider-invalid-response";
+  return "provider-unavailable";
+}
 
 export async function POST(request: Request) {
   const identity = await getAdminIdentity();
@@ -48,46 +54,52 @@ export async function POST(request: Request) {
 
   syncInFlight = true;
   const requestId = randomUUID();
-  const dimensions = ["query", "page", "device", "country"] as const;
-  const comparison = previousEqualDateRange(parsed.data.startDate, parsed.data.endDate);
+  const dimensions = ["query", "page"] as const;
+  const comparisonRange = previousEqualDateRange(parsed.data.startDate, parsed.data.endDate);
   try {
     // ponytail: one owner and one manual sync at a time; use a durable lock only when scheduled sync exists.
     const token = await getGoogleDataAccessToken();
-    const current = await fetchGscSearchAnalytics({ siteUrl, token, ...parsed.data, dimensions });
-    const previous = await fetchGscSearchAnalytics({ siteUrl, token, ...comparison, dimensions });
-    const editorial = await listPublishedSeoObservationArticles();
-    const assembled = assembleGscObservations({
-      currentRows: current.rows,
-      previousRows: previous.rows,
-      contexts: editorial.error ? [] : buildGscObservationContexts(current.rows, editorial.rows),
-      fetchedAt: current.fetchedAt,
-      comparisonFetchedAt: previous.fetchedAt,
-      dateRange: { start: parsed.data.startDate, end: parsed.data.endDate },
-      comparisonDateRange: { start: comparison.startDate, end: comparison.endDate },
-      currentLimitations: [current.limitation, "Business value uses neutral 3/5 and seasonality remains unknown until editorial governance is explicit."],
-      previousLimitations: [previous.limitation],
-    });
-    const opportunities = detectSeoOpportunities(assembled.observations);
+    const [current, currentTotals] = await Promise.all([
+      fetchGscSearchAnalytics({ siteUrl, token, ...parsed.data, dimensions }),
+      fetchGscSearchAnalyticsTotals({ siteUrl, token, ...parsed.data }),
+    ]);
+    let previous: Awaited<ReturnType<typeof fetchGscSearchAnalytics>> | null = null;
+    let previousTotals: Awaited<ReturnType<typeof fetchGscSearchAnalyticsTotals>> | null = null;
+    let comparisonError: string | null = null;
+    try {
+      [previous, previousTotals] = await Promise.all([
+        fetchGscSearchAnalytics({ siteUrl, token, ...comparisonRange, dimensions }),
+        fetchGscSearchAnalyticsTotals({ siteUrl, token, ...comparisonRange }),
+      ]);
+    } catch (error) {
+      comparisonError = providerError(error);
+    }
+    const joinedRows = joinGscDashboardRows(current.rows, previous?.rows ?? []);
+    const rows = [...joinedRows]
+      .sort((a, b) => b.current.impressions - a.current.impressions || b.current.clicks - a.current.clicks)
+      .slice(0, 100);
+    const signals = joinedRows
+      .filter((row) => row.previous !== null)
+      .sort((a, b) => Math.abs(b.current.clicks - b.previous!.clicks) - Math.abs(a.current.clicks - a.previous!.clicks))
+      .slice(0, 3);
     return NextResponse.json({
       requestId,
       source: "gsc",
-      state: "ready",
+      state: previous && previousTotals ? "ready" : "partial",
       dateRange: parsed.data,
-      comparisonRange: comparison,
-      fetchedAt: current.fetchedAt,
-      totalRows: current.rows.length,
-      comparisonRows: previous.rows.length,
-      observationCount: assembled.observations.length,
-      skippedRows: assembled.skipped.length,
-      opportunityCount: opportunities.length,
-      opportunities: opportunities.slice(0, 100),
-      sample: current.rows.slice(0, 100),
-      truncated: current.truncated || previous.truncated,
+      comparisonRange,
+      fetchedAt: new Date().toISOString(),
+      current: currentTotals.totals,
+      comparison: previousTotals?.totals ?? null,
+      comparisonError,
+      rows,
+      signals,
+      truncated: current.truncated || Boolean(previous?.truncated),
       limitations: [
         current.limitation,
-        previous.limitation,
-        ...(editorial.error ? ["Sanity editorial context unavailable; no GSC row entered the detector."] : []),
-        "Detector accepts only exact governed keyword and canonical URL matches; results are limited to 100 and are not persisted.",
+        ...(previous ? [previous.limitation] : []),
+        "ยอดรวมมาจากรายงานแบบไม่แบ่ง dimension; รายละเอียด query/page อาจรวมไม่เท่ายอดรวมเพราะ Search Console ปกปิด query ปริมาณต่ำหรือไม่ระบุตัวตน",
+        "รายละเอียดจับคู่ช่วงก่อนหน้าด้วย query และ page ที่ตรงกันทุกตัวอักษร จำกัด 100 แถวหลังเรียงจากข้อมูลที่ดึงได้ และไม่บันทึกข้อมูล",
       ],
     }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
