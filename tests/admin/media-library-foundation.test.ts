@@ -46,6 +46,7 @@ test("Media Library requires the exact Admin UAT branch and data plane", () => {
     { gitBranch: "codex/website-42-media-library-foundation-20260828" },
     { gitBranch: "codex/website-42-social-foundation-v2-20260828" },
     { gitBranch: "codex/website-42-social-operations-core-20260828" },
+    { gitBranch: "codex/website-42-social-media-integration-20260829" },
     { gitBranch: "codex/unknown-preview" },
     { sanityProjectId: "kyfxgjnq" },
     { sanityDataset: "production" },
@@ -216,7 +217,7 @@ test("Media migration is additive, checksum-locked and provider-neutral", () => 
   assert.doesNotMatch(sql, /access_token|refresh_token|credential|signed_url|upload_url/i);
 });
 
-test("Distribution UAT owns the Media Library presentation without a new Admin navigation item", () => {
+test("Distribution Overview owns the root route while the Media Library presentation is retained", () => {
   const page = read("features/admin/social/page.tsx");
   const mediaSection = read("features/admin/media/MediaLibraryUatSection.tsx");
   const route = read("app/snt-admin/(protected)/distribution/page.tsx");
@@ -231,5 +232,14 @@ test("Distribution UAT owns the Media Library presentation without a new Admin n
   assert.match(mediaSection, /Manual OAuth \/ Picker/);
   assert.equal((mediaSection.match(/disabled aria-disabled="true"/g) ?? []).length, 2);
   assert.equal(route.trim(), 'export { metadata, default } from "@/features/admin/social/page";');
+  assert.match(page, /redirect\("\/snt-admin\/distribution\/overview\/"\)/);
   assert.equal((navigation.match(/\{ href: "\/snt-admin\/distribution\/"/g) ?? []).length, 1);
+});
+
+test("Google Picker and GIS use only their exact CSP origins", () => {
+  const policy = read("lib/security-policy.ts");
+  assert.match(policy, /script-src[^\n]*https:\/\/apis\.google\.com https:\/\/accounts\.google\.com/);
+  assert.match(policy, /connect-src[^\n]*https:\/\/www\.googleapis\.com https:\/\/accounts\.google\.com/);
+  assert.match(policy, /frame-src[^\n]*https:\/\/accounts\.google\.com https:\/\/docs\.google\.com/);
+  assert.doesNotMatch(policy, /https:\/\/\*\.(?:googleapis|google)\.com/);
 });

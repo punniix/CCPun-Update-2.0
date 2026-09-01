@@ -5,6 +5,7 @@ import { WEBSITE_42_SANITY_DATASET, WEBSITE_42_SANITY_PROJECT_ID } from "./found
 if (typeof window !== "undefined") throw new Error("SOCIAL_PROVIDER_READINESS_SERVER_ONLY");
 
 export const WEBSITE_42_SOCIAL_PROVIDER_BRANCH = "codex/website-42-social-provider-readonly-20260831";
+export const WEBSITE_42_SOCIAL_ANALYTICS_BRANCH = "codex/website-42-social-analytics-ingestion-20260831";
 export const SOCIAL_READ_ONLY_SCOPES = {
   meta: ["pages_show_list", "pages_read_engagement", "instagram_basic"],
   youtube: ["https://www.googleapis.com/auth/youtube.readonly"],
@@ -28,13 +29,15 @@ export function getSocialProviderReadiness(
   const laneReady = env.CCPUN_SOCIAL_PROVIDER_READS_ENABLED === "1"
     && environment === "admin-uat"
     && projectId === CCPUN_VERCEL_PROJECT_IDS.adminProduction
-    && env.VERCEL_GIT_COMMIT_REF?.trim() === WEBSITE_42_SOCIAL_PROVIDER_BRANCH
+    && [WEBSITE_42_SOCIAL_PROVIDER_BRANCH, WEBSITE_42_SOCIAL_ANALYTICS_BRANCH].includes(env.VERCEL_GIT_COMMIT_REF?.trim() ?? "")
     && env.NEXT_PUBLIC_SANITY_PROJECT_ID?.trim() === WEBSITE_42_SANITY_PROJECT_ID
     && env.NEXT_PUBLIC_SANITY_DATASET?.trim() === WEBSITE_42_SANITY_DATASET;
   const prefix = provider === "meta" ? "META" : provider === "youtube" ? "YOUTUBE" : "TIKTOK";
   const scopeVariable = `CCPUN_${prefix}_GRANTED_SCOPES`;
   const tokenVariable = `CCPUN_${prefix}_ACCESS_TOKEN`;
   const graphVersion = provider === "meta" ? env.CCPUN_META_GRAPH_VERSION?.trim() : undefined;
+  const analyticsLane = env.VERCEL_GIT_COMMIT_REF?.trim() === WEBSITE_42_SOCIAL_ANALYTICS_BRANCH
+    && env.CCPUN_SOCIAL_ANALYTICS_INGESTION_ENABLED === "1";
   const scopeReady = provider === "meta"
     ? SOCIAL_READ_ONLY_SCOPES.meta.every((scope) => env[scopeVariable]?.split(",").map((item) => item.trim()).includes(scope))
     : exactScopes(env[scopeVariable], SOCIAL_READ_ONLY_SCOPES[provider]);
@@ -57,6 +60,8 @@ export function getSocialProviderReadiness(
     scopes: [...SOCIAL_READ_ONLY_SCOPES[provider]],
     providerWriteAllowed: false as const,
     backgroundSyncAllowed: false as const,
-    limitation: "เจ้าของต้องกด Sync เอง ข้อมูลไม่ถูกบันทึก และ provider writes ยังปิดแม้ token มี publishing scope",
+    limitation: analyticsLane
+      ? "เจ้าของต้องกด Sync เอง บันทึกเฉพาะ metric ที่จับคู่ exact ID ใน Neon UAT และ provider writes ยังปิดแม้ token มี publishing scope"
+      : "เจ้าของต้องกด Sync เอง ข้อมูลไม่ถูกบันทึก และ provider writes ยังปิดแม้ token มี publishing scope",
   };
 }

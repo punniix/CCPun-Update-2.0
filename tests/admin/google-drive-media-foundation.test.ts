@@ -225,6 +225,7 @@ test("selected-file projection verifies either approved root and returns only sa
     ...(item.id === SYNTHETIC_GOOGLE_DRIVE_FILE_ID ? {
       name: "approved-media.mp4",
       modifiedTime: "2026-08-30T02:00:00.000Z",
+      sha256Checksum: "a".repeat(64),
       webViewLink: "https://drive.google.com/file/d/synthetic/view",
       thumbnailLink: "https://lh3.googleusercontent.com/synthetic-thumbnail",
       iconLink: "https://drive-thirdparty.googleusercontent.com/16/type/video/mp4",
@@ -256,13 +257,15 @@ test("selected-file projection verifies either approved root and returns only sa
       name: "approved-media.mp4",
       mimeType: "video/mp4",
       modifiedTime: "2026-08-30T02:00:00.000Z",
+      sha256Checksum: "a".repeat(64),
       webViewLink: "https://drive.google.com/file/d/synthetic/view",
       thumbnailLink: "https://lh3.googleusercontent.com/synthetic-thumbnail",
       iconLink: "https://drive-thirdparty.googleusercontent.com/16/type/video/mp4",
     },
   });
   assert.equal(seenFields.length, 3);
-  assert.equal(seenFields.every((fields) => fields.includes("webViewLink") && fields.includes("thumbnailLink") && fields.includes("iconLink")), true);
+  assert.equal(seenFields.every((fields) => fields.includes("sha256Checksum")
+    && fields.includes("webViewLink") && fields.includes("thumbnailLink") && fields.includes("iconLink")), true);
   assert.equal(seenFields.every((fields) => !/(?:permissions|owners|emailAddress|download)/i.test(fields)), true);
   const serialized = JSON.stringify(result);
   assert.equal(/accessToken|refreshToken|owners|permissions|emailAddress|body/i.test(serialized), false);

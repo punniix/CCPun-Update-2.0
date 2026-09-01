@@ -9,6 +9,15 @@ export const GOOGLE_DRIVE_FOLDER_MIME_TYPE = "application/vnd.google-apps.folder
 export const GOOGLE_DRIVE_SHORTCUT_MIME_TYPE = "application/vnd.google-apps.shortcut" as const;
 export const GOOGLE_DRIVE_INTERACTIVE_AUTH_MAX_TTL_MS = 60 * 60 * 1_000;
 export const MAX_GOOGLE_DRIVE_PROJECTION_BODY_BYTES = 12_288;
+export const MAX_GOOGLE_DRIVE_BINARY_BYTES = 1_000_000_000;
+const GOOGLE_DRIVE_API_ORIGIN = "https://www.googleapis.com";
+const googleDriveDownloadMimeTypeSchema = z.enum([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "video/mp4",
+]);
+const googleDriveSha256ChecksumSchema = z.string().regex(/^[0-9a-f]{64}$/);
 
 export const googleDriveFileIdSchema = z.string()
   .trim()
@@ -40,7 +49,11 @@ export const googleDriveInteractiveAuthorizationSchema = z.strictObject({
 
 export type GoogleDriveInteractiveAuthorization = z.infer<typeof googleDriveInteractiveAuthorizationSchema>;
 
-const googleDriveAccessTokenSchema = z.string().trim().min(1).max(8_192);
+const googleDriveAccessTokenSchema = z.string()
+  .trim()
+  .min(1)
+  .max(8_192)
+  .regex(/^[\x21-\x7E]+$/, "Drive access token must be a single printable header value");
 
 export const googleDriveSelectedFileRequestSchema = z.strictObject({
   selectedFileId: googleDriveFileIdSchema,
@@ -67,6 +80,7 @@ export const googleDriveSelectedFileProjectionSchema = z.strictObject({
   ),
   mimeType: z.string().trim().min(1).max(200),
   modifiedTime: z.iso.datetime({ offset: true }),
+  sha256Checksum: googleDriveSha256ChecksumSchema,
   webViewLink: googleDriveHttpsUrlSchema.nullable(),
   thumbnailLink: googleDriveHttpsUrlSchema.nullable(),
   iconLink: googleDriveHttpsUrlSchema.nullable(),
@@ -188,6 +202,8 @@ const googleDriveApiItemSchema = z.object({
   name: z.string().trim().min(1).max(255).optional(),
   mimeType: z.string().trim().min(1).max(200),
   modifiedTime: z.iso.datetime({ offset: true }).optional(),
+  size: z.string().regex(/^[1-9]\d*$/).optional(),
+  sha256Checksum: googleDriveSha256ChecksumSchema.optional(),
   webViewLink: googleDriveHttpsUrlSchema.optional(),
   thumbnailLink: googleDriveHttpsUrlSchema.optional(),
   iconLink: googleDriveHttpsUrlSchema.optional(),
@@ -201,7 +217,16 @@ const googleDriveApiItemSchema = z.object({
 
 function driveMetadataUrl(fileId: string): string {
   const url = new URL(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}`);
-  url.searchParams.set("fields", "id,name,mimeType,modifiedTime,webViewLink,thumbnailLink,iconLink,parents,trashed,shortcutDetails(targetId,targetMimeType)");
+  url.searchParams.set("fields", "id,name,mimeType,modifiedTime,size,sha256Checksum,webViewLink,thumbnailLink,iconLink,parents,trashed,shortcutDetails(targetId,targetMimeType)");
+  return url.toString();
+}
+
+function driveBinaryUrl(fileId: string): string {
+  const url = new URL(`/drive/v3/files/${encodeURIComponent(fileId)}`, GOOGLE_DRIVE_API_ORIGIN);
+  url.searchParams.set("alt", "media");
+  if (url.protocol !== "https:" || url.origin !== GOOGLE_DRIVE_API_ORIGIN) {
+    throw new Error("GOOGLE_DRIVE_API_ORIGIN_INVALID");
+  }
   return url.toString();
 }
 
@@ -239,6 +264,8 @@ async function fetchGoogleDriveAncestry(input: {
     try {
       response = await fetchImpl(driveMetadataUrl(currentId), {
         headers: { Authorization: `Bearer ${accessToken.data}` },
+        cache: "no-store",
+        redirect: "error",
         signal: input.signal ?? AbortSignal.timeout(5_000),
       });
     } catch {
@@ -362,6 +389,7 @@ export async function fetchGoogleDriveSelectedFileProjection(input: {
     name: ancestry.selectedItem.name,
     mimeType: ancestry.selectedItem.mimeType,
     modifiedTime: ancestry.selectedItem.modifiedTime,
+    sha256Checksum: ancestry.selectedItem.sha256Checksum,
     webViewLink: ancestry.selectedItem.webViewLink ?? null,
     thumbnailLink: ancestry.selectedItem.thumbnailLink ?? null,
     iconLink: ancestry.selectedItem.iconLink ?? null,
@@ -369,6 +397,163 @@ export async function fetchGoogleDriveSelectedFileProjection(input: {
   return item.success
     ? { projected: true, item: item.data }
     : { projected: false, reason: "metadata-unverifiable" };
+}
+
+export type GoogleDriveSelectedFileBinaryResult =
+  | {
+      ready: true;
+      file: {
+        id: string;
+        name: string;
+        mimeType: z.infer<typeof googleDriveDownloadMimeTypeSchema>;
+        byteSize: number;
+        sha256Checksum: string;
+        body: ReadableStream<Uint8Array>;
+      };
+    }
+  | {
+      ready: false;
+      reason:
+        | "invalid-boundary-input"
+        | "invalid-authorization"
+        | "not-yet-valid"
+        | "expired"
+        | "provider-unavailable"
+        | "selected-file-denied"
+        | "selected-item-is-folder"
+        | "media-metadata-mismatch"
+        | "media-response-unverifiable";
+    };
+
+function exactSizeStream(body: ReadableStream<Uint8Array>, expectedByteSize: number) {
+  let received = 0;
+  return body.pipeThrough(new TransformStream<Uint8Array, Uint8Array>({
+    transform(chunk, controller) {
+      received += chunk.byteLength;
+      if (received > expectedByteSize) {
+        controller.error(new Error("GOOGLE_DRIVE_MEDIA_SIZE_MISMATCH"));
+        return;
+      }
+      controller.enqueue(chunk);
+    },
+    flush(controller) {
+      if (received !== expectedByteSize) controller.error(new Error("GOOGLE_DRIVE_MEDIA_SIZE_MISMATCH"));
+    },
+  }));
+}
+
+/**
+ * Opens one approved Drive file as a bounded stream for the current manual request.
+ * The access token is used only in outbound headers and is never returned or persisted.
+ */
+export async function fetchGoogleDriveSelectedFileBinary(input: {
+  rootFolderIds: readonly unknown[];
+  selectedItemId: unknown;
+  accessToken: string;
+  authorization: unknown;
+  nowMs: number;
+  expectedMimeType: unknown;
+  expectedByteSize: unknown;
+  expectedSha256Checksum: unknown;
+  signal?: AbortSignal;
+  fetchImpl?: typeof fetch;
+}): Promise<GoogleDriveSelectedFileBinaryResult> {
+  const rootFolderIds = googleDriveApprovedRootFolderIdsSchema.safeParse(input.rootFolderIds);
+  const selectedItemId = googleDriveFileIdSchema.safeParse(input.selectedItemId);
+  const accessToken = googleDriveAccessTokenSchema.safeParse(input.accessToken);
+  const expectedMimeType = googleDriveDownloadMimeTypeSchema.safeParse(input.expectedMimeType);
+  const expectedByteSize = z.number().int().min(1).max(MAX_GOOGLE_DRIVE_BINARY_BYTES).safeParse(input.expectedByteSize);
+  const expectedSha256Checksum = googleDriveSha256ChecksumSchema.safeParse(input.expectedSha256Checksum);
+  if (!rootFolderIds.success || !selectedItemId.success || !accessToken.success || !expectedMimeType.success
+    || !expectedByteSize.success || !expectedSha256Checksum.success) {
+    return { ready: false, reason: "invalid-boundary-input" };
+  }
+
+  const authorization = evaluateGoogleDriveInteractiveAuthorization(input.authorization, input.nowMs);
+  if (!authorization.usable) return { ready: false, reason: authorization.reason };
+
+  const ancestry = await fetchGoogleDriveAncestry({
+    rootFolderIds: rootFolderIds.data,
+    selectedItemId: selectedItemId.data,
+    accessToken: accessToken.data,
+    signal: input.signal,
+    fetchImpl: input.fetchImpl,
+  });
+  if (!ancestry.ok) {
+    return {
+      ready: false,
+      reason: ancestry.reason === "provider-unavailable" ? "provider-unavailable" : "selected-file-denied",
+    };
+  }
+
+  const insideApprovedRoot = rootFolderIds.data.some((rootFolderId) => evaluateGoogleDriveRootBoundary({
+    rootFolderId,
+    selectedItemId: selectedItemId.data,
+    items: ancestry.items,
+  }).allowed);
+  if (!insideApprovedRoot) return { ready: false, reason: "selected-file-denied" };
+  if (ancestry.selectedItem.mimeType === GOOGLE_DRIVE_FOLDER_MIME_TYPE) {
+    return { ready: false, reason: "selected-item-is-folder" };
+  }
+
+  const fileName = googleDriveSelectedFileProjectionSchema.shape.name.safeParse(ancestry.selectedItem.name);
+  const metadataByteSize = Number(ancestry.selectedItem.size);
+  if (
+    !fileName.success
+    || ancestry.selectedItem.mimeType !== expectedMimeType.data
+    || !Number.isSafeInteger(metadataByteSize)
+    || metadataByteSize !== expectedByteSize.data
+    || ancestry.selectedItem.sha256Checksum !== expectedSha256Checksum.data
+  ) {
+    return { ready: false, reason: "media-metadata-mismatch" };
+  }
+
+  const fetchImpl = input.fetchImpl ?? fetch;
+  let response: Response;
+  try {
+    response = await fetchImpl(driveBinaryUrl(selectedItemId.data), {
+      method: "GET",
+      headers: {
+        Accept: expectedMimeType.data,
+        Authorization: `Bearer ${accessToken.data}`,
+      },
+      cache: "no-store",
+      redirect: "error",
+      signal: input.signal ?? AbortSignal.timeout(60_000),
+    });
+  } catch {
+    return { ready: false, reason: "provider-unavailable" };
+  }
+  if (!response.ok) {
+    await response.body?.cancel().catch(() => undefined);
+    return { ready: false, reason: "provider-unavailable" };
+  }
+
+  const responseMimeType = response.headers.get("content-type")?.split(";", 1)[0]?.trim().toLowerCase();
+  const contentLengthHeader = response.headers.get("content-length");
+  const responseByteSize = contentLengthHeader && /^[1-9]\d*$/.test(contentLengthHeader)
+    ? Number(contentLengthHeader)
+    : null;
+  if (
+    responseMimeType !== expectedMimeType.data
+    || (responseByteSize !== null && (!Number.isSafeInteger(responseByteSize) || responseByteSize !== expectedByteSize.data))
+    || !response.body
+  ) {
+    await response.body?.cancel().catch(() => undefined);
+    return { ready: false, reason: "media-response-unverifiable" };
+  }
+
+  return {
+    ready: true,
+    file: {
+      id: ancestry.selectedItem.id,
+      name: fileName.data,
+      mimeType: expectedMimeType.data,
+      byteSize: expectedByteSize.data,
+      sha256Checksum: expectedSha256Checksum.data,
+      body: exactSizeStream(response.body, expectedByteSize.data),
+    },
+  };
 }
 
 export function evaluateGoogleDriveRootBoundary(input: {

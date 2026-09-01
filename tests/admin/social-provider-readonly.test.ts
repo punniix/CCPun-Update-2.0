@@ -49,10 +49,10 @@ test("Meta discovery accepts a scoped system-user token and returns only sanitiz
       { id: "page-1", name: "CCPun", instagram_business_account: { id: "ig-1", username: "ccpun" } },
     ] }), { status: 200 });
     if (url.includes("/published_posts")) return new Response(JSON.stringify({ data: [{
-      id: "facebook-post-1", message: "One", created_time: "2026-08-31T10:00:00+00:00",
+      id: "facebook-post-1", message: "One", created_time: "2026-08-31T10:00:00+0000",
       shares: { count: 3 }, comments: { summary: { total_count: 2 } }, reactions: { summary: { total_count: 10 } },
     }] }));
-    return new Response(JSON.stringify({ data: [{ id: "ig-post-1", caption: "IG", media_type: "IMAGE", timestamp: "2026-08-31T10:00:00+00:00", like_count: 20, comments_count: 4 }] }));
+    return new Response(JSON.stringify({ data: [{ id: "ig-post-1", caption: "IG", media_type: "IMAGE", timestamp: "2026-08-31T10:00:00+0000", like_count: 20, comments_count: 4 }] }));
   });
   assert.match(requests[0]!.url, /^https:\/\/graph\.facebook\.com\/v24\.0\/me\/accounts\?/);
   assert.equal(requests.every((request) => !request.url.includes("meta-access")), true);
@@ -62,6 +62,8 @@ test("Meta discovery accepts a scoped system-user token and returns only sanitiz
   assert.equal(result.providerRequestAllowed, true);
   assert.equal(result.providerWriteAllowed, false);
   assert.equal(JSON.stringify(result).includes("meta-access"), false);
+  assert.equal(result.facebookPosts[0]?.publishedAt, "2026-08-31T10:00:00+00:00");
+  assert.equal(result.instagramMedia[0]?.publishedAt, "2026-08-31T10:00:00+00:00");
   assert.deepEqual(result.facebookPosts[0]?.metrics, { likes: 10, comments: 2, shares: 3 });
   const matched = matchMetaHistoricalAnalytics([
     { publicationId: "facebook-publication", platform: "facebook", platformObjectId: "facebook-post-1" },
@@ -69,6 +71,63 @@ test("Meta discovery accepts a scoped system-user token and returns only sanitiz
   ], result);
   assert.equal(matched.snapshots.length, 2);
   assert.deepEqual(matched.snapshots.map((snapshot) => snapshot.source), ["meta", "meta"]);
+});
+
+test("Meta history follows cursors and applies the 14-day window without putting tokens in URLs", async () => {
+  const requests: string[] = [];
+  const result = await fetchMetaReadOnlyDiscovery({
+    ...lane,
+    CCPUN_META_ACCESS_TOKEN: "meta-secret",
+    CCPUN_META_GRAPH_VERSION: "v26.0",
+    CCPUN_META_GRANTED_SCOPES: "pages_show_list,pages_read_engagement,instagram_basic",
+  }, async (input) => {
+    const url = String(input);
+    requests.push(url);
+    if (url.includes("/me/accounts")) return new Response(JSON.stringify({ data: [
+      { id: "page-1", name: "CCPun", instagram_business_account: { id: "ig-1", username: "ccpun" } },
+    ] }));
+    if (url.includes("/published_posts") && !url.includes("after=")) return new Response(JSON.stringify({
+      data: [{ id: "fb-new", message: "New", status_type: "added_photos", created_time: "2026-08-31T10:00:00+0000", reactions: { summary: { total_count: 2 } } }],
+      paging: { next: "https://graph.facebook.com/next?access_token=meta-secret", cursors: { after: "fb-after" } },
+    }));
+    if (url.includes("/published_posts")) return new Response(JSON.stringify({
+      data: [{ id: "fb-window", message: "Window", created_time: "2026-08-21T10:00:00+0000", reactions: { summary: { total_count: 1 } } }],
+    }));
+    if (url.includes("/ig-1/media") && !url.includes("after=")) return new Response(JSON.stringify({
+      data: [{ id: "ig-new", caption: "New", media_type: "IMAGE", timestamp: "2026-08-31T10:00:00+0000", like_count: 3 }],
+      paging: { next: "https://graph.facebook.com/next?access_token=meta-secret", cursors: { after: "ig-after" } },
+    }));
+    return new Response(JSON.stringify({
+      data: [{ id: "ig-old", caption: "Old", media_type: "IMAGE", timestamp: "2026-08-01T10:00:00+0000", like_count: 4 }],
+      paging: { next: "https://graph.facebook.com/next?access_token=meta-secret", cursors: { after: "unused" } },
+    }));
+  }, { since: "2026-08-20T00:00:00.000Z" });
+  assert.deepEqual(result.facebookPosts.map((item) => item.id), ["fb-new", "fb-window"]);
+  assert.deepEqual(result.instagramMedia.map((item) => item.id), ["ig-new"]);
+  assert.equal(requests.filter((url) => url.includes("/published_posts")).every((url) => url.includes("since=")), true);
+  assert.equal(requests.filter((url) => url.includes("/ig-1/media")).every((url) => !url.includes("since=")), true);
+  assert.equal(requests.some((url) => url.includes("after=fb-after")), true);
+  assert.equal(requests.some((url) => url.includes("after=ig-after")), true);
+  assert.equal(requests.every((url) => !url.includes("meta-secret")), true);
+});
+
+test("Meta auth diagnostics log only safe endpoint and provider codes", async () => {
+  const original = console.error;
+  const logs: unknown[][] = [];
+  console.error = (...values) => logs.push(values);
+  try {
+    await assert.rejects(fetchMetaReadOnlyDiscovery({
+      ...lane,
+      CCPUN_META_ACCESS_TOKEN: "meta-secret",
+      CCPUN_META_GRAPH_VERSION: "v26.0",
+      CCPUN_META_GRANTED_SCOPES: "pages_show_list,pages_read_engagement,instagram_basic",
+    }, async () => new Response(JSON.stringify({ error: { type: "OAuthException", code: 190, error_subcode: 463, message: "secret detail" } }), { status: 401 })), /META_READ_AUTH_REQUIRED/);
+  } finally {
+    console.error = original;
+  }
+  assert.deepEqual(logs, [["[meta-read]", { endpoint: "/v26.0/me/accounts", status: 401, graphType: "OAuthException", graphCode: 190, graphSubcode: 463 }]]);
+  assert.equal(JSON.stringify(logs).includes("meta-secret"), false);
+  assert.equal(JSON.stringify(logs).includes("secret detail"), false);
 });
 
 test("YouTube manual read returns channel and recent video metrics without exposing the token", async () => {

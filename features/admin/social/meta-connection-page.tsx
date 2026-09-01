@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireAdminPermission } from "@/lib/admin/require-permission";
 import { getSocialOperationsRuntimeStatus } from "@/lib/admin/social/operations";
+import { getSocialAnalyticsIngestionRuntimeStatus } from "@/lib/admin/social/analytics-ingestion";
 import { SYNTHETIC_META_CONNECTION } from "@/lib/admin/social/providers/meta/connection";
 import { getSocialProviderReadiness } from "@/lib/admin/social/provider-readonly";
 import { MetaReadOnlyPanel } from "./provider-readonly-panels";
@@ -78,7 +79,7 @@ export default async function MetaConnectionUatPage() {
       <section role="note" className="mt-7 rounded-3xl border border-amber-200/20 bg-amber-200/[0.05] p-5 text-sm leading-6 text-amber-50/80">
         สิทธิ์จำลอง: {connection.grantedScopes.join(" + ")} · ไม่มี publishing scopes · ไม่มีข้อมูล credential
       </section>
-      <MetaReadOnlyPanel ready={readiness.status === "manual-sync-ready"} missing={missing} />
+      <MetaReadOnlyPanel ready={readiness.status === "manual-sync-ready"} analyticsReady={getSocialAnalyticsIngestionRuntimeStatus().enabled} missing={missing} />
     </div>
   );
 }

@@ -18,7 +18,6 @@ const read = (path: string) => readFileSync(new URL(`../../${path}`, import.meta
 
 const enabledInput = {
   flag: "1",
-  dataMode: "synthetic",
   environment: "admin-uat" as const,
   projectId: CCPUN_VERCEL_PROJECT_IDS.adminProduction,
   gitBranch: WEBSITE_42_SOCIAL_OPERATIONS_BRANCH,
@@ -31,7 +30,6 @@ test("Social operations requires the exact Admin UAT lane", () => {
   assert.equal(isSocialOperationsEnabled({ ...enabledInput, gitBranch: WEBSITE_42_SOCIAL_PROVIDER_BRANCH }), true);
   for (const change of [
     { flag: "0" },
-    { dataMode: "live" },
     { environment: "production-admin" as const },
     { projectId: CCPUN_VERCEL_PROJECT_IDS.web },
     { gitBranch: "v4-production" },
@@ -138,5 +136,5 @@ test("Social operations API is authenticated, exact-origin and GET-only", () => 
   assert.equal(page.trim(), 'export { metadata, default } from "@/features/admin/social/operations-page";');
   assert.match(layout, /getSocialFoundationRuntimeStatus\(\)\.enabled \|\| getSocialOperationsRuntimeStatus\(\)\.enabled/);
   assert.match(layout, /item\.href !== "\/snt-admin\/distribution\/" \|\| socialEnabled/);
-  assert.match(distribution, /redirect\("\/snt-admin\/distribution\/operations\/"\)/);
+  assert.match(distribution, /redirect\("\/snt-admin\/distribution\/overview\/"\)/);
 });

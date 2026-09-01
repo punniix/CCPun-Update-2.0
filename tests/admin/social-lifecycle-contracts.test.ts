@@ -2,6 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { planExecutorClaim, planOrderedCommentExecution } from "../../lib/admin/social/executor";
 import { planApprovedPublication, publicationIdempotencyKey } from "../../lib/admin/social/lifecycle";
+import {
+  authorizeSocialProviderExecution,
+  planSocialPublicationApproval,
+} from "../../lib/admin/social/publishing";
 
 const approval = {
   variantId: "variant-facebook-001",
@@ -71,4 +75,90 @@ test("Comment executor allows only the next ordered approved position", () => {
   assert.equal(planOrderedCommentExecution(comments.map((comment, index) => index === 2 ? { ...comment, status: "published", platformCommentId: "provider-comment-3" } : comment)).state, "invalid");
   assert.equal(planOrderedCommentExecution(comments.map((comment, index) => index === 1 ? { ...comment, position: 4 } : comment)).state, "invalid");
   assert.equal(planOrderedCommentExecution(comments.map((comment) => ({ ...comment, status: "published", platformCommentId: `provider-${comment.id}` }))).state, "complete");
+});
+
+const socialApproval = {
+  variantId: "variant-facebook-001",
+  masterContentId: "master-001",
+  platform: "facebook" as const,
+  publishingMode: "direct" as const,
+  approvedRevision: "rev-approved-001",
+  approvedVersion: 3,
+  currentRevision: "rev-approved-001",
+  currentVersion: 3,
+  approvedByActorType: "human" as const,
+  approvalRequestRef: "request-001",
+  approvedAt: "2026-09-01T01:00:00.000Z",
+  requestedAt: "2026-09-01T01:00:00.000Z",
+  scheduledAt: null,
+  mediaAssetIds: ["media-001"],
+};
+
+test("Social approval maps only the explicitly supported Facebook and Instagram modes", () => {
+  const facebookNow = planSocialPublicationApproval(socialApproval);
+  assert.equal(facebookNow.executionTarget, "facebook-publish-now");
+  assert.equal(facebookNow.jobType, "publish");
+  assert.equal(facebookNow.providerWriteAllowed, false);
+
+  const facebookScheduled = planSocialPublicationApproval({
+    ...socialApproval,
+    publishingMode: "native-scheduled",
+    scheduledAt: "2026-09-02T01:00:00.000Z",
+  });
+  assert.equal(facebookScheduled.executionTarget, "facebook-native-scheduled");
+  assert.equal(facebookScheduled.providerWriteAllowed, false);
+
+  const instagramNow = planSocialPublicationApproval({ ...socialApproval, platform: "instagram" });
+  assert.equal(instagramNow.executionTarget, "instagram-publish-now");
+  assert.equal(instagramNow.providerWriteAllowed, false);
+
+  const handoff = planSocialPublicationApproval({
+    ...socialApproval,
+    platform: "instagram",
+    publishingMode: "native-finish",
+  });
+  assert.equal(handoff.executionTarget, "instagram-mobile-handoff");
+  assert.equal(handoff.jobType, "native-handoff");
+  assert.equal(handoff.publicationStatus, "awaiting-native-finish");
+  assert.equal(handoff.providerWriteAllowed, false);
+  assert.match(handoff.reason, /never|not created/i);
+
+  assert.throws(() => planSocialPublicationApproval({ ...socialApproval, platform: "instagram", publishingMode: "native-scheduled", scheduledAt: "2026-09-02T01:00:00.000Z" }));
+  assert.throws(() => planSocialPublicationApproval({ ...socialApproval, platform: "facebook", publishingMode: "native-finish" }));
+  assert.equal(planSocialPublicationApproval({ ...socialApproval, currentRevision: "rev-new" }).state, "conflict");
+});
+
+test("Provider execution opens only after the approval, revision, idempotency, CAS and lease gates", () => {
+  const execution = {
+    providerExecutionEnabled: true,
+    executionTarget: "facebook-publish-now" as const,
+    approvedByActorType: "human" as const,
+    approvalRequestRef: "request-001",
+    approvedAt: "2026-09-01T01:00:00.000Z",
+    approvedRevision: "rev-approved-001",
+    approvedVersion: 3,
+    currentRevision: "rev-approved-001",
+    currentVersion: 3,
+    publicationStatus: "approved" as const,
+    scheduledAt: null,
+    now: "2026-09-01T01:01:00.000Z",
+    job: {
+      jobType: "publish" as const,
+      status: "processing" as const,
+      version: 2,
+      expectedVersion: 2,
+      attemptCount: 1,
+      maxAttempts: 3,
+      lockOwner: "executor-001",
+      lockExpiresAt: "2026-09-01T01:02:00.000Z",
+      idempotencyKey: "social-execution:approved:001",
+      expectedIdempotencyKey: "social-execution:approved:001",
+    },
+  };
+  assert.equal(authorizeSocialProviderExecution(execution).providerWriteAllowed, true);
+  assert.equal(authorizeSocialProviderExecution({ ...execution, providerExecutionEnabled: false }).providerWriteAllowed, false);
+  assert.equal(authorizeSocialProviderExecution({ ...execution, currentRevision: "rev-new" }).providerWriteAllowed, false);
+  assert.equal(authorizeSocialProviderExecution({ ...execution, job: { ...execution.job, expectedVersion: 3 } }).providerWriteAllowed, false);
+  assert.equal(authorizeSocialProviderExecution({ ...execution, job: { ...execution.job, lockExpiresAt: execution.now } }).providerWriteAllowed, false);
+  assert.equal(authorizeSocialProviderExecution({ ...execution, executionTarget: "instagram-mobile-handoff" }).providerWriteAllowed, false);
 });

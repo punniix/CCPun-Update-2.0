@@ -120,17 +120,45 @@ const contracts: Record<string, RouteContract> = {
     methods: ["GET"], identity: /getAdminIdentity\(\)/, authorization: /"social:read"/,
     validation: { file: "app/api/snt-admin/social/analytics/post-live/route.ts", pattern: /isConfiguredAdminOrigin\(request\.url, process\.env\.AUTH_URL\)/, exception: "Sensitive GET adds an exact configured-origin check." },
   },
+  "app/api/snt-admin/social/analytics/sync/[provider]/route.ts": {
+    methods: ["POST"], identity: /getAdminIdentity\(\)/, authorization: /"social:read"/,
+    validation: { file: "app/api/snt-admin/social/analytics/sync/[provider]/route.ts", pattern: /socialAnalyticsProviderSchema\.safeParse\(\(await context\.params\)\.provider\)/, exception: "No request body; provider path is allowlisted and the UAT database is server-owned." },
+  },
   "app/api/snt-admin/social/operations/route.ts": {
     methods: ["GET"], identity: /getAdminIdentity\(\)/, authorization: /"social:read"/,
     validation: { file: "app/api/snt-admin/social/operations/route.ts", pattern: /isConfiguredAdminOrigin\(request\.url, process\.env\.AUTH_URL\)/, exception: "Sensitive GET adds an exact configured-origin check." },
+  },
+  "app/api/snt-admin/social/drafts/route.ts": {
+    methods: ["GET", "POST"], identity: /getAdminIdentity\(\)/, authorization: /identity\.actorType !== "human" \|\| identity\.role !== "owner"/,
+    validation: { file: "app/api/snt-admin/social/drafts/route.ts", pattern: /socialDraftRequestSchema\.safeParse\(await request\.json\(\)\.catch/, },
+  },
+  "app/api/snt-admin/social/export/sheets/route.ts": {
+    methods: ["POST"], identity: /getAdminIdentity\(\)/, authorization: /identity\.actorType !== "human" \|\| identity\.role !== "owner"/,
+    validation: { file: "app/api/snt-admin/social/export/sheets/route.ts", pattern: /socialSheetsExportRequestSchema\.safeParse\(await request\.json\(\)\.catch/, },
+  },
+  "app/api/snt-admin/social/publications/route.ts": {
+    methods: ["GET", "POST"], identity: /getAdminIdentity\(\)/, authorization: /"social:read"[\s\S]*identity\.actorType !== "human" \|\| identity\.role !== "owner"/,
+    validation: { file: "app/api/snt-admin/social/publications/route.ts", pattern: /socialPublicationApprovalRequestSchema\.safeParse\(await request\.json\(\)\.catch/, },
+  },
+  "app/api/snt-admin/social/publications/execute/route.ts": {
+    methods: ["POST"], identity: /getAdminIdentity\(\)/, authorization: /identity\.actorType !== "human" \|\| identity\.role !== "owner"/,
+    validation: { file: "app/api/snt-admin/social/publications/execute/route.ts", pattern: /socialPublicationExecuteRequestSchema\.safeParse\(await request\.json\(\)\.catch/, },
   },
   "app/api/snt-admin/social/providers/meta/connection/route.ts": {
     methods: ["GET"], identity: /getAdminIdentity\(\)/, authorization: /"social:read"/,
     validation: { file: "app/api/snt-admin/social/providers/meta/connection/route.ts", pattern: /isConfiguredAdminOrigin\(request\.url, process\.env\.AUTH_URL\)/, exception: "Sensitive GET adds an exact configured-origin check." },
   },
+  "app/api/snt-admin/social/providers/meta/audio/route.ts": {
+    methods: ["POST"], identity: /getAdminIdentity\(\)/, authorization: /"social:read"/,
+    validation: { file: "app/api/snt-admin/social/providers/meta/audio/route.ts", pattern: /instagramAudioSearchInputSchema\.safeParse\(await request\.json\(\)\.catch/, },
+  },
   "app/api/snt-admin/social/providers/meta/discovery/route.ts": {
     methods: ["POST"], identity: /getAdminIdentity\(\)/, authorization: /"social:read"/,
     validation: { file: "app/api/snt-admin/social/providers/meta/discovery/route.ts", pattern: /isSameOriginAdminMutation\(request\.url, request\.headers\.get\("origin"\)\)/, exception: "No request body; provider selection is server-owned." },
+  },
+  "app/api/snt-admin/social/providers/meta/handoff/route.ts": {
+    methods: ["POST"], identity: /getAdminIdentity\(\)/, authorization: /"social:read"/,
+    validation: { file: "app/api/snt-admin/social/providers/meta/handoff/route.ts", pattern: /googleDriveSelectedFileRequestSchema\.safeParse/, },
   },
   "app/api/snt-admin/social/providers/tiktok/discovery/route.ts": {
     methods: ["POST"], identity: /getAdminIdentity\(\)/, authorization: /"social:read"/,

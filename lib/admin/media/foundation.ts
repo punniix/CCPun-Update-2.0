@@ -5,7 +5,7 @@ import {
   type AdminEnvironment,
 } from "../environment";
 
-export const WEBSITE_42_MEDIA_LIBRARY_BRANCH = "codex/website-42-social-media-integration-20260829";
+export const WEBSITE_42_MEDIA_LIBRARY_BRANCH = "codex/website-42-social-analytics-ingestion-20260831";
 export const WEBSITE_42_MEDIA_SANITY_PROJECT_ID = "ccb9lnw5";
 export const WEBSITE_42_MEDIA_SANITY_DATASET = "uat";
 

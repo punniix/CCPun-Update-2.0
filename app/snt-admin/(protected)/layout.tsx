@@ -14,13 +14,19 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false, nocache: true },
 };
 
-const NAV_ITEMS: Array<{ href: string; label: string; permission: AdminPermission }> = [
+const NAV_ITEMS: Array<{ href: string; label: string; permission: AdminPermission; children?: Array<{ href: string; label: string }> }> = [
   { href: "/snt-admin/dashboard/", label: "เริ่มที่นี่", permission: "dashboard:read" },
   { href: "/snt-admin/content/", label: "บทความ", permission: "content:read" },
   { href: "/snt-admin/seo/", label: "ตรวจ SEO", permission: "seo:read" },
   { href: "/snt-admin/research/", label: "Research Intelligence", permission: "research:read" },
   { href: "/snt-admin/growth/", label: "ภาพรวมการเติบโต", permission: "dashboard:read" },
-  { href: "/snt-admin/distribution/", label: "Distribution UAT", permission: "social:read" },
+  { href: "/snt-admin/distribution/", label: "Social", permission: "social:read", children: [
+      { href: "/snt-admin/distribution/overview/", label: "Overview" },
+      { href: "/snt-admin/distribution/operations/", label: "Posts" },
+      { href: "/snt-admin/distribution/calendar/", label: "Calendar" },
+      { href: "/snt-admin/distribution/analytics/", label: "Stats" },
+      { href: "/snt-admin/distribution/connections/", label: "Connections" },
+  ] },
   { href: "/snt-admin/reviews/", label: "ข้อเสนอที่รอตรวจ", permission: "reviews:read" },
   { href: "/snt-admin/audit/", label: "ประวัติการทำงาน", permission: "audit:read" },
 ];

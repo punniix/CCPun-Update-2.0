@@ -1,7 +1,7 @@
 import { defineArrayMember, defineField, defineType } from "sanity";
 
 const channelOptions = ["facebook", "instagram", "youtube", "tiktok", "facebook-group"];
-const formatOptions = ["text-post", "image-post", "album", "carousel", "reel", "video", "short", "photo-post", "live"];
+const formatOptions = ["text-post", "link-post", "image-post", "album", "carousel", "reel", "video", "short", "photo-post", "live"];
 const publishingModeOptions = ["direct", "native-scheduled", "native-finish", "tiktok-draft", "assisted-distribution"];
 
 export const socialVariant = defineType({
@@ -45,6 +45,55 @@ export const socialVariant = defineType({
     }),
     defineField({ name: "caption", title: "Caption", type: "text", rows: 6 }),
     defineField({ name: "script", title: "Script", type: "text", rows: 10 }),
+    defineField({
+      name: "linkUrl",
+      title: "HTTPS Link URL",
+      type: "url",
+      hidden: ({ document }) => document?.format !== "link-post",
+      validation: (Rule) => Rule.custom((value, context) => {
+        const isLinkPost = context.document?.format === "link-post";
+        if (isLinkPost && context.document?.channel !== "facebook") return "Link Post ใช้ได้กับ Facebook เท่านั้น";
+        if (isLinkPost && !value) return "Link Post ต้องระบุ HTTPS URL แยกจาก Caption";
+        if (!isLinkPost && value) return "Link URL ใช้ได้กับรูปแบบ Link Post เท่านั้น";
+        if (!value) return true;
+        try {
+          return new URL(String(value)).protocol === "https:" ? true : "Link URL ต้องใช้ HTTPS เท่านั้น";
+        } catch {
+          return "Link URL ไม่ถูกต้อง";
+        }
+      }),
+    }),
+    defineField({
+      name: "mediaReferences",
+      title: "Selected Media",
+      type: "array",
+      validation: (Rule) => Rule.max(20),
+      of: [defineArrayMember({
+        type: "object",
+        fields: [
+          defineField({ name: "assetId", title: "Media Asset ID", type: "string", validation: (Rule) => Rule.required().max(120) }),
+          defineField({
+            name: "role",
+            title: "Role",
+            type: "string",
+            options: { list: ["primary", "carousel-item", "cover", "thumbnail", "caption"] },
+            validation: (Rule) => Rule.required(),
+          }),
+          defineField({ name: "order", title: "Carousel Order", type: "number", validation: (Rule) => Rule.integer().min(1).max(20) }),
+          defineField({ name: "mimeType", title: "MIME Type", type: "string", readOnly: true }),
+          defineField({
+            name: "sha256Checksum",
+            title: "SHA-256 Checksum",
+            type: "string",
+            readOnly: true,
+            validation: (Rule) => Rule.regex(/^[0-9a-f]{64}$/),
+          }),
+          defineField({ name: "widthPx", title: "Width", type: "number", readOnly: true }),
+          defineField({ name: "heightPx", title: "Height", type: "number", readOnly: true }),
+          defineField({ name: "durationMs", title: "Duration", type: "number", readOnly: true }),
+        ],
+      })],
+    }),
     defineField({
       name: "commentSeriesMode",
       title: "รูปแบบ Comment Series",
