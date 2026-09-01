@@ -1,18 +1,21 @@
 import { z } from "zod";
-import {
-  CCPUN_VERCEL_PROJECT_IDS,
-  parseAdminEnvironment,
-  type AdminEnvironment,
-} from "../environment";
+import { type AdminEnvironment } from "../environment";
 import {
   MEDIA_OPERATIONAL_TABLES,
   mediaAssetMetadataSchema,
   mediaAssetReferenceSchema,
 } from "../media/foundation";
+import {
+  resolveSocialRuntimeDescriptor,
+  socialRuntimeInputFromEnvironment,
+  SOCIAL_UAT_FOUNDATION_BRANCH,
+  SOCIAL_UAT_SANITY_DATASET,
+  SOCIAL_UAT_SANITY_PROJECT_ID,
+} from "./runtime";
 
-export const WEBSITE_42_SOCIAL_BRANCH = "codex/website-42-social-media-integration-20260829";
-export const WEBSITE_42_SANITY_PROJECT_ID = "ccb9lnw5";
-export const WEBSITE_42_SANITY_DATASET = "uat";
+export const WEBSITE_42_SOCIAL_BRANCH = SOCIAL_UAT_FOUNDATION_BRANCH;
+export const WEBSITE_42_SANITY_PROJECT_ID = SOCIAL_UAT_SANITY_PROJECT_ID;
+export const WEBSITE_42_SANITY_DATASET = SOCIAL_UAT_SANITY_DATASET;
 
 export const SOCIAL_SCHEMA_MIGRATION_VERSION = "20260828_website_42_social_foundation_v2";
 export const SOCIAL_SCHEMA_MIGRATION_CHECKSUM = "sha256:b6ad0b823775df1dcfc06e0da896dfcc477cfbeae897b70e228c18a051712acb";
@@ -226,40 +229,34 @@ export function isSocialFoundationEnabled(input: {
   flag: string | undefined;
   dataMode: string | undefined;
   environment: AdminEnvironment;
-  projectId: string | undefined;
-  gitBranch: string | undefined;
-  sanityProjectId: string | undefined;
-  sanityDataset: string | undefined;
+  projectId?: string;
+  gitBranch?: string;
+  sanityProjectId?: string;
+  sanityDataset?: string;
+  vercelEnvironment?: string;
+  productionAdminProjectId?: string;
+  connectionString?: string;
+  neonProjectId?: string;
+  neonBranchId?: string;
+  neonEndpointId?: string;
+  neonDatabase?: string;
 }): boolean {
-  return (
-    input.flag === "1" &&
-    input.dataMode === "synthetic" &&
-    input.environment === "admin-uat" &&
-    input.projectId === CCPUN_VERCEL_PROJECT_IDS.adminProduction &&
-    input.gitBranch === WEBSITE_42_SOCIAL_BRANCH &&
-    input.sanityProjectId === WEBSITE_42_SANITY_PROJECT_ID &&
-    input.sanityDataset === WEBSITE_42_SANITY_DATASET
-  );
+  const runtime = resolveSocialRuntimeDescriptor(input, { uatBranches: [WEBSITE_42_SOCIAL_BRANCH] });
+  return input.flag === "1"
+    && runtime?.lane === "uat"
+    && input.dataMode === "synthetic";
 }
 
 export function getSocialFoundationRuntimeStatus() {
-  const environment = parseAdminEnvironment(process.env.CCPUN_APP_ENV);
-  const projectId = process.env.VERCEL_PROJECT_ID?.trim() || process.env.NEXT_PUBLIC_CCPUN_VERCEL_PROJECT_ID?.trim();
-  const gitBranch = process.env.VERCEL_GIT_COMMIT_REF?.trim();
-  const sanityProjectId = process.env.NEXT_PUBLIC_SANITY_PROJECT_ID?.trim();
-  const sanityDataset = process.env.NEXT_PUBLIC_SANITY_DATASET?.trim();
+  const runtimeInput = socialRuntimeInputFromEnvironment(process.env);
 
   return {
-    environment,
-    gitBranch: gitBranch ?? null,
+    environment: runtimeInput.environment,
+    gitBranch: runtimeInput.gitBranch ?? null,
     enabled: isSocialFoundationEnabled({
       flag: process.env.CCPUN_SOCIAL_ENABLED,
       dataMode: process.env.CCPUN_SOCIAL_DATA_MODE,
-      environment,
-      projectId,
-      gitBranch,
-      sanityProjectId,
-      sanityDataset,
+      ...runtimeInput,
     }),
   };
 }

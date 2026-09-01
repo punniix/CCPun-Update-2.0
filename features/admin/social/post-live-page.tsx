@@ -15,7 +15,8 @@ const providerStateLabel = {
 
 export default async function PostLiveAnalyticsUatPage() {
   await requireAdminPermission("social:read");
-  if (!getSocialOperationsRuntimeStatus().enabled) notFound();
+  const runtime = getSocialOperationsRuntimeStatus();
+  if (!runtime.enabled || runtime.environment === "production-admin") notFound();
   const report = SYNTHETIC_POST_LIVE_REPORT;
 
   return (

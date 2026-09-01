@@ -2,7 +2,9 @@ import "server-only";
 
 import {
   gscQueryInputSchema,
+  normalizeGscSearchAnalyticsTotals,
   normalizeGscSearchAnalyticsPage,
+  type GscMetricTotals,
   type GscNormalizedRow,
 } from "../contracts";
 
@@ -32,6 +34,30 @@ async function requestPage(url: string, token: string, body: string, fetcher: Fe
     }
   }
   throw new Error(failure);
+}
+
+export async function fetchGscSearchAnalyticsTotals(rawInput: unknown, fetcher: FetchLike = fetch): Promise<{
+  fetchedAt: string;
+  totals: GscMetricTotals;
+}> {
+  const input = gscQueryInputSchema.parse({
+    ...(typeof rawInput === "object" && rawInput !== null ? rawInput : {}),
+    dimensions: ["query"],
+    rowLimit: 1,
+  });
+  const url = `https://www.googleapis.com/webmasters/v3/sites/${encodeURIComponent(input.siteUrl)}/searchAnalytics/query`;
+  const raw = await requestPage(url, input.token, JSON.stringify({
+    startDate: input.startDate,
+    endDate: input.endDate,
+    type: "web",
+    dataState: "final",
+    rowLimit: 1,
+  }), fetcher);
+  try {
+    return { fetchedAt: new Date().toISOString(), totals: normalizeGscSearchAnalyticsTotals(raw) };
+  } catch {
+    throw new Error("GSC_INVALID_RESPONSE");
+  }
 }
 
 export async function fetchGscSearchAnalytics(rawInput: unknown, fetcher: FetchLike = fetch): Promise<{

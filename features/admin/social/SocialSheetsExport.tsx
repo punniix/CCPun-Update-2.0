@@ -46,7 +46,7 @@ export default function SocialSheetsExport() {
       const messages: Record<string, string> = {
         "google-authorization-required": "สิทธิ์ Google หมดอายุ กรุณากด Export ใหม่เพื่ออนุญาตอีกครั้ง",
         "google-rate-limited": "Google จำกัดการเรียกชั่วคราว กรุณารอสักครู่แล้วลองใหม่",
-        "database-not-ready": "Neon UAT หรือ schema สำหรับ export ยังไม่พร้อม",
+        "database-not-ready": "ฐานข้อมูลหรือ schema สำหรับ export ยังไม่พร้อม",
         "export-too-large": "ข้อมูลมี stat family มากเกินขอบเขตของ Google Sheets",
         "google-export-failed": "สร้าง Google Sheets ไม่สำเร็จชั่วคราว",
       };

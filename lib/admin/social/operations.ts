@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { CCPUN_VERCEL_PROJECT_IDS, parseAdminEnvironment, type AdminEnvironment } from "../environment";
+import { type AdminEnvironment } from "../environment";
 import {
   publicationStatusSchema,
   publishingModeSchema,
@@ -8,12 +8,15 @@ import {
   socialFoundationSnapshotSchema,
   socialPlatformSchema,
   SYNTHETIC_SOCIAL_FOUNDATION,
-  WEBSITE_42_SANITY_DATASET,
-  WEBSITE_42_SANITY_PROJECT_ID,
 } from "./foundation";
 import { WEBSITE_42_SOCIAL_ANALYTICS_BRANCH, WEBSITE_42_SOCIAL_PROVIDER_BRANCH } from "./provider-readonly";
+import {
+  resolveSocialRuntimeDescriptor,
+  socialRuntimeInputFromEnvironment,
+  SOCIAL_UAT_OPERATIONS_BRANCH,
+} from "./runtime";
 
-export const WEBSITE_42_SOCIAL_OPERATIONS_BRANCH = "codex/website-42-social-media-integration-20260829";
+export const WEBSITE_42_SOCIAL_OPERATIONS_BRANCH = SOCIAL_UAT_OPERATIONS_BRANCH;
 
 const boundedId = z.string().trim().min(1).max(120).regex(/^[A-Za-z0-9_.:-]+$/);
 const metricDimensionSchema = z.enum(["discovery", "engagement", "deep-engagement", "retention", "business-intent"]);
@@ -253,30 +256,30 @@ export function buildSyntheticContentCalendar(
 export function isSocialOperationsEnabled(input: {
   flag: string | undefined;
   environment: AdminEnvironment;
-  projectId: string | undefined;
-  gitBranch: string | undefined;
-  sanityProjectId: string | undefined;
-  sanityDataset: string | undefined;
+  projectId?: string;
+  gitBranch?: string;
+  sanityProjectId?: string;
+  sanityDataset?: string;
+  vercelEnvironment?: string;
+  productionAdminProjectId?: string;
+  connectionString?: string;
+  neonProjectId?: string;
+  neonBranchId?: string;
+  neonEndpointId?: string;
+  neonDatabase?: string;
 }) {
-  return input.flag === "1"
-    && input.environment === "admin-uat"
-    && input.projectId === CCPUN_VERCEL_PROJECT_IDS.adminProduction
-    && [WEBSITE_42_SOCIAL_OPERATIONS_BRANCH, WEBSITE_42_SOCIAL_PROVIDER_BRANCH, WEBSITE_42_SOCIAL_ANALYTICS_BRANCH].includes(input.gitBranch ?? "")
-    && input.sanityProjectId === WEBSITE_42_SANITY_PROJECT_ID
-    && input.sanityDataset === WEBSITE_42_SANITY_DATASET;
+  return input.flag === "1" && Boolean(resolveSocialRuntimeDescriptor(input, {
+    uatBranches: [WEBSITE_42_SOCIAL_OPERATIONS_BRANCH, WEBSITE_42_SOCIAL_PROVIDER_BRANCH, WEBSITE_42_SOCIAL_ANALYTICS_BRANCH],
+  }));
 }
 
 export function getSocialOperationsRuntimeStatus() {
-  const environment = parseAdminEnvironment(process.env.CCPUN_APP_ENV);
+  const runtimeInput = socialRuntimeInputFromEnvironment(process.env);
   return {
-    environment,
+    environment: runtimeInput.environment,
     enabled: isSocialOperationsEnabled({
       flag: process.env.CCPUN_SOCIAL_OPERATIONS_ENABLED,
-      environment,
-      projectId: process.env.VERCEL_PROJECT_ID?.trim() || process.env.NEXT_PUBLIC_CCPUN_VERCEL_PROJECT_ID?.trim(),
-      gitBranch: process.env.VERCEL_GIT_COMMIT_REF?.trim(),
-      sanityProjectId: process.env.NEXT_PUBLIC_SANITY_PROJECT_ID?.trim(),
-      sanityDataset: process.env.NEXT_PUBLIC_SANITY_DATASET?.trim(),
+      ...runtimeInput,
     }),
   };
 }

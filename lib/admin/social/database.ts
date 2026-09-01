@@ -15,14 +15,23 @@ import {
   SOCIAL_FORMAT_MIGRATION_VERSION,
   type SocialDatabaseReadiness,
 } from "./foundation";
+import { resolveSocialRuntime, SOCIAL_UAT_RUNTIME_BRANCHES } from "./runtime";
 
 export async function getSocialDatabaseReadiness(
   connectionString = process.env.CCPUN_SOCIAL_DATABASE_URL?.trim(),
+  env: Record<string, string | undefined> = process.env,
 ): Promise<SocialDatabaseReadiness> {
   if (!connectionString) {
     return { configured: false, reachable: false, migrationCurrent: false, errorCategory: "not-configured" };
   }
   if (!isSocialDatabaseConnectionString(connectionString)) {
+    return { configured: true, reachable: false, migrationCurrent: false, errorCategory: "invalid-configuration" };
+  }
+  const runtime = resolveSocialRuntime({ ...env, CCPUN_SOCIAL_DATABASE_URL: connectionString }, {
+    uatBranches: SOCIAL_UAT_RUNTIME_BRANCHES,
+    requireUatNeon: true,
+  });
+  if (!runtime) {
     return { configured: true, reachable: false, migrationCurrent: false, errorCategory: "invalid-configuration" };
   }
 
@@ -45,6 +54,12 @@ export async function getSocialDatabaseReadiness(
         FROM ccpun_social.schema_migration
         WHERE version = $5 AND checksum = $6
        ) AS media_ledger_current,
+       EXISTS (
+        SELECT 1
+        FROM ccpun_social.system_identity
+        WHERE singleton = true AND project_id = $7 AND branch_id = $8
+          AND endpoint_id = $9 AND database_name = $10
+       ) AS identity_current,
        to_regclass('ccpun_social.social_media_asset') IS NOT NULL AS media_asset_exists,
        to_regclass('ccpun_social.social_variant_link') IS NOT NULL AS variant_link_exists,
        to_regclass('ccpun_social.social_publication') IS NOT NULL AS publication_exists,
@@ -61,11 +76,16 @@ export async function getSocialDatabaseReadiness(
         SOCIAL_FORMAT_MIGRATION_CHECKSUM,
         MEDIA_SCHEMA_MIGRATION_VERSION,
         MEDIA_SCHEMA_MIGRATION_CHECKSUM,
+        runtime.neonIdentity.projectId,
+        runtime.neonIdentity.branchId,
+        runtime.neonIdentity.endpointId,
+        runtime.neonIdentity.database,
       ],
     ) as Array<{
       ledger_current: boolean;
       format_ledger_current: boolean;
       media_ledger_current: boolean;
+      identity_current: boolean;
       media_asset_exists: boolean;
       variant_link_exists: boolean;
       publication_exists: boolean;
@@ -77,7 +97,7 @@ export async function getSocialDatabaseReadiness(
       social_variant_media_exists: boolean;
     }>;
     const row = rows[0];
-    const migrationCurrent = Boolean(row && isSocialDatabaseSchemaCurrent({
+    const migrationCurrent = Boolean(row?.identity_current && isSocialDatabaseSchemaCurrent({
       ledgerCurrent: row.ledger_current,
       formatLedgerCurrent: row.format_ledger_current,
       mediaLedgerCurrent: row.media_ledger_current,

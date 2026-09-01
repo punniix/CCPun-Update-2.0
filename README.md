@@ -135,12 +135,19 @@ Values belong in local/Vercel Sensitive environment configuration and must never
 - `AUTH_SECRET`
 - `AUTH_GOOGLE_ID`
 - `AUTH_GOOGLE_SECRET`
+- `CCPUN_GOOGLE_DATA_CLIENT_ID`
+- `CCPUN_GOOGLE_DATA_CLIENT_SECRET`
 - `NEXT_PUBLIC_SANITY_PROJECT_ID`
 - `NEXT_PUBLIC_SANITY_DATASET`
 - `SANITY_API_READ_TOKEN`
 - `SANITY_API_WRITE_TOKEN`
 - `SANITY_STUDIO_PROJECT_ID`
 - `SANITY_STUDIO_DATASET`
+
+Production Admin Auth.js uses the complete `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET`
+pair when present, otherwise it reuses the complete `CCPUN_GOOGLE_DATA_CLIENT_ID` /
+`CCPUN_GOOGLE_DATA_CLIENT_SECRET` pair. Preview and UAT continue to require the
+dedicated `AUTH_GOOGLE_*` pair; credentials are never mixed across pairs.
 
 Do not copy `.env*`, OAuth JSON, tokens or `.vercel/` into Git.
 

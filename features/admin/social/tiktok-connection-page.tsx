@@ -7,11 +7,12 @@ import { getSocialOperationsRuntimeStatus } from "@/lib/admin/social/operations"
 import { getSocialProviderReadiness } from "@/lib/admin/social/provider-readonly";
 import { TikTokReadOnlyPanel } from "./provider-readonly-panels";
 
-export const metadata: Metadata = { title: "TikTok Connection UAT" };
+export const metadata: Metadata = { title: "TikTok Connection" };
 
 export default async function TikTokConnectionUatPage() {
   await requireAdminPermission("social:read");
-  if (!getSocialOperationsRuntimeStatus().enabled) notFound();
+  const runtime = getSocialOperationsRuntimeStatus();
+  if (!runtime.enabled || runtime.environment === "production-admin") notFound();
   const readiness = getSocialProviderReadiness("tiktok");
   const missing = readiness.required.filter((item) => !item.valid).map((item) => item.name);
   return (

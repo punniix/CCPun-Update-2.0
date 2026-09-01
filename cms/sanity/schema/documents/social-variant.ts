@@ -6,7 +6,7 @@ const publishingModeOptions = ["direct", "native-scheduled", "native-finish", "t
 
 export const socialVariant = defineType({
   name: "socialVariant",
-  title: "Social Channel Variant (UAT)",
+  title: "Social Channel Variant (Draft only)",
   type: "document",
   fields: [
     defineField({

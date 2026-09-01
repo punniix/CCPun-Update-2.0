@@ -3,25 +3,29 @@ import "server-only";
 import { createHash } from "node:crypto";
 import { neon } from "@neondatabase/serverless";
 import { z } from "zod";
-import { CCPUN_VERCEL_PROJECT_IDS, parseAdminEnvironment } from "../environment";
 import { normalizeMetaAnalytics } from "./provider-adapters";
-import { WEBSITE_42_SANITY_DATASET, WEBSITE_42_SANITY_PROJECT_ID } from "./foundation";
 import { WEBSITE_42_SOCIAL_ANALYTICS_BRANCH } from "./provider-readonly";
 import { fetchMetaReadOnlyDiscovery, matchMetaHistoricalAnalytics } from "./providers/meta/read-only";
 import { fetchTikTokReadOnlyDiscovery, matchTikTokHistoricalAnalytics } from "./providers/tiktok/read-only";
 import { fetchYouTubeReadOnlyDiscovery, matchYouTubeHistoricalAnalytics } from "./providers/youtube/read-only";
+import {
+  resolveSocialRuntime,
+  SOCIAL_PROVIDER_HISTORY_MIGRATION_CHECKSUM,
+  SOCIAL_PROVIDER_HISTORY_MIGRATION_VERSION,
+  socialAnalyticsMigrationForLane,
+} from "./runtime";
 
-export const SOCIAL_ANALYTICS_MIGRATION_VERSION = "20260831_website_42_social_analytics_ingestion";
-export const SOCIAL_ANALYTICS_MIGRATION_CHECKSUM = "sha256:ea2ba4d0a028569cbc53cc2fe7cdcdb0ecfa1df3ae777ef7baadf9aa08b9950c";
-export const SOCIAL_PROVIDER_HISTORY_MIGRATION_VERSION = "20260901_website_42_social_provider_native_history";
-export const SOCIAL_PROVIDER_HISTORY_MIGRATION_CHECKSUM = "sha256:cc4c2516ad261983d3d3997796711fb9b0290afe8625ab82fc002f4536bc549c";
+export {
+  SOCIAL_ANALYTICS_MIGRATION_CHECKSUM,
+  SOCIAL_ANALYTICS_MIGRATION_VERSION,
+  SOCIAL_PRODUCTION_ANALYTICS_MIGRATION_CHECKSUM,
+  SOCIAL_PRODUCTION_ANALYTICS_MIGRATION_VERSION,
+  SOCIAL_PROVIDER_HISTORY_MIGRATION_CHECKSUM,
+  SOCIAL_PROVIDER_HISTORY_MIGRATION_VERSION,
+} from "./runtime";
 export const SOCIAL_ANALYTICS_DASHBOARD_CONTENT_LIMIT = 10_000;
 export const socialAnalyticsProviderSchema = z.enum(["meta", "youtube", "tiktok"]);
 
-const UAT_NEON = {
-  projectId: "young-term-47483330", branchId: "br-crimson-mouse-az7ajkv8", endpointId: "ep-mute-frost-aztvz394",
-  database: "neondb", role: "ccpun_social_runtime",
-} as const;
 const providerFailureSchema = z.enum(["authentication", "authorization", "rate-limit", "timeout", "provider-unavailable", "invalid-response", "unknown"]);
 const publicationsSchema = z.array(z.object({
   publication_id: z.string().trim().min(1).max(120), platform: z.enum(["facebook", "instagram", "youtube", "tiktok"]),
@@ -71,24 +75,12 @@ function safeProviderUrl(value: string | null, platform: "facebook" | "instagram
   }
 }
 
-function isExactUatConnectionString(value: string | undefined) {
-  if (!value) return false;
-  try {
-    const url = new URL(value);
-    return url.protocol === "postgresql:" && decodeURIComponent(url.username) === UAT_NEON.role && Boolean(url.password)
-      && decodeURIComponent(url.pathname.slice(1)) === UAT_NEON.database
-      && [`${UAT_NEON.endpointId}.c-3.ap-southeast-1.aws.neon.tech`, `${UAT_NEON.endpointId}-pooler.c-3.ap-southeast-1.aws.neon.tech`].includes(url.hostname);
-  } catch {
-    return false;
-  }
-}
-
 export function isSocialAnalyticsIngestionEnabled(env: Record<string, string | undefined> = process.env) {
-  const projectId = env.VERCEL_PROJECT_ID?.trim() || env.NEXT_PUBLIC_CCPUN_VERCEL_PROJECT_ID?.trim();
-  return env.CCPUN_SOCIAL_ANALYTICS_INGESTION_ENABLED === "1" && parseAdminEnvironment(env.CCPUN_APP_ENV) === "admin-uat"
-    && projectId === CCPUN_VERCEL_PROJECT_IDS.adminProduction && env.VERCEL_GIT_COMMIT_REF?.trim() === WEBSITE_42_SOCIAL_ANALYTICS_BRANCH
-    && env.NEXT_PUBLIC_SANITY_PROJECT_ID?.trim() === WEBSITE_42_SANITY_PROJECT_ID && env.NEXT_PUBLIC_SANITY_DATASET?.trim() === WEBSITE_42_SANITY_DATASET
-    && isExactUatConnectionString(env.CCPUN_SOCIAL_DATABASE_URL?.trim());
+  return env.CCPUN_SOCIAL_ANALYTICS_INGESTION_ENABLED === "1"
+    && Boolean(resolveSocialRuntime(env, {
+      uatBranches: [WEBSITE_42_SOCIAL_ANALYTICS_BRANCH],
+      requireUatNeon: true,
+    }));
 }
 
 export function getSocialAnalyticsIngestionRuntimeStatus(env: Record<string, string | undefined> = process.env) {
@@ -116,7 +108,12 @@ function metricsHash(metrics: z.infer<typeof metricSchema>[]) {
 }
 
 async function verifiedSql(env: Record<string, string | undefined>) {
-  if (!isSocialAnalyticsIngestionEnabled(env)) throw new Error("SOCIAL_ANALYTICS_NOT_CONFIGURED");
+  const runtime = env.CCPUN_SOCIAL_ANALYTICS_INGESTION_ENABLED === "1"
+    ? resolveSocialRuntime(env, { uatBranches: [WEBSITE_42_SOCIAL_ANALYTICS_BRANCH], requireUatNeon: true })
+    : null;
+  if (!runtime) throw new Error("SOCIAL_ANALYTICS_NOT_CONFIGURED");
+  const identity = runtime.neonIdentity;
+  const migration = socialAnalyticsMigrationForLane(runtime.lane);
   const sql = neon(env.CCPUN_SOCIAL_DATABASE_URL!.trim(), { fetchOptions: { signal: AbortSignal.timeout(30_000) } });
   const rows = await sql.query(
     `SELECT current_database() AS database_name, current_user AS role_name,
@@ -124,11 +121,11 @@ async function verifiedSql(env: Record<string, string | undefined>) {
        EXISTS (SELECT 1 FROM ccpun_social.system_identity WHERE singleton=true AND project_id=$3 AND branch_id=$4
          AND endpoint_id=$5 AND database_name=$6 AND migration_version=$1 AND migration_checksum=$2) AS identity_current,
        EXISTS (SELECT 1 FROM ccpun_social.schema_migration WHERE version=$7 AND checksum=$8) AS provider_history_current`,
-    [SOCIAL_ANALYTICS_MIGRATION_VERSION, SOCIAL_ANALYTICS_MIGRATION_CHECKSUM, UAT_NEON.projectId, UAT_NEON.branchId, UAT_NEON.endpointId, UAT_NEON.database,
+    [migration.version, migration.checksum, identity.projectId, identity.branchId, identity.endpointId, identity.database,
       SOCIAL_PROVIDER_HISTORY_MIGRATION_VERSION, SOCIAL_PROVIDER_HISTORY_MIGRATION_CHECKSUM],
   ) as Array<{ database_name: string; role_name: string; ledger_current: boolean; identity_current: boolean; provider_history_current: boolean }>;
   const row = rows[0];
-  if (!row || row.database_name !== UAT_NEON.database || row.role_name !== UAT_NEON.role || !row.ledger_current || !row.identity_current || !row.provider_history_current) throw new Error("SOCIAL_ANALYTICS_IDENTITY_MISMATCH");
+  if (!row || row.database_name !== identity.database || row.role_name !== identity.role || !row.ledger_current || !row.identity_current || !row.provider_history_current) throw new Error("SOCIAL_ANALYTICS_IDENTITY_MISMATCH");
   return sql;
 }
 

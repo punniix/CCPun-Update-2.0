@@ -12,9 +12,9 @@ import {
   SOCIAL_COMMENT_EXECUTION_MIGRATION_VERSION,
   SOCIAL_PUBLICATION_EXECUTION_MIGRATION_CHECKSUM,
   SOCIAL_PUBLICATION_EXECUTION_MIGRATION_VERSION,
-  SOCIAL_PUBLICATION_UAT_NEON,
   authorizeSocialProviderExecution,
   isSocialProviderExecutionGateEnabled,
+  resolveSocialPublicationRuntime,
 } from "./publishing";
 import {
   type ApprovedMetaMediaDescriptor,
@@ -148,6 +148,9 @@ export function isSocialProviderExecutionEnabled(env: Record<string, string | un
 
 async function verifiedSql(env: Record<string, string | undefined>) {
   if (!isSocialProviderExecutionEnabled(env)) throw new Error("SOCIAL_PROVIDER_WRITES_NOT_CONFIGURED");
+  const runtime = resolveSocialPublicationRuntime(env);
+  if (!runtime) throw new Error("SOCIAL_PROVIDER_WRITES_NOT_CONFIGURED");
+  const identity = runtime.neonIdentity;
   const sql = neon(env.CCPUN_SOCIAL_DATABASE_URL!.trim(), { fetchOptions: { signal: AbortSignal.timeout(15_000) } });
   const rows = z.array(z.object({
     database_name: z.string(), role_name: z.string(), execution_ledger_current: z.boolean(),
@@ -160,11 +163,10 @@ async function verifiedSql(env: Record<string, string | undefined>) {
          AND endpoint_id=$7 AND database_name=$8) AS identity_current`,
     [SOCIAL_PUBLICATION_EXECUTION_MIGRATION_VERSION, SOCIAL_PUBLICATION_EXECUTION_MIGRATION_CHECKSUM,
       SOCIAL_COMMENT_EXECUTION_MIGRATION_VERSION, SOCIAL_COMMENT_EXECUTION_MIGRATION_CHECKSUM,
-      SOCIAL_PUBLICATION_UAT_NEON.projectId, SOCIAL_PUBLICATION_UAT_NEON.branchId,
-      SOCIAL_PUBLICATION_UAT_NEON.endpointId, SOCIAL_PUBLICATION_UAT_NEON.database],
+      identity.projectId, identity.branchId, identity.endpointId, identity.database],
   ));
   const row = rows[0];
-  if (!row || row.database_name !== SOCIAL_PUBLICATION_UAT_NEON.database || row.role_name !== SOCIAL_PUBLICATION_UAT_NEON.role
+  if (!row || row.database_name !== identity.database || row.role_name !== identity.role
     || !row.execution_ledger_current || !row.comment_ledger_current || !row.identity_current) {
     throw new Error("SOCIAL_PROVIDER_WRITES_IDENTITY_MISMATCH");
   }

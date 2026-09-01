@@ -52,6 +52,9 @@ test("Synthetic Meta connection and GET route stay UAT-only and read-only", () =
   assert.doesNotMatch(route, /export async function (?:POST|PUT|PATCH|DELETE)/);
   assert.doesNotMatch(route, /fetch\(|createClient|accessToken|refreshToken/);
   assert.match(page, /requireAdminPermission\("social:read"\)/);
+  assert.match(page, /const showFixture = runtime\.environment === "admin-uat"/);
+  assert.match(page, /\{showFixture \? <>/);
+  assert.ok(page.indexOf("{showFixture ? <>") < page.indexOf("connection.pages.map"));
   assert.equal(entry.trim(), 'export { metadata, default } from "@/features/admin/social/meta-connection-page";');
   assert.match(operations, /distribution\/connections\/meta/);
 });

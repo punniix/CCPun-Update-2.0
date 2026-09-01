@@ -24,6 +24,8 @@ const studioPage = readFileSync(new URL("../../app/studio/[[...tool]]/page.tsx",
 const studioClient = readFileSync(new URL("../../app/studio/[[...tool]]/studio-client.tsx", import.meta.url), "utf8");
 const studioConfig = readFileSync(new URL("../../sanity.config.ts", import.meta.url), "utf8");
 const studioStructure = readFileSync(new URL("../../cms/sanity/config/structure.ts", import.meta.url), "utf8");
+const masterContentSchema = readFileSync(new URL("../../cms/sanity/schema/documents/master-content.ts", import.meta.url), "utf8");
+const socialVariantSchema = readFileSync(new URL("../../cms/sanity/schema/documents/social-variant.ts", import.meta.url), "utf8");
 const adminDataRefresh = readFileSync(new URL("../../features/admin/components/AdminDataRefresh.tsx", import.meta.url), "utf8");
 const adminContentPage = readFileSync(new URL("../../app/snt-admin/(protected)/content/page.tsx", import.meta.url), "utf8");
 
@@ -60,6 +62,8 @@ test("Studio actions follow the application lane and dataset together", () => {
     { action: "unpublish" },
     { action: "unpublishVersion" },
     { action: "delete" },
+    { action: "schedule" },
+    { action: "discardChanges" },
     { action: "duplicate" },
     { action: undefined },
   ];
@@ -68,14 +72,16 @@ test("Studio actions follow the application lane and dataset together", () => {
   assert.deepEqual(filterStudioDocumentActions(actions, "uat", "lab", undefined, UAT_SANITY_PROJECT_ID), []);
 
   useLocalProject();
-  assert.deepEqual(filterStudioDocumentActions(actions, "uat", "local-uat", undefined, UAT_SANITY_PROJECT_ID), [actions[4], actions[5]]);
-  assert.deepEqual(filterStudioDocumentActions(actions, "uat", "local-uat", "socialVariant", UAT_SANITY_PROJECT_ID), [actions[4], actions[5]]);
+  assert.deepEqual(filterStudioDocumentActions(actions, "uat", "local-uat", undefined, UAT_SANITY_PROJECT_ID), [actions[4], actions[5], actions[6], actions[7]]);
+  assert.deepEqual(filterStudioDocumentActions(actions, "uat", "local-uat", "socialVariant", UAT_SANITY_PROJECT_ID), [actions[4], actions[5], actions[6], actions[7]]);
 
   useProductionAdminProject();
   assert.deepEqual(filterStudioDocumentActions(actions, "production", "production-admin", undefined, PRODUCTION_SANITY_PROJECT_ID), [
     actions[0],
     actions[4],
     actions[5],
+    actions[6],
+    actions[7],
   ]);
   assert.deepEqual(filterStudioDocumentActions(actions, "production", "production-admin", "article", PRODUCTION_SANITY_PROJECT_ID), [
     actions[0],
@@ -83,6 +89,8 @@ test("Studio actions follow the application lane and dataset together", () => {
     actions[3],
     actions[4],
     actions[5],
+    actions[6],
+    actions[7],
   ]);
 
   useLabProject();
@@ -91,8 +99,8 @@ test("Studio actions follow the application lane and dataset together", () => {
 
   useProductionAdminProject();
   assert.deepEqual(filterStudioDocumentActions(actions, "production", "production-admin", "auditLog", PRODUCTION_SANITY_PROJECT_ID), []);
-  assert.deepEqual(filterStudioDocumentActions(actions, "production", "production-admin", "masterContent", PRODUCTION_SANITY_PROJECT_ID), []);
-  assert.deepEqual(filterStudioDocumentActions(actions, "production", "production-admin", "socialVariant", PRODUCTION_SANITY_PROJECT_ID), []);
+  assert.deepEqual(filterStudioDocumentActions(actions, "production", "production-admin", "masterContent", PRODUCTION_SANITY_PROJECT_ID), [actions[6], actions[7]]);
+  assert.deepEqual(filterStudioDocumentActions(actions, "production", "production-admin", "socialVariant", PRODUCTION_SANITY_PROJECT_ID), [actions[6], actions[7]]);
 
   useLabProject();
   assert.deepEqual(filterStudioDocumentActions(actions, "production", "lab", undefined, UAT_SANITY_PROJECT_ID), []);
@@ -208,7 +216,7 @@ test("Studio keeps identified owner content and hides system/category management
   ];
 
   assert.deepEqual(filterStudioStructureItems(structureItems, "local-uat"), [structureItems[0], structureItems[3], structureItems[4], structureItems[5]]);
-  assert.deepEqual(filterStudioStructureItems(structureItems, "production-admin"), [structureItems[0], structureItems[3]]);
+  assert.deepEqual(filterStudioStructureItems(structureItems, "production-admin"), [structureItems[0], structureItems[3], structureItems[4], structureItems[5]]);
   assert.deepEqual(filterStudioNewDocumentOptions(newDocumentOptions, "uat", "local-uat", UAT_SANITY_PROJECT_ID), [
     newDocumentOptions[0],
     newDocumentOptions[3],
@@ -220,7 +228,12 @@ test("Studio keeps identified owner content and hides system/category management
   assert.deepEqual(filterStudioNewDocumentOptions(newDocumentOptions, "production", "production-admin", PRODUCTION_SANITY_PROJECT_ID), [
     newDocumentOptions[0],
     newDocumentOptions[3],
+    newDocumentOptions[4],
+    newDocumentOptions[5],
   ]);
+
+  assert.match(masterContentSchema, /title: "Master Content \(Draft only\)"/);
+  assert.match(socialVariantSchema, /title: "Social Channel Variant \(Draft only\)"/);
 
   const schemaSource = readFileSync(new URL("../../cms/sanity/schema/documents/article.ts", import.meta.url), "utf8");
   assert.match(schemaSource, /to: \[\{ type: "category" \}\]/);

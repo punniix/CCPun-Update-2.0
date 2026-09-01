@@ -4,6 +4,14 @@ import { isStudioDataPlaneAllowed, type AdminEnvironment } from "../../../lib/ad
 const BLOCKED_NON_PRODUCTION_ACTIONS = new Set(["delete", "publish", "unpublish", "unpublishVersion"]);
 const BLOCKED_PRODUCTION_ADMIN_ACTIONS = new Set(["delete", "unpublish", "unpublishVersion"]);
 const BLOCKED_PRODUCTION_ADMIN_ARTICLE_ACTIONS = new Set(["unpublishVersion"]);
+const BLOCKED_PRODUCTION_ADMIN_DRAFT_ONLY_ACTIONS = new Set([
+  "delete",
+  "discardChanges",
+  "publish",
+  "schedule",
+  "unpublish",
+  "unpublishVersion",
+]);
 const LOCAL_PRODUCTION_ARTICLE_ACTIONS = new Set(["publish", "unpublish", "delete", "schedule", "discardChanges", "restore"]);
 const SYSTEM_DOCUMENT_TYPES = new Set([
   "seoSuggestion",
@@ -12,11 +20,15 @@ const SYSTEM_DOCUMENT_TYPES = new Set([
   "ubersuggestGeoSnapshot",
   "auditLog",
 ]);
-const UAT_ONLY_DOCUMENT_TYPES = new Set(["masterContent", "socialVariant"]);
+const DRAFT_ONLY_DOCUMENT_TYPES = new Set(["masterContent", "socialVariant"]);
 const OWNER_HIDDEN_DOCUMENT_TYPES = new Set(["category", ...SYSTEM_DOCUMENT_TYPES]);
 
 function isUatEditorialEnvironment(environment: AdminEnvironment): boolean {
   return environment === "development" || environment === "local-uat" || environment === "admin-uat";
+}
+
+function isDraftOnlyEditorialEnvironment(environment: AdminEnvironment): boolean {
+  return isUatEditorialEnvironment(environment) || environment === "production-admin";
 }
 
 type StudioAuthProvider = { name: string };
@@ -47,12 +59,15 @@ export function filterStudioDocumentActions<T extends { action?: string }>(
 ): T[] {
   if (!isStudioDataPlaneAllowed(dataset, environment, undefined, undefined, projectId)) return [];
   if (schemaType && SYSTEM_DOCUMENT_TYPES.has(schemaType)) return [];
-  if (schemaType && UAT_ONLY_DOCUMENT_TYPES.has(schemaType) && !isUatEditorialEnvironment(environment)) return [];
+  if (schemaType && DRAFT_ONLY_DOCUMENT_TYPES.has(schemaType) && !isDraftOnlyEditorialEnvironment(environment)) return [];
   if (environment === "local-production") {
     if (schemaType !== "article") return [];
     return actions.filter(({ action }) => Boolean(action && LOCAL_PRODUCTION_ARTICLE_ACTIONS.has(action)));
   }
   if (environment === "production-admin") {
+    if (schemaType && DRAFT_ONLY_DOCUMENT_TYPES.has(schemaType)) {
+      return actions.filter(({ action }) => !action || !BLOCKED_PRODUCTION_ADMIN_DRAFT_ONLY_ACTIONS.has(action));
+    }
     const blockedActions = schemaType === "article"
       ? BLOCKED_PRODUCTION_ADMIN_ARTICLE_ACTIONS
       : BLOCKED_PRODUCTION_ADMIN_ACTIONS;
@@ -124,7 +139,7 @@ export function filterStudioNewDocumentOptions<T extends StudioNewDocumentOption
   if (environment === "local-production") return options.filter(({ templateId }) => templateId === "article");
   return options.filter(({ templateId }) =>
     !OWNER_HIDDEN_DOCUMENT_TYPES.has(templateId) &&
-    (isUatEditorialEnvironment(environment) || !UAT_ONLY_DOCUMENT_TYPES.has(templateId)),
+    (isDraftOnlyEditorialEnvironment(environment) || !DRAFT_ONLY_DOCUMENT_TYPES.has(templateId)),
   );
 }
 
@@ -137,7 +152,7 @@ export function filterStudioStructureItems<T extends StudioStructureItem>(
     if (!documentType) return false;
     return (
       !OWNER_HIDDEN_DOCUMENT_TYPES.has(documentType) &&
-      (isUatEditorialEnvironment(environment) || !UAT_ONLY_DOCUMENT_TYPES.has(documentType))
+      (isDraftOnlyEditorialEnvironment(environment) || !DRAFT_ONLY_DOCUMENT_TYPES.has(documentType))
     );
   });
 }

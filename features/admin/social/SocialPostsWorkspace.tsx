@@ -451,7 +451,7 @@ export default function SocialPostsWorkspace({ approvalEnabled }: { approvalEnab
         const errors: Record<string, string> = {
           "revision-conflict": "Draft เปลี่ยนหลังจากเปิดหน้านี้ ระบบไม่เขียนทับ กรุณาโหลดใหม่แล้วตรวจอีกครั้ง",
           "master-content-not-approved": "Master Content นี้ยังไม่ผ่าน Human Review จึงสร้าง Draft ไม่ได้",
-          "sanity-write-not-configured": "Sanity UAT write ยังไม่พร้อม", forbidden: "เฉพาะ Owner เท่านั้นที่สร้างหรือแก้ Social Draft ได้",
+          "sanity-write-not-configured": "Sanity write ยังไม่พร้อม", forbidden: "เฉพาะ Owner เท่านั้นที่สร้างหรือแก้ Social Draft ได้",
           "invalid-request": "ข้อมูล Draft ไม่ผ่าน contract กรุณาตรวจแพลตฟอร์ม รูปแบบ publishing mode และ HTTPS Link URL",
         };
         setNotice(errors[payload?.error] ?? "บันทึก Sanity Draft ไม่สำเร็จและไม่มีข้อมูลถูกเขียน"); return;
@@ -478,7 +478,7 @@ export default function SocialPostsWorkspace({ approvalEnabled }: { approvalEnab
         const errors: Record<string, string> = {
           "revision-conflict": "เนื้อหาเปลี่ยนหลังจากเปิดหน้านี้ กรุณาโหลดข้อมูลใหม่แล้วตรวจอีกครั้ง",
           "variant-not-approved-or-unsupported": "ชิ้นงานยังไม่ผ่าน Human Review หรือรูปแบบนี้ยังไม่รองรับ",
-          "database-not-ready": "ฐานข้อมูล UAT ยังไม่พร้อมรับการอนุมัติ", "sanity-read-not-configured": "ยังอ่าน revision จาก Sanity UAT ไม่ได้",
+          "database-not-ready": "ฐานข้อมูลยังไม่พร้อมรับการอนุมัติ", "sanity-read-not-configured": "ยังอ่าน revision จาก Sanity ไม่ได้",
           forbidden: "บัญชีนี้ไม่มีสิทธิ์ Owner สำหรับอนุมัติ",
         };
         setNotice(errors[payload?.error] ?? "อนุมัติไม่สำเร็จและไม่มีการส่งโพสต์"); return;
@@ -486,7 +486,7 @@ export default function SocialPostsWorkspace({ approvalEnabled }: { approvalEnab
       await refreshWorkspace(form.id);
       setNotice(payload?.publication?.executionTarget === "instagram-mobile-handoff"
         ? "อนุมัติ revision นี้แล้ว และเตรียม Instagram mobile handoff โดยไม่สร้าง Native Draft"
-        : "อนุมัติ revision นี้และสร้างแผนเผยแพร่ใน UAT แล้ว · ยังไม่มี Provider write จากหน้าจอนี้");
+        : "อนุมัติ revision นี้และสร้างแผนเผยแพร่แล้ว · การส่งจริงยังต้องผ่าน Provider safety gate");
     } catch { setNotice("เชื่อมต่อ approval API ไม่สำเร็จและไม่มีการส่งโพสต์"); }
     finally { setApprovalState("idle"); }
   }
@@ -578,7 +578,7 @@ export default function SocialPostsWorkspace({ approvalEnabled }: { approvalEnab
       </section>
 
       <section aria-labelledby="social-post-editor-title" className="min-w-0 rounded-3xl border border-white/10 bg-white/[0.035] p-5 xl:sticky xl:top-5 xl:self-start">
-        <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-xs font-semibold tracking-[0.1em] text-[#e0c985]">SANITY UAT DRAFT</p><h2 id="social-post-editor-title" className="mt-1 text-xl font-semibold">{form.source === "new" ? "สร้างโพสต์" : "รายละเอียดโพสต์"}</h2></div><span className={`rounded-full border px-3 py-1 text-xs ${editorEnabled ? "border-emerald-200/25 bg-emerald-200/[0.06] text-emerald-100" : "border-white/15 text-white/60"}`}>{editorEnabled ? "บันทึก Draft ได้" : "อ่านอย่างเดียว"}</span></div>
+        <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-xs font-semibold tracking-[0.1em] text-[#e0c985]">SANITY DRAFT</p><h2 id="social-post-editor-title" className="mt-1 text-xl font-semibold">{form.source === "new" ? "สร้างโพสต์" : "รายละเอียดโพสต์"}</h2></div><span className={`rounded-full border px-3 py-1 text-xs ${editorEnabled ? "border-emerald-200/25 bg-emerald-200/[0.06] text-emerald-100" : "border-white/15 text-white/60"}`}>{editorEnabled ? "บันทึก Draft ได้" : "อ่านอย่างเดียว"}</span></div>
         <form onSubmit={saveDraft} className="mt-5 space-y-4">
           <label className="block text-sm text-white/75">Approved Master Content<select required disabled={!editorEnabled} value={form.masterContentId} onChange={(event) => update("masterContentId", event.target.value)} className="mt-1.5 min-h-11 w-full rounded-xl border border-white/15 bg-[#151a20] px-3 text-white focus:border-[#e0c985] focus:outline-none disabled:opacity-60"><option value="">เลือก Master Content</option>{masterChoices.map((choice) => <option key={choice.id} value={choice.id}>{choice.title}</option>)}</select></label>
           <label className="block text-sm text-white/75">ชื่อชิ้นงาน<input required disabled={!editorEnabled} value={form.title} onChange={(event) => update("title", event.target.value)} className="mt-1.5 min-h-11 w-full rounded-xl border border-white/15 bg-black/20 px-3 text-white focus:border-[#e0c985] focus:outline-none disabled:opacity-60" /></label>

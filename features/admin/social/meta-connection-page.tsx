@@ -8,7 +8,7 @@ import { SYNTHETIC_META_CONNECTION } from "@/lib/admin/social/providers/meta/con
 import { getSocialProviderReadiness } from "@/lib/admin/social/provider-readonly";
 import { MetaReadOnlyPanel } from "./provider-readonly-panels";
 
-export const metadata: Metadata = { title: "Meta Connection UAT" };
+export const metadata: Metadata = { title: "Meta Connection" };
 
 const statusLabel = {
   "not-connected": "ยังไม่ได้เชื่อมต่อ",
@@ -20,19 +20,21 @@ const statusLabel = {
 
 export default async function MetaConnectionUatPage() {
   await requireAdminPermission("social:read");
-  if (!getSocialOperationsRuntimeStatus().enabled) notFound();
+  const runtime = getSocialOperationsRuntimeStatus();
+  if (!runtime.enabled) notFound();
+  const showFixture = runtime.environment === "admin-uat";
   const connection = SYNTHETIC_META_CONNECTION;
   const readiness = getSocialProviderReadiness("meta");
   const missing = readiness.required.filter((item) => !item.valid).map((item) => item.name);
 
   return (
     <div>
-      <p className="text-xs font-semibold tracking-[0.12em] text-[#e0c985]">WEBSITE 4.2 · READ-ONLY UAT</p>
+      <p className="text-xs font-semibold tracking-[0.12em] text-[#e0c985]">META · CONNECTION</p>
       <div className="mt-2 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="text-3xl font-semibold">Meta Connection</h1>
           <p className="mt-3 max-w-3xl text-sm leading-6 text-white/70">
-            ตรวจ Fixture และอ่าน Facebook Page, Instagram และ native counters ของโพสต์ล่าสุดเมื่อคุณกด Sync เท่านั้น ไม่มีสิทธิ์โพสต์
+            อ่าน Facebook Page, Instagram และ native counters ของโพสต์ล่าสุดเมื่อคุณกด Sync เท่านั้น
           </p>
         </div>
         <Link href="/snt-admin/distribution/operations/" className="inline-flex min-h-11 items-center rounded-xl border border-white/10 px-4 py-2.5 text-sm text-white/70 hover:bg-white/5">
@@ -40,7 +42,7 @@ export default async function MetaConnectionUatPage() {
         </Link>
       </div>
 
-      <section className="mt-7 grid gap-3 sm:grid-cols-3">
+      {showFixture ? <><section className="mt-7 grid gap-3 sm:grid-cols-3">
         <article className="rounded-2xl border border-white/10 bg-white/[0.035] p-4">
           <div className="text-sm text-white/55">สถานะ</div>
           <div className="mt-2 font-semibold text-emerald-200">{statusLabel[connection.status]}</div>
@@ -78,7 +80,7 @@ export default async function MetaConnectionUatPage() {
 
       <section role="note" className="mt-7 rounded-3xl border border-amber-200/20 bg-amber-200/[0.05] p-5 text-sm leading-6 text-amber-50/80">
         สิทธิ์จำลอง: {connection.grantedScopes.join(" + ")} · ไม่มี publishing scopes · ไม่มีข้อมูล credential
-      </section>
+      </section></> : null}
       <MetaReadOnlyPanel ready={readiness.status === "manual-sync-ready"} analyticsReady={getSocialAnalyticsIngestionRuntimeStatus().enabled} missing={missing} />
     </div>
   );

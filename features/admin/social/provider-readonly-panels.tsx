@@ -10,10 +10,10 @@ const errorLabel: Record<string, string> = {
   "provider-invalid-response": "Provider ส่งข้อมูลไม่ตรงสัญญา",
   "provider-selection-required": "พบหลายบัญชี กรุณาระบุบัญชีที่จะเก็บสถิติก่อน",
   "provider-unavailable": "Provider ยังไม่พร้อมใช้งาน",
-  "database-not-ready": "Neon UAT ยังไม่พร้อมรับสถิติ",
+  "database-not-ready": "ฐานข้อมูลยังไม่พร้อมรับสถิติ",
   "database-auth-required": "รหัสผ่านของ Neon runtime role ไม่ถูกต้อง",
   "database-forbidden": "Neon runtime role ไม่มีสิทธิ์อ่านหรือบันทึกสถิติ",
-  "database-unavailable": "Neon UAT ติดต่อไม่ได้ชั่วคราว",
+  "database-unavailable": "ฐานข้อมูลติดต่อไม่ได้ชั่วคราว",
   "sync-in-progress": "กำลัง Sync อยู่",
 };
 

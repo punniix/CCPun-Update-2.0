@@ -4,10 +4,10 @@ import { z } from "zod";
 import { isConfiguredAdminOrigin, isSameOriginAdminMutation } from "@/lib/admin/auth-config";
 import { getAdminIdentity } from "@/lib/admin/identity";
 import { hasAdminPermission } from "@/lib/admin/rbac";
-import { previousEqualDateRange } from "@/lib/admin/seo-intelligence/contracts";
+import { joinGa4DashboardRows, previousEqualDateRange } from "@/lib/admin/seo-intelligence/contracts";
 import { getSeoIntelligenceRuntimeStatus } from "@/lib/admin/seo-intelligence/foundation";
 import { getGoogleDataAccessToken } from "@/lib/admin/seo-intelligence/google-data-auth";
-import { fetchGa4LandingPages } from "@/lib/admin/seo-intelligence/providers/ga4";
+import { fetchGa4LandingPages, fetchGa4OrganicTotals } from "@/lib/admin/seo-intelligence/providers/ga4";
 
 const inputSchema = z.object({ startDate: z.iso.date(), endDate: z.iso.date() }).superRefine((input, context) => {
   const start = Date.parse(`${input.startDate}T00:00:00Z`);
@@ -20,12 +20,6 @@ const inputSchema = z.object({ startDate: z.iso.date(), endDate: z.iso.date() })
 });
 
 let syncInFlight = false;
-
-function totals(rows: Awaited<ReturnType<typeof fetchGa4LandingPages>>["rows"]) {
-  const sessions = rows.reduce((sum, row) => sum + row.sessions, 0);
-  const engagedSessions = rows.reduce((sum, row) => sum + row.engagedSessions, 0);
-  return { sessions, engagedSessions, engagementRate: sessions ? engagedSessions / sessions : 0 };
-}
 
 function providerError(error: unknown) {
   const code = error instanceof Error ? error.message : "";
@@ -60,29 +54,52 @@ export async function POST(request: Request) {
   try {
     // ponytail: one owner and one manual sync at a time; add a durable lock only with scheduled sync.
     const token = await getGoogleDataAccessToken();
-    const current = await fetchGa4LandingPages({ propertyId, token, ...parsed.data });
+    const [current, currentTotals] = await Promise.all([
+      fetchGa4LandingPages({ propertyId, token, ...parsed.data }),
+      fetchGa4OrganicTotals({ propertyId, token, ...parsed.data }),
+    ]);
     let comparison: Awaited<ReturnType<typeof fetchGa4LandingPages>> | null = null;
+    let comparisonTotals: Awaited<ReturnType<typeof fetchGa4OrganicTotals>> | null = null;
     let comparisonError: string | null = null;
     try {
-      comparison = await fetchGa4LandingPages({ propertyId, token, ...comparisonRange });
+      [comparison, comparisonTotals] = await Promise.all([
+        fetchGa4LandingPages({ propertyId, token, ...comparisonRange }),
+        fetchGa4OrganicTotals({ propertyId, token, ...comparisonRange }),
+      ]);
     } catch (error) {
       comparisonError = providerError(error).error;
     }
+    const joinedRows = joinGa4DashboardRows(current.rows, comparison?.rows ?? []);
+    const rows = [...joinedRows]
+      .sort((a, b) => b.current.sessions - a.current.sessions)
+      .slice(0, 100);
+    const signals = joinedRows
+      .filter((row) => row.previous !== null)
+      .sort((a, b) => Math.abs(b.current.sessions - b.previous!.sessions) - Math.abs(a.current.sessions - a.previous!.sessions))
+      .slice(0, 3);
     return NextResponse.json({
       requestId,
       source: "ga4",
-      state: comparison ? "ready" : "partial",
+      state: comparison && comparisonTotals ? "ready" : "partial",
       channel: "Organic Search",
       dateRange: parsed.data,
       comparisonRange,
-      fetchedAt: current.fetchedAt,
-      timeZone: current.timeZone,
-      current: { rows: current.rows.length, ...totals(current.rows) },
-      comparison: comparison ? { rows: comparison.rows.length, ...totals(comparison.rows) } : null,
+      fetchedAt: new Date().toISOString(),
+      timeZone: currentTotals.timeZone ?? current.timeZone,
+      current: currentTotals.totals,
+      comparison: comparisonTotals?.totals ?? null,
       comparisonError,
-      sample: current.rows.slice(0, 100),
+      rows,
+      signals,
       truncated: current.truncated || Boolean(comparison?.truncated),
-      limitations: [...new Set([...current.limitations, ...(comparison?.limitations ?? []), "ตัวอย่างหน้า Admin จำกัด 100 แถวและยังไม่บันทึกข้อมูล"])],
+      limitations: [...new Set([
+        ...currentTotals.limitations,
+        ...current.limitations,
+        ...(comparisonTotals?.limitations ?? []),
+        ...(comparison?.limitations ?? []),
+        "ยอดรวม Organic Search มาจากรายงานแบบไม่แบ่ง landing page; รายละเอียดไม่รวม (not set)",
+        "รายละเอียดจับคู่ช่วงก่อนหน้าด้วย landing page ที่ตรงกันทุกตัวอักษร จำกัด 100 แถวหลัง exact join และไม่บันทึกข้อมูล",
+      ])],
     }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     const code = error instanceof Error ? error.message : "";

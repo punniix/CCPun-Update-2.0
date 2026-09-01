@@ -69,14 +69,14 @@ test("Sheets export rejects expired interactive authorization before any Google 
   assert.equal(called, false);
 });
 
-test("Sheets route is an owner-only same-origin UAT mutation and the UI keeps the token in memory", () => {
+test("Sheets route is an owner-only same-origin runtime mutation and the UI keeps the token in memory", () => {
   const route = readFileSync(new URL("../../app/api/snt-admin/social/export/sheets/route.ts", import.meta.url), "utf8");
   const service = readFileSync(new URL("../../lib/admin/social/sheets-export.ts", import.meta.url), "utf8");
   const component = readFileSync(new URL("../../features/admin/social/SocialSheetsExport.tsx", import.meta.url), "utf8");
   assert.match(route, /identity\.actorType !== "human" \|\| identity\.role !== "owner"/);
   assert.match(route, /isConfiguredAdminOrigin/);
   assert.match(route, /isSameOriginAdminMutation/);
-  assert.match(service, /isSocialPublicationApprovalEnabled/);
+  assert.match(service, /resolveSocialPublicationRuntime/);
   assert.match(service, /CCPUN_SOCIAL_ANALYTICS_INGESTION_ENABLED/);
   assert.match(component, /useRef<GoogleDriveMemorySession \| null>/);
   assert.doesNotMatch(component, /localStorage|sessionStorage|indexedDB|cookie/i);

@@ -5,6 +5,27 @@ const LOCAL_ADMIN_HOSTS: Partial<Record<AdminEnvironment, string>> = {
   "local-production": "localhost:3000",
 };
 
+type GoogleOAuthVariables = Record<string, string | undefined>;
+
+export function getAdminGoogleOAuthCredentials(
+  environment: AdminEnvironment,
+  variables: GoogleOAuthVariables = process.env,
+): { clientId: string; clientSecret: string } | null {
+  const authClientId = variables.AUTH_GOOGLE_ID?.trim();
+  const authClientSecret = variables.AUTH_GOOGLE_SECRET?.trim();
+  if (authClientId && authClientSecret) {
+    return { clientId: authClientId, clientSecret: authClientSecret };
+  }
+
+  if (environment !== "production-admin") return null;
+
+  const dataClientId = variables.CCPUN_GOOGLE_DATA_CLIENT_ID?.trim();
+  const dataClientSecret = variables.CCPUN_GOOGLE_DATA_CLIENT_SECRET?.trim();
+  return dataClientId && dataClientSecret
+    ? { clientId: dataClientId, clientSecret: dataClientSecret }
+    : null;
+}
+
 export function hasStrongAuthSecret(value: string | undefined): boolean {
   return Boolean(value && value.length >= 32);
 }

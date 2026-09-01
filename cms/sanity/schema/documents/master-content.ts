@@ -2,7 +2,7 @@ import { defineField, defineType } from "sanity";
 
 export const masterContent = defineType({
   name: "masterContent",
-  title: "Master Content (UAT)",
+  title: "Master Content (Draft only)",
   type: "document",
   fields: [
     defineField({
