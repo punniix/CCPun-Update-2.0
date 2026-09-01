@@ -5,6 +5,8 @@ import test from "node:test";
 const read = (path: string) => readFileSync(new URL(`../../${path}`, import.meta.url), "utf8");
 const migrationVersion = "20260831_website_42_social_analytics_ingestion";
 const migrationChecksum = "sha256:ea2ba4d0a028569cbc53cc2fe7cdcdb0ecfa1df3ae777ef7baadf9aa08b9950c";
+const historyMigrationVersion = "20260901_website_42_social_provider_native_history";
+const historyMigrationChecksum = "sha256:cc4c2516ad261983d3d3997796711fb9b0290afe8625ab82fc002f4536bc549c";
 
 test("analytics ingestion opens only on the exact Admin and Neon UAT lane", () => {
   const service = read("lib/admin/social/analytics-ingestion.ts");
@@ -45,6 +47,31 @@ test("readback avoids broad catalog checks and verifies every write boundary", (
   assert.match(readback, /column_name::text/);
   assert.match(readback, /namespace\.nspname = 'ccpun_social'[\s\S]*relation\.relkind = 'S'/);
   assert.doesNotMatch(readback, /pg_toast/);
+});
+
+test("provider-native history is additive, checksum-locked and change-only", () => {
+  const migration = read("db/migrations/20260901_website_42_social_provider_native_history.sql");
+  const source = migration.split("-- checksum-source-begin\n")[1]?.split("-- checksum-source-end")[0];
+  assert.ok(source);
+  assert.equal(`sha256:${createHash("sha256").update(source).digest("hex")}`, historyMigrationChecksum);
+  assert.match(migration, new RegExp(historyMigrationVersion));
+  for (const table of ["social_provider_content", "social_provider_content_revision", "social_provider_metric_snapshot"]) {
+    assert.match(migration, new RegExp(`ccpun_social\\.${table}`));
+  }
+  assert.match(migration, /UNIQUE \(content_id, content_hash\)/);
+  assert.match(migration, /UNIQUE \(content_id, metrics_hash\)/);
+  assert.match(migration, /backfill_completed_at/);
+  assert.match(migration, /last_window_start_at/);
+  assert.doesNotMatch(source, /access.?token|refresh.?token|client.?secret/i);
+  assert.doesNotMatch(migration, /DROP TABLE|DELETE FROM|TRUNCATE/i);
+
+  const service = read("lib/admin/social/analytics-ingestion.ts");
+  assert.match(service, new RegExp(historyMigrationVersion));
+  assert.match(service, /14 \* 24 \* 60 \* 60 \* 1000/);
+  assert.match(service, /ON CONFLICT \(content_id,content_hash\) DO NOTHING/);
+  assert.match(service, /ON CONFLICT \(content_id,metrics_hash\) DO NOTHING/);
+  assert.match(service, /latestMetricHash[\s\S]*metricsHash/);
+  assert.match(service, /providerContentsSeen/);
 });
 
 test("manual provider persistence stays human-only, same-origin and provider-write free", () => {

@@ -19,7 +19,7 @@ const errorLabel: Record<string, string> = {
 
 async function manualSync(endpoint: string) {
   const response = await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json" } });
-  const body = await response.json().catch(() => null) as { error?: string; discovery?: unknown; persistence?: { matchedSnapshots: number } } | null;
+  const body = await response.json().catch(() => null) as { error?: string; discovery?: unknown; persistence?: { matchedSnapshots: number; providerContentsSeen?: number; syncMode?: string } } | null;
   if (!response.ok || !body?.discovery) throw new Error(errorLabel[body?.error ?? ""] ?? "Sync ไม่สำเร็จ");
   return body;
 }
@@ -55,7 +55,7 @@ export function MetaReadOnlyPanel({ ready, analyticsReady, missing }: { ready: b
     try {
       const response = await manualSync(analyticsReady ? "/api/snt-admin/social/analytics/sync/meta/" : "/api/snt-admin/social/providers/meta/discovery/");
       setResult(response.discovery as typeof result);
-      setStored(response.persistence?.matchedSnapshots ?? null);
+      setStored(response.persistence?.providerContentsSeen ?? response.persistence?.matchedSnapshots ?? null);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Sync ไม่สำเร็จ");
     } finally {
@@ -68,15 +68,15 @@ export function MetaReadOnlyPanel({ ready, analyticsReady, missing }: { ready: b
       <p className="mt-2 text-sm text-white/65">อ่าน Page, Instagram และ native counters ของโพสต์ล่าสุด เพื่อหาเนื้อหาที่ควรต่อยอด โดยไม่โพสต์หรือแก้ข้อมูลต้นทาง</p>
       {!ready ? <p className="mt-3 text-xs text-amber-200">รอตั้งค่า: {missing.join(", ")}</p> : null}
       <button type="button" disabled={!ready || loading} onClick={sync} className="mt-4 min-h-11 rounded-xl bg-emerald-200 px-4 py-2.5 text-sm font-semibold text-[#111827] disabled:cursor-not-allowed disabled:opacity-40">
-        {loading ? "กำลังอ่าน…" : analyticsReady ? "Sync และบันทึกสถิติย้อนหลัง" : "Sync Meta แบบอ่านอย่างเดียว"}
+        {loading ? "กำลังอ่าน…" : analyticsReady ? "Sync content และสถิติย้อนหลัง" : "Sync Meta แบบอ่านอย่างเดียว"}
       </button>
       {error ? <p role="alert" className="mt-3 text-sm text-rose-200">{error}</p> : null}
-      {stored !== null ? <p role="status" className="mt-3 text-sm text-emerald-200">บันทึก Snapshot ที่ตรงกับโพสต์ CCPun แล้ว {stored} รายการ</p> : null}
+      {stored !== null ? <p role="status" className="mt-3 text-sm text-emerald-200">บันทึก content และสถิติจาก Meta แล้ว {stored} รายการ</p> : null}
       {result ? <div className="mt-5">
         <p className="text-xs text-white/45">อัปเดตล่าสุด {new Date(result.fetchedAt).toLocaleString("th-TH")}</p>
         <DecisionCards items={[
-          { label: "Facebook engagement", value: result.facebookPosts.reduce((sum, item) => sum + (item.metrics.likes ?? 0) + (item.metrics.comments ?? 0) + (item.metrics.shares ?? 0), 0).toLocaleString("th-TH"), note: `จาก ${result.facebookPosts.length} โพสต์ล่าสุด` },
-          { label: "Instagram engagement", value: result.instagramMedia.reduce((sum, item) => sum + (item.metrics.likes ?? 0) + (item.metrics.comments ?? 0), 0).toLocaleString("th-TH"), note: `จาก ${result.instagramMedia.length} ชิ้นล่าสุด` },
+          { label: "Facebook engagement", value: result.facebookPosts.reduce((sum, item) => sum + (item.metrics.likes ?? 0) + (item.metrics.comments ?? 0) + (item.metrics.shares ?? 0), 0).toLocaleString("th-TH"), note: `จาก ${result.facebookPosts.length} โพสต์ในรอบนี้` },
+          { label: "Instagram engagement", value: result.instagramMedia.reduce((sum, item) => sum + (item.metrics.likes ?? 0) + (item.metrics.comments ?? 0), 0).toLocaleString("th-TH"), note: `จาก ${result.instagramMedia.length} ชิ้นในรอบนี้` },
           { label: "สิ่งที่ควรทำต่อ", value: result.facebookPosts.length + result.instagramMedia.length > 0 ? "ดู Top content" : "เลือก Page", note: result.pages.some((page) => page.selected) ? "ใช้รูปแบบและหัวข้อของชิ้นที่ engagement สูงสุด" : "ตั้ง CCPUN_META_PAGE_ID เมื่อมีหลาย Page" },
         ]} />
         <div className="mt-4 grid gap-3 lg:grid-cols-2">{result.pages.map((page) => (

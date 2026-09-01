@@ -1,6 +1,6 @@
 # Social Analytics Ingestion UAT
 
-This stacked lane adds owner-triggered Meta/Instagram, YouTube and TikTok historical metric snapshots to the existing Neon UAT resource. It does not create infrastructure, store provider tokens, poll in the background, or call a provider write endpoint. Deep Meta reach and YouTube watch-time remain deferred until their additional read scopes are approved.
+This stacked lane adds owner-triggered Meta/Instagram, YouTube and TikTok historical metric snapshots to the existing Neon UAT resource. Meta also stores a separate provider-native content registry for downstream analysis without pretending imported posts belong to the Admin publishing lifecycle. It does not create infrastructure, store provider tokens or raw provider payloads, poll in the background, or call a provider write endpoint. Deep Meta reach and YouTube watch-time remain deferred until their additional read scopes are approved.
 
 ## Exact Preview lane
 
@@ -26,7 +26,7 @@ The existing Admin Auth variables remain required. Never bind this lane to `Prod
 - Database: `neondb`
 - Runtime role: `ccpun_social_runtime`
 
-Apply the complete `db/migrations/20260831_website_42_social_analytics_ingestion.sql` in Neon SQL Editor using the existing UAT owner role only after the three prerequisite ledger rows match their frozen checksums. Do not apply it to any other project, branch, endpoint or database. Then run the complete `db/migrations/20260831_website_42_social_analytics_ingestion_readback.sql`; every returned boolean must be `t`.
+Apply the complete `db/migrations/20260831_website_42_social_analytics_ingestion.sql` and then `db/migrations/20260901_website_42_social_provider_native_history.sql` in Neon SQL Editor using the existing UAT owner role only after each migration's prerequisite ledger rows match their frozen checksums. Do not apply them to any other project, branch, endpoint or database. Then run the matching `*_readback.sql` files; every returned boolean must be `t`.
 
 Bind these values to the exact Preview branch only:
 
@@ -36,10 +36,12 @@ Bind these values to the exact Preview branch only:
 - `CCPUN_NEON_DATABASE=neondb`
 - `CCPUN_SOCIAL_DATABASE_URL` — Sensitive connection for `ccpun_social_runtime`, never an owner role
 
-The application re-verifies the runtime role, database, migration checksum and stored resource identity before each manual sync. It stores only exact-ID matched native metrics, provider account ID, cursor when one exists, sanitized sync state and execution audit. Unmatched object IDs remain visible in the response and are not inserted. The same provider-neutral schema already admits `meta`, `youtube` and `tiktok`, so no new migration or infrastructure is needed.
+The application re-verifies the runtime role, database, both migration checksums and stored resource identity before each manual sync. The first successful Meta sync after the provider-history migration follows cursor pagination for the complete history available to the authorized account. Later manual syncs use the previous success time minus a 14-day overlap; Instagram media is cursor-only, so it stops after the first page wholly older than the overlap window.
+
+Provider-native Meta rows store provider IDs, account IDs, caption/text, media type, publication time, permalink, thumbnail reference and validated native counters. Content revisions and metric snapshots are inserted only when their hashes change. Exact provider object IDs may link to an existing Admin publication; text or timestamps never auto-link. Tokens, raw provider JSON and media binaries are never stored.
 
 ## UAT and rollback
 
-After authenticated Preview login, open each provider Connection page and press **Sync และบันทึกสถิติย้อนหลัง**. Then open `/snt-admin/distribution/analytics/` to inspect latest values and per-metric deltas. Read back `social_metric_snapshot`, `social_provider_sync_state` and matching `social_execution_audit` rows without displaying credentials. Confirm no provider upload/publish, cron or Production deployment occurred.
+After authenticated Preview login, open the Meta Connection page and press **Sync content และสถิติย้อนหลัง**. Then open `/snt-admin/distribution/analytics/` to inspect latest values and per-metric deltas. Read back `social_provider_content`, `social_provider_content_revision`, `social_provider_metric_snapshot`, `social_metric_snapshot`, `social_provider_sync_state` and matching `social_execution_audit` rows without displaying credentials. Confirm no provider upload/publish, cron or Production deployment occurred.
 
 Rollback is configuration-only: remove or disable `CCPUN_SOCIAL_ANALYTICS_INGESTION_ENABLED` and `CCPUN_SOCIAL_DATABASE_URL` on this Preview branch, then redeploy Preview. Keep the additive UAT tables for audit and recovery; dropping them requires separate destructive approval.
