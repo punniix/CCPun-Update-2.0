@@ -3,6 +3,7 @@ import {
   isGoogleDriveAuthorizationUsable,
   normalizeFacebookFormat,
   parseGoogleDrivePickerDocuments,
+  parseGoogleDriveMediaMetadata,
   type GoogleDriveAuthorization,
   type GoogleDrivePickerFile,
   type SocialMediaReference,
@@ -238,6 +239,7 @@ type GoogleDriveBrowser = Window & {
       PickerBuilder: new () => {
         addView: (view: unknown) => unknown;
         enableFeature: (feature: string) => unknown;
+        setAppId: (appId: string) => unknown;
         setOAuthToken: (token: string) => unknown;
         setDeveloperKey: (key: string) => unknown;
         setOrigin: (origin: string) => unknown;
@@ -314,9 +316,11 @@ export async function requestGoogleDriveMemorySession(clientId: string): Promise
 }
 
 export async function openGoogleDrivePicker(input: {
+  appId: string;
   apiKey: string;
   session: GoogleDriveMemorySession;
 }): Promise<GoogleDrivePickerFile[]> {
+  if (!/^[1-9]\d+$/.test(input.appId.trim())) throw new Error("drive-picker-app-id-invalid");
   if (!input.apiKey.trim()) throw new Error("drive-picker-config-missing");
   if (!isGoogleDriveAuthorizationUsable(input.session.authorization)) throw new Error("drive-authorization-expired");
   let browser = window as GoogleDriveBrowser;
@@ -337,6 +341,7 @@ export async function openGoogleDrivePicker(input: {
     const builder = new picker.PickerBuilder();
     builder.addView(view);
     builder.enableFeature(picker.Feature.MULTISELECT_ENABLED);
+    builder.setAppId(input.appId.trim());
     builder.setOAuthToken(input.session.accessToken);
     builder.setDeveloperKey(input.apiKey.trim());
     builder.setOrigin(window.location.origin);
@@ -377,6 +382,29 @@ export async function verifyGoogleDrivePickerFiles(input: {
       || typeof item.sha256Checksum !== "string" || !/^[a-f0-9]{64}$/.test(item.sha256Checksum)) {
       throw new Error("drive-file-verification-mismatch");
     }
-    return { ...file, name: item.name, sha256Checksum: item.sha256Checksum };
+    const verified = { ...file, name: item.name, sha256Checksum: item.sha256Checksum };
+    const metadataUrl = new URL(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(file.assetId)}`);
+    metadataUrl.searchParams.set(
+      "fields",
+      "id,mimeType,size,sha256Checksum,imageMediaMetadata(width,height),videoMediaMetadata(width,height,durationMillis)",
+    );
+    try {
+      const metadataResponse = await fetch(metadataUrl, {
+        headers: { Authorization: `Bearer ${input.session.accessToken}` },
+        cache: "no-store",
+        redirect: "error",
+        signal: input.signal,
+      });
+      if (!metadataResponse.ok) {
+        await metadataResponse.body?.cancel();
+        return verified;
+      }
+      const metadata = parseGoogleDriveMediaMetadata(await metadataResponse.json().catch(() => null), verified);
+      if (!metadata) throw new Error("drive-file-metadata-mismatch");
+      return { ...verified, ...metadata };
+    } catch (error) {
+      if (error instanceof Error && error.message === "drive-file-metadata-mismatch") throw error;
+      return verified;
+    }
   }));
 }

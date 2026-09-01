@@ -19,9 +19,11 @@ import {
   FACEBOOK_AUTHORING_FORMATS,
   buildSocialMediaReferences,
   facebookMediaRequirement,
+  instagramMediaRequirement,
   isGoogleDriveAuthorizationUsable,
   normalizeFacebookFormat,
   validateFacebookMedia,
+  validateInstagramMedia,
 } from "@/features/admin/social/social-workspace-media";
 
 type SocialPlatform = "facebook" | "instagram" | "youtube" | "tiktok" | "facebook-group";
@@ -63,7 +65,8 @@ type SocialPostMedia = {
 
 const driveOAuthClientId = process.env.NEXT_PUBLIC_CCPUN_GOOGLE_DRIVE_OAUTH_CLIENT_ID?.trim() ?? "";
 const drivePickerApiKey = process.env.NEXT_PUBLIC_CCPUN_GOOGLE_DRIVE_PICKER_API_KEY?.trim() ?? "";
-const drivePickerConfigured = Boolean(driveOAuthClientId && drivePickerApiKey);
+const drivePickerAppId = process.env.NEXT_PUBLIC_CCPUN_GOOGLE_DRIVE_APP_ID?.trim() ?? "";
+const drivePickerConfigured = Boolean(driveOAuthClientId && drivePickerApiKey && /^[1-9]\d+$/.test(drivePickerAppId));
 
 const platformLabel: Record<SocialPlatform, string> = {
   facebook: "Facebook", instagram: "Instagram", youtube: "YouTube", tiktok: "TikTok", "facebook-group": "Facebook Group",
@@ -126,7 +129,7 @@ function mediaFromReferences(references: SocialMediaReference[]): SocialPostMedi
     filename: asset.assetId,
     kind: asset.mimeType?.startsWith("video/") ? "video" : asset.mimeType === "text/vtt" ? "caption" : "image",
     dimensions: asset.widthPx && asset.heightPx
-      ? `${asset.widthPx.toLocaleString("th-TH")} × ${asset.heightPx.toLocaleString("th-TH")} px`
+      ? `${asset.widthPx.toLocaleString("th-TH")} × ${asset.heightPx.toLocaleString("th-TH")} px${asset.durationMs ? ` · ${(asset.durationMs / 1000).toLocaleString("th-TH", { maximumFractionDigits: 1 })} วินาที` : ""}`
       : asset.durationMs ? `${(asset.durationMs / 1000).toLocaleString("th-TH", { maximumFractionDigits: 1 })} วินาที` : asset.mimeType ?? "metadata เท่านั้น",
     downloadUrl: null,
     sizeBytes: null,
@@ -192,6 +195,9 @@ function exactMediaBinding(references: readonly SocialMediaReference[]) {
     role: reference.role,
     order: reference.order,
     mimeType: reference.mimeType,
+    widthPx: reference.widthPx,
+    heightPx: reference.heightPx,
+    durationMs: reference.durationMs,
     sha256Checksum: reference.sha256Checksum,
   })));
 }
@@ -278,9 +284,10 @@ export default function SocialPostsWorkspace({ approvalEnabled }: { approvalEnab
   const supportedApproval = form.platform === "facebook" || form.platform === "instagram";
   const scheduleReady = form.platform !== "facebook" || form.publishingMode !== "native-scheduled" || hasFutureSchedule(form.scheduledAt);
   const linkReady = form.format !== "link-post" || (form.platform === "facebook" && isHttpsLinkUrl(form.linkUrl));
-  const mediaValidation = form.platform === "facebook"
-    ? validateFacebookMedia(form.format, form.mediaReferences)
-    : { ok: true as const, reason: "media-ready" as const };
+  const mediaValidation = form.platform === "instagram"
+    ? validateInstagramMedia(form.format, form.mediaReferences)
+    : validateFacebookMedia(form.format, form.mediaReferences);
+  const instagramHandoffReady = form.platform !== "instagram" || form.publishingMode === "native-finish";
   const commentSeriesReady = form.platform !== "facebook" || form.commentSeries.length === 0
     || (form.commentSeries.length <= 20 && form.commentSeries.every((comment, index) => comment.position === index + 1
       && Boolean(comment.text.trim()) && comment.text.length <= 2_000));
@@ -296,10 +303,11 @@ export default function SocialPostsWorkspace({ approvalEnabled }: { approvalEnab
     : ["image-post", "album", "reel"];
   const canApprove = approvalEnabled && publicationApiState === "ready" && Boolean(form.revision)
     && supportedApproval && form.reviewStatus === "approved" && scheduleReady && linkReady && mediaValidation.ok && commentSeriesReady
-    && !editorialDirty && !form.approvalRecorded;
+    && instagramHandoffReady && !editorialDirty && !form.approvalRecorded;
   const canSaveDraft = draftApiState === "ready" && editorEnabled && Boolean(form.masterContentId)
-    && Boolean(form.title.trim()) && supportedApproval && linkReady && mediaValidation.ok && commentSeriesReady && draftSaveState !== "running";
-  const canExecute = Boolean(form.publicationId && form.publicationJobVersion)
+    && Boolean(form.title.trim()) && supportedApproval && linkReady && mediaValidation.ok && commentSeriesReady
+    && instagramHandoffReady && draftSaveState !== "running";
+  const canExecute = form.platform === "facebook" && Boolean(form.publicationId && form.publicationJobVersion)
     && ["approved", "queued", "failed"].includes(form.publicationStatus ?? "")
     && mediaValidation.ok && commentSeriesReady && driveMediaReady && driveAuthorizationReady && executionState !== "running";
 
@@ -354,8 +362,8 @@ export default function SocialPostsWorkspace({ approvalEnabled }: { approvalEnab
   }
 
   async function chooseDriveMedia() {
-    if (!drivePickerConfigured || form.platform !== "facebook") {
-      setNotice("Google Drive Picker ยังไม่พร้อม: ต้องมี public OAuth client ID และ Picker API key");
+    if (!drivePickerConfigured || !["facebook", "instagram"].includes(form.platform)) {
+      setNotice("Google Drive Picker ยังไม่พร้อม: ต้องมี OAuth client ID, Picker API key และ Cloud project number");
       return;
     }
     const normalized = normalizeFacebookFormat(form.format);
@@ -370,11 +378,14 @@ export default function SocialPostsWorkspace({ approvalEnabled }: { approvalEnab
         session = await requestGoogleDriveMemorySession(driveOAuthClientId);
         driveSessionRef.current = session;
       }
-      const picked = await openGoogleDrivePicker({ apiKey: drivePickerApiKey, session });
+      const picked = await openGoogleDrivePicker({ appId: drivePickerAppId, apiKey: drivePickerApiKey, session });
       if (picked.length === 0) { setDrivePickerState("idle"); setNotice("ยกเลิกการเลือกสื่อ และไม่มีข้อมูลถูกเปลี่ยน"); return; }
       const verified = await verifyGoogleDrivePickerFiles({ files: picked, session });
       const references = buildSocialMediaReferences(normalized, verified);
-      if (!validateFacebookMedia(normalized, references).ok) throw new Error("drive-media-contract-invalid");
+      const validation = form.platform === "instagram"
+        ? validateInstagramMedia(normalized, references)
+        : validateFacebookMedia(normalized, references);
+      if (!validation.ok) throw new Error(validation.reason);
       if (form.publicationId && exactMediaBinding(references) !== exactMediaBinding(form.mediaReferences)) {
         throw new Error("approved-media-binding-mismatch");
       }
@@ -385,7 +396,9 @@ export default function SocialPostsWorkspace({ approvalEnabled }: { approvalEnab
           id: file.assetId,
           filename: file.name,
           kind: file.mimeType === "video/mp4" ? "video" : "image",
-          dimensions: `${(file.sizeBytes / 1_000_000).toLocaleString("th-TH", { maximumFractionDigits: 2 })} MB`,
+          dimensions: file.widthPx && file.heightPx
+            ? `${file.widthPx.toLocaleString("th-TH")} × ${file.heightPx.toLocaleString("th-TH")} px${file.durationMs ? ` · ${(file.durationMs / 1000).toLocaleString("th-TH", { maximumFractionDigits: 1 })} วินาที` : ""}`
+            : `${(file.sizeBytes / 1_000_000).toLocaleString("th-TH", { maximumFractionDigits: 2 })} MB`,
           downloadUrl: null,
           sizeBytes: file.sizeBytes,
         });
@@ -411,6 +424,9 @@ export default function SocialPostsWorkspace({ approvalEnabled }: { approvalEnab
         "manual-authorization-required": "สิทธิ์ Google Drive หมดอายุ กรุณาเลือกสื่อใหม่และอนุญาตอีกครั้ง",
         "size-unavailable": "Picker ไม่ส่งขนาดไฟล์ จึงไม่สามารถบันทึกหรือ Execute ได้",
         "drive-file-verification-mismatch": "Server ไม่คืน MIME หรือ SHA-256 ที่ยืนยันได้ จึงไม่บันทึกสื่อ",
+        "drive-file-metadata-mismatch": "ข้อมูลขนาดหรือ checksum จาก Google Drive ไม่ตรงกับไฟล์ที่ Server ตรวจ จึงไม่บันทึกสื่อ",
+        "reel-metadata-unavailable": "Google Drive ยังไม่คืนความกว้าง ความสูง หรือระยะเวลาของ Reel จึงยังบันทึกไม่ได้ ลองใหม่หลัง Drive ประมวลผลวิดีโอเสร็จ",
+        "reel-vertical-required": "Reel ต้องเป็นวิดีโอแนวตั้ง โดยความสูงต้องมากกว่าความกว้าง",
         "approved-media-binding-mismatch": "ไฟล์ที่เลือกไม่ตรง media IDs, order, MIME และ SHA-256 ของ revision ที่อนุมัติ",
       };
       setNotice(messages[code] ?? "เลือกหรือตรวจสื่อจาก Google Drive ไม่สำเร็จ และไม่มี media reference ถูกบันทึก");
@@ -571,20 +587,21 @@ export default function SocialPostsWorkspace({ approvalEnabled }: { approvalEnab
             <label className="text-sm text-white/75">รูปแบบ<select disabled={!editorEnabled} value={form.format} onChange={(event) => updateFormat(event.target.value)} className="mt-1.5 min-h-11 w-full rounded-xl border border-white/15 bg-[#151a20] px-3 text-white focus:border-[#e0c985] focus:outline-none disabled:opacity-60">{!visibleFormats.some((format) => format === form.format) ? <option value={form.format}>{formatLabel[form.format] ?? form.format} · ยังไม่รองรับ</option> : null}{visibleFormats.map((format) => <option key={format} value={format}>{formatLabel[format]}</option>)}</select></label>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
-            <label className="text-sm text-white/75">Publishing mode<select disabled={!editorEnabled} value={form.publishingMode} onChange={(event) => update("publishingMode", event.target.value)} className="mt-1.5 min-h-11 w-full rounded-xl border border-white/15 bg-[#151a20] px-3 text-white focus:border-[#e0c985] focus:outline-none disabled:opacity-60">{form.platform === "instagram" ? <><option value="native-finish">Mobile handoff</option><option value="direct">Direct plan</option></> : <><option value="native-scheduled">Native scheduled</option><option value="direct">Direct plan</option></>}</select></label>
+            <label className="text-sm text-white/75">Publishing mode<select disabled={!editorEnabled} value={form.publishingMode} onChange={(event) => update("publishingMode", event.target.value)} className="mt-1.5 min-h-11 w-full rounded-xl border border-white/15 bg-[#151a20] px-3 text-white focus:border-[#e0c985] focus:outline-none disabled:opacity-60">{form.platform === "instagram" ? <>{form.publishingMode !== "native-finish" ? <option value={form.publishingMode} disabled>{form.publishingMode} · ปิดใช้งาน</option> : null}<option value="native-finish">Mobile handoff</option></> : <><option value="native-scheduled">Native scheduled</option><option value="direct">Direct plan</option></>}</select></label>
             <label className="text-sm text-white/75">วันและเวลาอนุมัติแผน<input type="datetime-local" disabled={form.platform !== "facebook" || form.publishingMode !== "native-scheduled"} value={form.scheduledAt} onChange={(event) => update("scheduledAt", event.target.value)} className="mt-1.5 min-h-11 w-full rounded-xl border border-white/15 bg-[#151a20] px-3 text-white [color-scheme:dark] focus:border-[#e0c985] focus:outline-none disabled:opacity-60" /></label>
           </div>
           <div className="grid gap-3 sm:grid-cols-2"><div className="text-sm text-white/75">Human Review<div className="mt-1.5 flex min-h-11 items-center rounded-xl border border-white/15 bg-white/[0.03] px-3 font-medium text-white/90">{statusLabel[form.reviewStatus] ?? form.reviewStatus}</div></div><div className="text-sm text-white/75">Publication<div className="mt-1.5 flex min-h-11 items-center rounded-xl border border-white/15 bg-white/[0.03] px-3 font-medium text-white/90">{form.publicationStatus ? statusLabel[form.publicationStatus] ?? form.publicationStatus : "ยังไม่มี record"}</div></div></div>
           <p className="text-xs leading-5 text-white/55">สถานะทั้งสองเป็น read-only การบันทึก Draft ไม่อนุมัติ และการอนุมัติต้องตรวจ revision/version แยกต่างหาก</p>
           {form.format === "link-post" ? <label className="block text-sm text-white/75">HTTPS Link URL<input required type="url" inputMode="url" disabled={!editorEnabled} value={form.linkUrl} onChange={(event) => update("linkUrl", event.target.value)} placeholder="https://example.com/page" className="mt-1.5 min-h-11 w-full rounded-xl border border-white/15 bg-black/20 px-3 text-white placeholder:text-white/40 focus:border-[#e0c985] focus:outline-none disabled:opacity-60" /><span className="mt-1 block text-xs text-white/55">กรอกลิงก์ปลายทางในช่องนี้โดยตรง ระบบไม่อ่านลิงก์จากแคปชัน</span>{form.linkUrl && !isHttpsLinkUrl(form.linkUrl) ? <span className="mt-1 block text-xs text-amber-100">ลิงก์ต้องเป็น HTTPS URL ที่ถูกต้อง</span> : null}</label> : null}
-          <div className="rounded-2xl border border-white/10 bg-black/10 p-4"><div className="flex flex-wrap items-center justify-between gap-3"><div><div className="text-sm font-medium text-white/90">Google Drive media</div><p className="mt-1 text-xs leading-5 text-white/55">{form.platform === "facebook" ? facebookMediaRequirement(form.format) : "Instagram direct execution ยังปิดอยู่"}</p></div>{form.platform === "facebook" && normalizeFacebookFormat(form.format) && !["text-post", "link-post"].includes(normalizeFacebookFormat(form.format)!) ? <button type="button" onClick={chooseDriveMedia} disabled={(!editorEnabled && !form.publicationId) || !drivePickerConfigured || drivePickerState === "running"} className="min-h-11 rounded-xl border border-[#e0c985]/50 px-4 py-2.5 text-sm font-semibold text-[#f4df9b] hover:bg-[#e0c985]/10 disabled:cursor-not-allowed disabled:opacity-40">{drivePickerState === "running" ? "กำลังตรวจสื่อ…" : form.publicationId ? "ยืนยันไฟล์สำหรับ Execute" : "เลือกจาก Google Drive"}</button> : null}</div>{!drivePickerConfigured ? <p className="mt-2 text-xs leading-5 text-amber-100/80">ยังไม่มี public OAuth client ID หรือ Picker API key จึงปิดการเลือกสื่อ</p> : null}<ol className="mt-3 space-y-2">{form.mediaReferences.map((reference, index) => { const asset = mediaById.get(reference.assetId); return <li key={`${reference.assetId}:${reference.order ?? index}`} className="rounded-xl border border-white/10 px-3 py-2 text-xs text-white/70"><span className="font-medium text-white/85">{reference.order ?? index + 1}. {asset?.filename ?? reference.assetId}</span><span className="mt-1 block break-all text-white/50">{reference.mimeType ?? "MIME ไม่พร้อม"} · {asset?.dimensions ?? "size อยู่ใน React memory เท่านั้น"} · {reference.sha256Checksum ? `SHA-256 ${reference.sha256Checksum.slice(0, 12)}…` : "SHA-256 ไม่พร้อม"}</span></li>; })}</ol>{form.mediaReferences.length > 0 && !mediaValidation.ok ? <p className="mt-2 text-xs leading-5 text-amber-100/80">สื่อยังไม่ผ่าน contract: {facebookMediaRequirement(form.format)}</p> : null}</div>
+          <div className="rounded-2xl border border-white/10 bg-black/10 p-4"><div className="flex flex-wrap items-center justify-between gap-3"><div><div className="text-sm font-medium text-white/90">Google Drive media</div><p className="mt-1 text-xs leading-5 text-white/55">{form.platform === "facebook" ? facebookMediaRequirement(form.format) : instagramMediaRequirement(form.format)}</p></div>{normalizeFacebookFormat(form.format) && !["text-post", "link-post"].includes(normalizeFacebookFormat(form.format)!) ? <button type="button" onClick={chooseDriveMedia} disabled={(!editorEnabled && !form.publicationId) || !drivePickerConfigured || drivePickerState === "running"} className="min-h-11 rounded-xl border border-[#e0c985]/50 px-4 py-2.5 text-sm font-semibold text-[#f4df9b] hover:bg-[#e0c985]/10 disabled:cursor-not-allowed disabled:opacity-40">{drivePickerState === "running" ? "กำลังตรวจสื่อ…" : form.publicationId ? "ยืนยันไฟล์ที่อนุมัติ" : "เลือกจาก Google Drive"}</button> : null}</div>{!drivePickerConfigured ? <p className="mt-2 text-xs leading-5 text-amber-100/80">ยังไม่มี OAuth client ID, Picker API key หรือ Cloud project number จึงปิดการเลือกสื่อ</p> : null}<ol className="mt-3 space-y-2">{form.mediaReferences.map((reference, index) => { const asset = mediaById.get(reference.assetId); return <li key={`${reference.assetId}:${reference.order ?? index}`} className="rounded-xl border border-white/10 px-3 py-2 text-xs text-white/70"><span className="font-medium text-white/85">{reference.order ?? index + 1}. {asset?.filename ?? reference.assetId}</span><span className="mt-1 block break-all text-white/50">{reference.mimeType ?? "MIME ไม่พร้อม"} · {asset?.dimensions ?? "size อยู่ใน React memory เท่านั้น"} · {reference.sha256Checksum ? `SHA-256 ${reference.sha256Checksum.slice(0, 12)}…` : "SHA-256 ไม่พร้อม"}</span></li>; })}</ol>{form.mediaReferences.length > 0 && !mediaValidation.ok ? <p className="mt-2 text-xs leading-5 text-amber-100/80">สื่อยังไม่ผ่าน contract: {form.platform === "facebook" ? facebookMediaRequirement(form.format) : instagramMediaRequirement(form.format)}</p> : null}</div>
           <label className="block text-sm text-white/75">แคปชัน<textarea disabled={!editorEnabled} value={form.caption} onChange={(event) => update("caption", event.target.value)} rows={7} placeholder="เขียนแคปชันสำหรับโพสต์นี้" className="mt-1.5 w-full resize-y rounded-xl border border-white/15 bg-black/20 px-3 py-3 leading-6 text-white placeholder:text-white/40 focus:border-[#e0c985] focus:outline-none disabled:opacity-60" /><span className="mt-1 block text-right text-xs text-white/55">{form.caption.length.toLocaleString("th-TH")} ตัวอักษร</span></label>
           {form.platform === "facebook" ? <fieldset className="rounded-2xl border border-white/10 bg-black/10 p-4"><legend className="px-1 text-sm font-medium text-white/90">Comment Series</legend><label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm text-white/80"><input type="checkbox" disabled={!editorEnabled} checked={form.commentSeries.length > 0} onChange={(event) => toggleCommentSeries(event.target.checked)} className="h-5 w-5 accent-[#e0c985]" /><span>ต่อ Main Text ด้วย Text Card หลายคอมเมนต์</span></label>{form.commentSeries.length > 0 ? <><label className="mt-3 block text-xs text-white/65">รูปแบบการต่อ<select disabled={!editorEnabled} value={form.commentSeriesMode} onChange={(event) => update("commentSeriesMode", event.target.value as "top-level" | "threaded")} className="mt-1 min-h-11 w-full rounded-xl border border-white/15 bg-[#151a20] px-3 text-sm text-white disabled:opacity-60"><option value="threaded">ต่อเป็น Thread</option><option value="top-level">แยกเป็นคอมเมนต์หลัก</option></select></label><ol className="mt-3 space-y-3">{form.commentSeries.map((comment) => <li key={comment.position} className="rounded-xl border border-white/10 bg-white/[0.025] p-3"><div className="flex items-center justify-between gap-3"><label htmlFor={`comment-series-${comment.position}`} className="text-sm font-medium text-[#f4df9b]">Text Card {comment.position}</label><button type="button" disabled={!editorEnabled || form.commentSeries.length === 1} onClick={() => removeComment(comment.position)} className="min-h-10 rounded-lg border border-white/10 px-3 text-xs text-white/65 hover:bg-white/5 disabled:opacity-35">ลบ</button></div><textarea id={`comment-series-${comment.position}`} disabled={!editorEnabled} required value={comment.text} maxLength={2_000} onChange={(event) => updateComment(comment.position, event.target.value)} rows={4} placeholder={`ข้อความคอมเมนต์ลำดับ ${comment.position}`} className="mt-2 w-full resize-y rounded-xl border border-white/15 bg-black/20 px-3 py-3 text-sm leading-6 text-white placeholder:text-white/35 disabled:opacity-60" /><span className="mt-1 block text-right text-xs text-white/50">{comment.text.length.toLocaleString("th-TH")}/2,000</span></li>)}</ol><button type="button" disabled={!editorEnabled || form.commentSeries.length >= 20} onClick={addComment} className="mt-3 min-h-11 w-full rounded-xl border border-white/15 px-4 text-sm text-white/75 hover:bg-white/5 disabled:opacity-35">เพิ่ม Text Card</button></> : <p className="mt-2 text-xs leading-5 text-white/50">เปิดแล้วระบบจะสร้าง 4 Text Cards เริ่มต้น และผูกทั้งหมดกับ revision ที่อนุมัติ</p>}{!commentSeriesReady ? <p className="mt-2 text-xs text-amber-100">กรอกทุก Text Card ให้ครบก่อนบันทึกหรืออนุมัติ</p> : null}</fieldset> : null}
           {editorEnabled ? <button type="submit" disabled={!canSaveDraft} className="min-h-11 w-full rounded-xl bg-[#e0c985] px-4 py-2.5 text-sm font-semibold text-[#17191d] hover:bg-[#ecd99b] focus:outline-none focus:ring-2 focus:ring-[#f4df9b] disabled:cursor-not-allowed disabled:opacity-40">{draftSaveState === "running" ? "กำลังบันทึก…" : form.source === "new" ? "สร้าง Sanity Draft" : "บันทึก Sanity Draft"}</button> : null}
           {draftApiState === "failed" ? <p role="alert" className="rounded-xl border border-rose-200/20 bg-rose-200/[0.05] px-3 py-2 text-xs leading-5 text-rose-100">Draft API ใช้ไม่ได้หรือบัญชีนี้ไม่ใช่ Owner จึงปิดการสร้างและแก้ไข โดยไม่ fallback ไปบันทึกใน browser</p> : null}
           {supportedApproval ? <div className="rounded-2xl border border-white/10 bg-black/10 p-4"><div className="text-sm font-medium text-white/90">Human approval</div><dl className="mt-2 grid gap-2 text-xs text-white/65 sm:grid-cols-2"><div><dt>Revision</dt><dd className="mt-0.5 break-all text-white/80">{form.revision ?? "ยังไม่มี"}</dd></div><div><dt>Version</dt><dd className="mt-0.5 text-white/80">{form.version.toLocaleString("th-TH")}</dd></div></dl><button type="button" onClick={approveRevision} disabled={!canApprove || approvalState === "running"} className="mt-3 min-h-11 w-full rounded-xl border border-[#e0c985]/50 px-4 py-2.5 text-sm font-semibold text-[#f4df9b] hover:bg-[#e0c985]/10 focus:outline-none focus:ring-2 focus:ring-[#e0c985] disabled:cursor-not-allowed disabled:opacity-40">{approvalState === "running" ? "กำลังตรวจ revision…" : "ยืนยันอนุมัติ revision นี้"}</button>{!approvalEnabled ? <p className="mt-2 text-xs leading-5 text-amber-100/80">Approval API ยังปิดใน environment นี้</p> : null}{form.reviewStatus !== "approved" ? <p className="mt-2 text-xs leading-5 text-amber-100/80">Draft ต้องผ่าน Human Review จนเป็น approved ก่อน</p> : null}{editorialDirty ? <p className="mt-2 text-xs leading-5 text-amber-100/80">มีข้อมูลที่ยังไม่บันทึก ต้องบันทึกและโหลด revision ใหม่ก่อนอนุมัติ</p> : null}{!scheduleReady ? <p className="mt-2 text-xs leading-5 text-amber-100/80">Facebook native scheduling ต้องกำหนดเวลาในอนาคตก่อนอนุมัติ</p> : null}{!linkReady ? <p className="mt-2 text-xs leading-5 text-amber-100/80">Link Post ต้องมี HTTPS Link URL แยกจากแคปชันก่อนอนุมัติ</p> : null}{form.approvalRecorded ? <p className="mt-2 text-xs leading-5 text-emerald-100/80">revision นี้มี publication record แล้ว จึงไม่สร้างคำขอซ้ำ</p> : null}</div> : null}
           {!mediaValidation.ok ? <p className="rounded-xl border border-amber-200/20 bg-amber-200/[0.05] px-3 py-2 text-xs leading-5 text-amber-100">Save และ Approve ถูกปิดจน media IDs, MIME, order และ SHA-256 ตรงตาม revision</p> : null}
-          {form.publicationId ? <div className="rounded-2xl border border-white/10 bg-black/10 p-4"><div className="text-sm font-medium text-white/90">Manual Execute</div><p className="mt-1 text-xs leading-5 text-white/55">แยกจาก Approve และทำงานเฉพาะเมื่อกดปุ่มนี้ ไม่มี auto-execute หรือ background retry จาก UI</p><button type="button" onClick={executePublication} disabled={!canExecute} className="mt-3 min-h-11 w-full rounded-xl bg-rose-200/90 px-4 py-2.5 text-sm font-semibold text-[#281416] hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-35">{executionState === "running" ? "กำลัง Execute…" : "Execute ที่ Provider"}</button>{form.publicationJobVersion === null ? <p className="mt-2 text-xs leading-5 text-amber-100/80">Backend ส่ง publicationId แล้ว แต่ยังไม่ส่ง jobVersion จึงปิด Execute และไม่เดา expectedJobVersion</p> : null}{form.mediaReferences.length > 0 && !driveMediaReady ? <p className="mt-2 text-xs leading-5 text-amber-100/80">กรุณาเลือกสื่อใหม่เพื่อให้ size และ SHA-256 อยู่ใน React memory ครบก่อน Execute</p> : null}{form.mediaReferences.length > 0 && !driveAuthorizationReady ? <p className="mt-2 text-xs leading-5 text-amber-100/80">Google Drive token ไม่มีหรือหมดอายุ กรุณาเลือกสื่อใหม่</p> : null}</div> : null}
+          {!instagramHandoffReady ? <p className="rounded-xl border border-amber-200/20 bg-amber-200/[0.05] px-3 py-2 text-xs leading-5 text-amber-100">Instagram Direct ยังปิดอยู่ กรุณาเปลี่ยน Publishing mode เป็น Mobile handoff</p> : null}
+          {form.platform === "facebook" && form.publicationId ? <div className="rounded-2xl border border-white/10 bg-black/10 p-4"><div className="text-sm font-medium text-white/90">Manual Execute</div><p className="mt-1 text-xs leading-5 text-white/55">แยกจาก Approve และทำงานเฉพาะเมื่อกดปุ่มนี้ ไม่มี auto-execute หรือ background retry จาก UI</p><button type="button" onClick={executePublication} disabled={!canExecute} className="mt-3 min-h-11 w-full rounded-xl bg-rose-200/90 px-4 py-2.5 text-sm font-semibold text-[#281416] hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-35">{executionState === "running" ? "กำลัง Execute…" : "Execute ที่ Provider"}</button>{form.publicationJobVersion === null ? <p className="mt-2 text-xs leading-5 text-amber-100/80">Backend ส่ง publicationId แล้ว แต่ยังไม่ส่ง jobVersion จึงปิด Execute และไม่เดา expectedJobVersion</p> : null}{form.mediaReferences.length > 0 && !driveMediaReady ? <p className="mt-2 text-xs leading-5 text-amber-100/80">กรุณาเลือกสื่อใหม่เพื่อให้ size และ SHA-256 อยู่ใน React memory ครบก่อน Execute</p> : null}{form.mediaReferences.length > 0 && !driveAuthorizationReady ? <p className="mt-2 text-xs leading-5 text-amber-100/80">Google Drive token ไม่มีหรือหมดอายุ กรุณาเลือกสื่อใหม่</p> : null}</div> : null}
         </form>
         {notice ? <p aria-live="polite" className="mt-3 text-sm leading-6 text-emerald-100">{notice}</p> : null}
         {form.platform === "facebook" ? <section className="mt-5 border-t border-white/10 pt-5" aria-labelledby="facebook-scheduling-title"><h3 id="facebook-scheduling-title" className="font-semibold">Facebook scheduling</h3><p className="mt-2 text-sm leading-6 text-white/70">{facebookScheduleState(form)} การบันทึกและ Approve ไม่เรียก Provider; เรียกได้เฉพาะปุ่ม Execute แยกด้านบน</p><a href="https://business.facebook.com/latest/home" target="_blank" rel="noreferrer" className="mt-3 inline-flex min-h-11 items-center rounded-xl border border-white/15 px-4 py-2.5 text-sm text-white/80 hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-[#e0c985]">เปิด Meta Business Suite</a></section> : null}

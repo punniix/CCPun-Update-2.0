@@ -43,9 +43,19 @@ Rollback is configuration-only: remove or disable `CCPUN_SOCIAL_ANALYTICS_INGEST
 
 | Classification | Variable | Status |
 | --- | --- | --- |
+| Secret | `AUTH_SECRET` | Required existing Admin Auth.js secret; unique to this Preview lane |
+| Secret | `AUTH_GOOGLE_SECRET` | Required existing Admin Google OAuth secret |
+| Secret | `SANITY_API_READ_TOKEN` | Required existing server-only Sanity UAT read token |
+| Secret | `SANITY_API_WRITE_TOKEN` | Required for owner-triggered create/update of Social Sanity Drafts; never browser-visible |
+| Secret | `CCPUN_ADMIN_DATABASE_URL` | Required existing Admin operations connection using the restricted `ccpun_admin_runtime` UAT role |
 | Secret | `CCPUN_SOCIAL_DATABASE_URL` | Required; exact `ccpun_social_runtime` UAT URL |
 | Secret | `CCPUN_META_ACCESS_TOKEN` | Required for Meta reads; never exposed to the client |
+| Config | `AUTH_URL` | Required exact Preview origin for Admin Auth.js and same-origin mutation checks |
+| Config | `AUTH_GOOGLE_ID` | Required existing Admin Google OAuth client ID |
+| Config | `CCPUN_ADMIN_OWNER_EMAILS` | Required verified Owner allowlist |
 | Config | `CCPUN_APP_ENV` | Required; `admin-uat` only |
+| Public config | `NEXT_PUBLIC_SANITY_PROJECT_ID` | Required; `ccb9lnw5` only |
+| Public config | `NEXT_PUBLIC_SANITY_DATASET` | Required; `uat` only |
 | Config | `CCPUN_SOCIAL_OPERATIONS_ENABLED` | Required master gate for the Social UI and human approval recording |
 | Config | `CCPUN_SOCIAL_PROVIDER_READS_ENABLED` | Required independent provider-read kill switch |
 | Config | `CCPUN_SOCIAL_ANALYTICS_INGESTION_ENABLED` | Required independent Neon-ingestion kill switch |
@@ -55,6 +65,7 @@ Rollback is configuration-only: remove or disable `CCPUN_SOCIAL_ANALYTICS_INGEST
 | Optional config | `CCPUN_META_PAGE_ID` | Set only when the token manages more than one Page |
 | Public config | `NEXT_PUBLIC_CCPUN_GOOGLE_DRIVE_OAUTH_CLIENT_ID` | Required for owner-triggered Drive Picker, Instagram mobile handoff and Google Sheets export |
 | Public config | `NEXT_PUBLIC_CCPUN_GOOGLE_DRIVE_PICKER_API_KEY` | Required for Drive Picker only; restrict the key to the exact Preview origin and Google Picker API |
+| Public config | `NEXT_PUBLIC_CCPUN_GOOGLE_DRIVE_APP_ID` | Required numeric Google Cloud project number passed to `PickerBuilder.setAppId`; not the OAuth client ID |
 | Config | `CCPUN_GOOGLE_DRIVE_ADMIN_ROOT_FOLDER_ID` | Required server-side approved Drive root; immutable folder ID, not a secret |
 | Config | `CCPUN_GOOGLE_DRIVE_MEDIA_ROOT_FOLDER_ID` | Required server-side approved media root; immutable folder ID, not a secret |
 | Remove from PR57 | `CCPUN_NEON_PROJECT_ID`, `CCPUN_NEON_BRANCH_ID`, `CCPUN_NEON_ENDPOINT_ID`, `CCPUN_NEON_DATABASE` | Duplicated by the validated URL plus database identity row |
@@ -64,3 +75,5 @@ Rollback is configuration-only: remove or disable `CCPUN_SOCIAL_ANALYTICS_INGEST
 | Optional fallback | `NEXT_PUBLIC_CCPUN_VERCEL_PROJECT_ID` | Not needed when Vercel supplies `VERCEL_PROJECT_ID` |
 
 Enable Google Drive API, Google Picker API and Google Sheets API in the same UAT Google Cloud project before browser UAT. Google access tokens remain memory-only and are never copied into Vercel, Sanity or Neon.
+
+Drive Picker is available for Facebook and Instagram image, album/carousel, video and Reel authoring, but Instagram remains `native-finish` Mobile handoff only. The UI does not expose Instagram provider execution or Direct scheduling. For Reel UAT, the selected MP4 is accepted only when Google Drive REST metadata for the exact verified file supplies positive width, height and `durationMillis`, and height is greater than width. Google notes that video metadata may not be available immediately after upload; while any field is absent, the UI fails closed and asks the owner to retry after Drive finishes processing the video.

@@ -27,6 +27,9 @@ export type GoogleDrivePickerFile = {
   name: string;
   mimeType: "image/jpeg" | "image/png" | "image/webp" | "video/mp4";
   sizeBytes: number;
+  widthPx: number | null;
+  heightPx: number | null;
+  durationMs: number | null;
 };
 
 export type VerifiedGoogleDriveFile = GoogleDrivePickerFile & {
@@ -71,8 +74,31 @@ export function facebookMediaRequirement(value: string) {
   if (format === "image-post") return "ภาพ JPEG, PNG หรือ WebP จำนวน 1 ไฟล์";
   if (format === "album") return "ภาพเรียงลำดับ 2–10 ไฟล์";
   if (format === "video") return "วิดีโอ MP4 จำนวน 1 ไฟล์";
-  if (format === "reel") return "วิดีโอ MP4 จำนวน 1 ไฟล์";
+  if (format === "reel") return "วิดีโอ MP4 แนวตั้ง 1 ไฟล์ พร้อมข้อมูลความกว้าง ความสูง และระยะเวลาจาก Google Drive";
   return "รูปแบบนี้ยังไม่รองรับการเผยแพร่";
+}
+
+export function instagramMediaRequirement(value: string) {
+  const format = normalizeFacebookFormat(value);
+  if (format === "image-post") return "ภาพ JPEG, PNG หรือ WebP จำนวน 1 ไฟล์สำหรับ Mobile handoff";
+  if (format === "album") return "ภาพเรียงลำดับ 2–10 ไฟล์สำหรับ Mobile handoff";
+  if (format === "reel") return "วิดีโอ MP4 แนวตั้ง 1 ไฟล์ พร้อมข้อมูลความกว้าง ความสูง และระยะเวลาจาก Google Drive";
+  return "รูปแบบนี้ยังไม่รองรับ Instagram Mobile handoff";
+}
+
+function validateReelMedia(media: readonly SocialMediaReference[]) {
+  if (media.length !== 1 || media[0]?.mimeType !== "video/mp4" || !/^[a-f0-9]{64}$/.test(media[0]?.sha256Checksum ?? "")) {
+    return { ok: false as const, reason: "single-mp4-required" as const };
+  }
+  const [reel] = media;
+  if (!Number.isSafeInteger(reel.widthPx) || !Number.isSafeInteger(reel.heightPx)
+    || !Number.isSafeInteger(reel.durationMs) || (reel.widthPx ?? 0) < 1 || (reel.heightPx ?? 0) < 1
+    || (reel.durationMs ?? 0) < 1 || (reel.durationMs ?? 0) > 86_400_000) {
+    return { ok: false as const, reason: "reel-metadata-unavailable" as const };
+  }
+  return reel.heightPx! > reel.widthPx!
+    ? { ok: true as const, reason: "media-ready" as const }
+    : { ok: false as const, reason: "reel-vertical-required" as const };
 }
 
 export function validateFacebookMedia(value: string, media: readonly SocialMediaReference[]) {
@@ -98,9 +124,18 @@ export function validateFacebookMedia(value: string, media: readonly SocialMedia
       ? { ok: true as const, reason: "media-ready" as const }
       : { ok: false as const, reason: "album-order-invalid" as const };
   }
+  if (format === "reel") return validateReelMedia(media);
   return media.length === 1 && media[0]?.mimeType === "video/mp4" && /^[a-f0-9]{64}$/.test(media[0]?.sha256Checksum ?? "")
     ? { ok: true as const, reason: "media-ready" as const }
     : { ok: false as const, reason: "single-mp4-required" as const };
+}
+
+export function validateInstagramMedia(value: string, media: readonly SocialMediaReference[]) {
+  const format = normalizeFacebookFormat(value);
+  if (format === "image-post" || format === "album" || format === "reel") {
+    return validateFacebookMedia(format, media);
+  }
+  return { ok: false as const, reason: "unsupported-format" as const };
 }
 
 export function buildSocialMediaReferences(value: string, files: readonly VerifiedGoogleDriveFile[]): SocialMediaReference[] {
@@ -111,11 +146,34 @@ export function buildSocialMediaReferences(value: string, files: readonly Verifi
     role: format === "album" ? "carousel-item" as const : "primary" as const,
     order: format === "album" ? index + 1 : null,
     mimeType: file.mimeType,
-    widthPx: null,
-    heightPx: null,
-    durationMs: null,
+    widthPx: file.widthPx,
+    heightPx: file.heightPx,
+    durationMs: file.durationMs,
     sha256Checksum: file.sha256Checksum,
   }));
+}
+
+function positiveInteger(value: unknown, maximum: number) {
+  const parsed = typeof value === "string" && /^\d+$/.test(value) ? Number(value) : value;
+  return Number.isSafeInteger(parsed) && Number(parsed) >= 1 && Number(parsed) <= maximum ? Number(parsed) : null;
+}
+
+export function parseGoogleDriveMediaMetadata(value: unknown, expected: VerifiedGoogleDriveFile) {
+  if (!value || typeof value !== "object") return null;
+  const item = value as Record<string, unknown>;
+  if (item.id !== expected.assetId || item.mimeType !== expected.mimeType
+    || positiveInteger(item.size, GOOGLE_DRIVE_MAX_FILE_BYTES) !== expected.sizeBytes
+    || item.sha256Checksum !== expected.sha256Checksum) return null;
+
+  const image = item.imageMediaMetadata && typeof item.imageMediaMetadata === "object"
+    ? item.imageMediaMetadata as Record<string, unknown> : null;
+  const video = item.videoMediaMetadata && typeof item.videoMediaMetadata === "object"
+    ? item.videoMediaMetadata as Record<string, unknown> : null;
+  return {
+    widthPx: positiveInteger((expected.mimeType === "video/mp4" ? video : image)?.width, 32_768),
+    heightPx: positiveInteger((expected.mimeType === "video/mp4" ? video : image)?.height, 32_768),
+    durationMs: expected.mimeType === "video/mp4" ? positiveInteger(video?.durationMillis, 86_400_000) : null,
+  };
 }
 
 export function parseGoogleDrivePickerDocuments(value: unknown):
@@ -136,7 +194,15 @@ export function parseGoogleDrivePickerDocuments(value: unknown):
     if (!Number.isSafeInteger(rawSize) || Number(rawSize) < 1 || Number(rawSize) > GOOGLE_DRIVE_MAX_FILE_BYTES) {
       return { ok: false, reason: "size-unavailable" };
     }
-    files.push({ assetId: id, name, mimeType: mimeType as GoogleDrivePickerFile["mimeType"], sizeBytes: Number(rawSize) });
+    files.push({
+      assetId: id,
+      name,
+      mimeType: mimeType as GoogleDrivePickerFile["mimeType"],
+      sizeBytes: Number(rawSize),
+      widthPx: null,
+      heightPx: null,
+      durationMs: null,
+    });
   }
   if (new Set(files.map((file) => file.assetId)).size !== files.length) return { ok: false, reason: "invalid-selection" };
   return { ok: true, files };
