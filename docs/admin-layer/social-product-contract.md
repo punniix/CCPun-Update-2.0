@@ -44,4 +44,3 @@ Live streaming is a separate RTMP/live-video workflow and must not be presented 
 - Stats keeps provider-native metric names, never sums unlike metrics across platforms, and shows filters, trends, Top content and raw history in one page.
 - Manual Google Sheets export creates separate sheets for content, publications and each platform/stat family without persisting a Google access token.
 - Keep required secrets/config minimal and documented; no n8n in this phase.
-
