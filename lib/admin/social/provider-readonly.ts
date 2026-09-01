@@ -38,7 +38,9 @@ export function getSocialProviderReadiness(
   const graphVersion = provider === "meta" ? env.CCPUN_META_GRAPH_VERSION?.trim() : undefined;
   const analyticsLane = env.VERCEL_GIT_COMMIT_REF?.trim() === WEBSITE_42_SOCIAL_ANALYTICS_BRANCH
     && env.CCPUN_SOCIAL_ANALYTICS_INGESTION_ENABLED === "1";
-  const scopeReady = exactScopes(env[scopeVariable], SOCIAL_READ_ONLY_SCOPES[provider]);
+  const scopeReady = provider === "meta"
+    ? SOCIAL_READ_ONLY_SCOPES.meta.every((scope) => env[scopeVariable]?.split(",").map((item) => item.trim()).includes(scope))
+    : exactScopes(env[scopeVariable], SOCIAL_READ_ONLY_SCOPES[provider]);
   const tokenReady = Boolean(env[tokenVariable]?.trim());
   const versionReady = provider !== "meta" || /^v\d{1,2}\.\d{1,2}$/.test(graphVersion ?? "");
 
@@ -59,7 +61,7 @@ export function getSocialProviderReadiness(
     providerWriteAllowed: false as const,
     backgroundSyncAllowed: false as const,
     limitation: analyticsLane
-      ? "เจ้าของต้องกด Sync เอง บันทึกเฉพาะ metric ที่จับคู่ exact ID ใน Neon UAT และไม่มี publishing/upload scope"
-      : "เจ้าของต้องกด Sync เอง ข้อมูลไม่ถูกบันทึก และไม่มี publishing/upload scope",
+      ? "เจ้าของต้องกด Sync เอง บันทึกเฉพาะ metric ที่จับคู่ exact ID ใน Neon UAT และ provider writes ยังปิดแม้ token มี publishing scope"
+      : "เจ้าของต้องกด Sync เอง ข้อมูลไม่ถูกบันทึก และ provider writes ยังปิดแม้ token มี publishing scope",
   };
 }

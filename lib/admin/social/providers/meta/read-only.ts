@@ -9,7 +9,7 @@ const responseSchema = z.object({
   data: z.array(z.object({
     id: z.string().trim().min(1).max(120),
     name: z.string().trim().min(1).max(120),
-    access_token: z.string().trim().min(1).max(4096),
+    access_token: z.string().trim().min(1).max(4096).optional(),
     instagram_business_account: z.object({
       id: z.string().trim().min(1).max(120),
       username: z.string().trim().min(1).max(120),
@@ -74,10 +74,11 @@ export async function fetchMetaReadOnlyDiscovery(
   if (!parsed.success) throw new Error("META_READ_INVALID_RESPONSE");
   const selectedPageId = env.CCPUN_META_PAGE_ID?.trim() || (parsed.data.data.length === 1 ? parsed.data.data[0]!.id : null);
   const selectedPage = parsed.data.data.find((page) => page.id === selectedPageId);
+  const selectedPageToken = selectedPage?.access_token ?? token;
   const [facebookPosts, instagramMedia] = selectedPage ? await Promise.all([
-    request(`https://graph.facebook.com/${version}/${encodeURIComponent(selectedPage.id)}/published_posts?fields=${encodeURIComponent("id,message,created_time,permalink_url,shares,comments.limit(0).summary(true),reactions.limit(0).summary(true)")}&limit=20`, selectedPage.access_token, fetcher),
+    request(`https://graph.facebook.com/${version}/${encodeURIComponent(selectedPage.id)}/published_posts?fields=${encodeURIComponent("id,message,created_time,permalink_url,shares,comments.limit(0).summary(true),reactions.limit(0).summary(true)")}&limit=20`, selectedPageToken, fetcher),
     selectedPage.instagram_business_account
-      ? request(`https://graph.facebook.com/${version}/${encodeURIComponent(selectedPage.instagram_business_account.id)}/media?fields=${encodeURIComponent("id,caption,media_type,timestamp,permalink,like_count,comments_count")}&limit=20`, selectedPage.access_token, fetcher)
+      ? request(`https://graph.facebook.com/${version}/${encodeURIComponent(selectedPage.instagram_business_account.id)}/media?fields=${encodeURIComponent("id,caption,media_type,timestamp,permalink,like_count,comments_count")}&limit=20`, selectedPageToken, fetcher)
       : Promise.resolve({ data: [] }),
   ]) : [{ data: [] }, { data: [] }];
   const parsedFacebook = facebookPostsSchema.safeParse(facebookPosts);
