@@ -24,9 +24,21 @@ function providerError(provider: string, code: string) {
   return null;
 }
 
+function safeErrorField(error: unknown, field: "name" | "code") {
+  const record = typeof error === "object" && error !== null ? error as Record<string, unknown> : null;
+  return record && typeof record[field] === "string" ? record[field] : undefined;
+}
+
 function databaseError(error: unknown) {
-  const code = typeof error === "object" && error !== null && "code" in error
-    && typeof error.code === "string" ? error.code : "";
+  const source = typeof error === "object" && error !== null && "sourceError" in error ? error.sourceError : undefined;
+  const code = safeErrorField(error, "code") ?? safeErrorField(source, "code") ?? "";
+  const httpStatus = error instanceof Error ? /^Server error \(HTTP status (\d{3})\):/.exec(error.message)?.[1] : undefined;
+  console.error("[social-analytics-db]", {
+    name: safeErrorField(error, "name"),
+    code: code || undefined,
+    sourceName: safeErrorField(source, "name"),
+    httpStatus,
+  });
   if (code === "28P01") return { error: "database-auth-required", status: 409 };
   if (code === "42501") return { error: "database-forbidden", status: 409 };
   if (["3D000", "3F000", "42P01"].includes(code)) return { error: "database-not-ready", status: 409 };
