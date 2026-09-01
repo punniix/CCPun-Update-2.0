@@ -92,7 +92,7 @@ function metricsHash(metrics: z.infer<typeof metricSchema>[]) {
 
 async function verifiedSql(env: Record<string, string | undefined>) {
   if (!isSocialAnalyticsIngestionEnabled(env)) throw new Error("SOCIAL_ANALYTICS_NOT_CONFIGURED");
-  const sql = neon(env.CCPUN_SOCIAL_DATABASE_URL!.trim(), { fetchOptions: { signal: AbortSignal.timeout(10_000) } });
+  const sql = neon(env.CCPUN_SOCIAL_DATABASE_URL!.trim(), { fetchOptions: { signal: AbortSignal.timeout(30_000) } });
   const rows = await sql.query(
     `SELECT current_database() AS database_name, current_user AS role_name,
        EXISTS (SELECT 1 FROM ccpun_social.schema_migration WHERE version=$1 AND checksum=$2) AS ledger_current,
