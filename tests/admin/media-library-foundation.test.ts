@@ -5,6 +5,7 @@ import test from "node:test";
 import { CCPUN_VERCEL_PROJECT_IDS } from "../../lib/admin/environment";
 import {
   getMediaStorageProviderState,
+  isGoogleDriveSelectedFileVerificationEnabled,
   isMediaLibraryEnabled,
   MEDIA_OPERATIONAL_TABLES,
   MEDIA_SCHEMA_MIGRATION_CHECKSUM,
@@ -52,6 +53,62 @@ test("Media Library requires the exact Admin UAT branch and data plane", () => {
     { sanityDataset: "production" },
   ]) {
     assert.equal(isMediaLibraryEnabled({ ...enabledInput, ...change }), false, JSON.stringify(change));
+  }
+});
+
+test("selected-file verification is split from synthetic GET and accepts only the centralized UAT or Production runtime", () => {
+  const uatEnv = {
+    CCPUN_MEDIA_LIBRARY_ENABLED: "1",
+    CCPUN_APP_ENV: "admin-uat",
+    VERCEL_PROJECT_ID: CCPUN_VERCEL_PROJECT_IDS.adminProduction,
+    VERCEL_GIT_COMMIT_REF: WEBSITE_42_MEDIA_LIBRARY_BRANCH,
+    NEXT_PUBLIC_SANITY_PROJECT_ID: WEBSITE_42_MEDIA_SANITY_PROJECT_ID,
+    NEXT_PUBLIC_SANITY_DATASET: WEBSITE_42_MEDIA_SANITY_DATASET,
+  };
+  assert.equal(isGoogleDriveSelectedFileVerificationEnabled(uatEnv), true);
+
+  const productionEnv = {
+    CCPUN_MEDIA_LIBRARY_ENABLED: "1",
+    CCPUN_APP_ENV: "production-admin",
+    VERCEL_ENV: "production",
+    VERCEL_PROJECT_ID: CCPUN_VERCEL_PROJECT_IDS.adminProduction,
+    CCPUN_PRODUCTION_ADMIN_VERCEL_PROJECT_ID: CCPUN_VERCEL_PROJECT_IDS.adminProduction,
+    VERCEL_GIT_COMMIT_REF: "v4-production",
+    NEXT_PUBLIC_SANITY_PROJECT_ID: "kyfxgjnq",
+    NEXT_PUBLIC_SANITY_DATASET: "production",
+    CCPUN_NEON_PROJECT_ID: "production-project-id",
+    CCPUN_NEON_BRANCH_ID: "br-production-id",
+    CCPUN_NEON_ENDPOINT_ID: "ep-production-id",
+    CCPUN_NEON_DATABASE: "production_social",
+    CCPUN_SOCIAL_DATABASE_URL: "postgresql://ccpun_social_runtime:secret@ep-production-id-pooler.ap-southeast-1.aws.neon.tech/production_social",
+  };
+  assert.equal(isGoogleDriveSelectedFileVerificationEnabled(productionEnv), true);
+  assert.equal(isMediaLibraryEnabled({
+    flag: "1",
+    environment: "production-admin",
+    vercelEnvironment: productionEnv.VERCEL_ENV,
+    projectId: productionEnv.VERCEL_PROJECT_ID,
+    productionAdminProjectId: productionEnv.CCPUN_PRODUCTION_ADMIN_VERCEL_PROJECT_ID,
+    gitBranch: productionEnv.VERCEL_GIT_COMMIT_REF,
+    sanityProjectId: productionEnv.NEXT_PUBLIC_SANITY_PROJECT_ID,
+    sanityDataset: productionEnv.NEXT_PUBLIC_SANITY_DATASET,
+    connectionString: productionEnv.CCPUN_SOCIAL_DATABASE_URL,
+    neonProjectId: productionEnv.CCPUN_NEON_PROJECT_ID,
+    neonBranchId: productionEnv.CCPUN_NEON_BRANCH_ID,
+    neonEndpointId: productionEnv.CCPUN_NEON_ENDPOINT_ID,
+    neonDatabase: productionEnv.CCPUN_NEON_DATABASE,
+  }), false);
+  for (const change of [
+    { CCPUN_MEDIA_LIBRARY_ENABLED: "0" },
+    { VERCEL_ENV: "preview" },
+    { VERCEL_PROJECT_ID: CCPUN_VERCEL_PROJECT_IDS.web },
+    { VERCEL_GIT_COMMIT_REF: WEBSITE_42_MEDIA_LIBRARY_BRANCH },
+    { NEXT_PUBLIC_SANITY_PROJECT_ID: WEBSITE_42_MEDIA_SANITY_PROJECT_ID },
+    { NEXT_PUBLIC_SANITY_DATASET: WEBSITE_42_MEDIA_SANITY_DATASET },
+    { CCPUN_NEON_ENDPOINT_ID: "" },
+    { CCPUN_SOCIAL_DATABASE_URL: "postgresql://ccpun_social_runtime:secret@ep-other.ap-southeast-1.aws.neon.tech/production_social" },
+  ]) {
+    assert.equal(isGoogleDriveSelectedFileVerificationEnabled({ ...productionEnv, ...change }), false, JSON.stringify(change));
   }
 });
 
@@ -158,7 +215,7 @@ test("Upload intent rate limiter hashes each actor and returns deterministic Ret
   assert.deepEqual(limiter.reserve(actor, 11_001), { allowed: true, retryAfterSeconds: 0 });
 });
 
-test("Media APIs enforce Auth.js, RBAC, exact origin, UAT flag and metadata-only direct upload", () => {
+test("Media APIs keep synthetic GET separate from owner-only runtime Drive verification and metadata-only upload intents", () => {
   const listRoute = read("app/api/snt-admin/media/route.ts");
   const driveFoundation = read("lib/admin/media/google-drive-foundation.ts");
   const uploadRoute = read("app/api/snt-admin/media/upload-intents/route.ts");
@@ -168,14 +225,17 @@ test("Media APIs enforce Auth.js, RBAC, exact origin, UAT flag and metadata-only
   assert.match(listRoute, /hasAdminPermission\(identity\.role, "social:read"\)/);
   assert.match(listRoute, /isConfiguredAdminOrigin\(request\.url, process\.env\.AUTH_URL\)/);
   assert.match(listRoute, /identity\.actorType !== "human"/);
+  assert.match(listRoute, /identity\.role !== "owner"/);
   assert.match(listRoute, /isSameOriginAdminMutation\(request\.url, request\.headers\.get\("origin"\)\)/);
   assert.match(listRoute, /getMediaLibraryRuntimeStatus\(\)\.enabled/);
+  assert.match(listRoute, /isGoogleDriveSelectedFileVerificationEnabled\(process\.env\)/);
   assert.match(listRoute, /CCPUN_GOOGLE_DRIVE_ADMIN_ROOT_FOLDER_ID/);
   assert.match(listRoute, /CCPUN_GOOGLE_DRIVE_MEDIA_ROOT_FOLDER_ID/);
   assert.match(listRoute, /validateGoogleDriveProjectionHttpRequest/);
   assert.match(listRoute, /fetchGoogleDriveSelectedFileProjection/);
   assert.match(listRoute, /refreshMode: "manual"/);
   assert.match(listRoute, /export async function POST\(request: Request\)/);
+  assert.doesNotMatch(listRoute, /CCPUN_SOCIAL_PROVIDER_WRITES_ENABLED|providerWriteAllowed:\s*true/);
   assert.match(uploadRoute, /hasAdminPermission\(identity\.role, "media:upload"\)/);
   assert.match(uploadRoute, /isSameOriginAdminMutation\(request\.url, request\.headers\.get\("origin"\)\)/);
   assert.match(uploadRoute, /getMediaLibraryRuntimeStatus\(\)\.enabled/);

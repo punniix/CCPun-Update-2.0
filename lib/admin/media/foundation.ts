@@ -1,13 +1,17 @@
 import { z } from "zod";
+import { type AdminEnvironment } from "../environment";
 import {
-  CCPUN_VERCEL_PROJECT_IDS,
-  parseAdminEnvironment,
-  type AdminEnvironment,
-} from "../environment";
+  resolveSocialRuntime,
+  resolveSocialRuntimeDescriptor,
+  socialRuntimeInputFromEnvironment,
+  SOCIAL_UAT_ANALYTICS_BRANCH,
+  SOCIAL_UAT_SANITY_DATASET,
+  SOCIAL_UAT_SANITY_PROJECT_ID,
+} from "../social/runtime";
 
-export const WEBSITE_42_MEDIA_LIBRARY_BRANCH = "codex/website-42-social-analytics-ingestion-20260831";
-export const WEBSITE_42_MEDIA_SANITY_PROJECT_ID = "ccb9lnw5";
-export const WEBSITE_42_MEDIA_SANITY_DATASET = "uat";
+export const WEBSITE_42_MEDIA_LIBRARY_BRANCH = SOCIAL_UAT_ANALYTICS_BRANCH;
+export const WEBSITE_42_MEDIA_SANITY_PROJECT_ID = SOCIAL_UAT_SANITY_PROJECT_ID;
+export const WEBSITE_42_MEDIA_SANITY_DATASET = SOCIAL_UAT_SANITY_DATASET;
 
 export const MEDIA_SCHEMA_MIGRATION_VERSION = "20260828_website_42_media_library_foundation";
 export const MEDIA_SCHEMA_MIGRATION_CHECKSUM = "sha256:9c5a76125a6cecc90a1693aabd7925c04f8473de0fa0d3206b6188fb427bfb55";
@@ -109,40 +113,46 @@ export function getMediaStorageProviderState(): MediaStorageProviderState {
 export function isMediaLibraryEnabled(input: {
   flag: string | undefined;
   environment: AdminEnvironment;
-  projectId: string | undefined;
-  gitBranch: string | undefined;
-  sanityProjectId: string | undefined;
-  sanityDataset: string | undefined;
+  projectId?: string;
+  gitBranch?: string;
+  sanityProjectId?: string;
+  sanityDataset?: string;
+  vercelEnvironment?: string;
+  productionAdminProjectId?: string;
+  connectionString?: string;
+  neonProjectId?: string;
+  neonBranchId?: string;
+  neonEndpointId?: string;
+  neonDatabase?: string;
 }): boolean {
-  return (
-    input.flag === "1" &&
-    input.environment === "admin-uat" &&
-    input.projectId === CCPUN_VERCEL_PROJECT_IDS.adminProduction &&
-    input.gitBranch === WEBSITE_42_MEDIA_LIBRARY_BRANCH &&
-    input.sanityProjectId === WEBSITE_42_MEDIA_SANITY_PROJECT_ID &&
-    input.sanityDataset === WEBSITE_42_MEDIA_SANITY_DATASET
-  );
+  const runtime = resolveSocialRuntimeDescriptor(input, { uatBranches: [WEBSITE_42_MEDIA_LIBRARY_BRANCH] });
+  return input.flag === "1" && runtime?.lane === "uat";
 }
 
 export function getMediaLibraryRuntimeStatus() {
-  const environment = parseAdminEnvironment(process.env.CCPUN_APP_ENV);
-  const projectId = process.env.VERCEL_PROJECT_ID?.trim() || process.env.NEXT_PUBLIC_CCPUN_VERCEL_PROJECT_ID?.trim();
-  const gitBranch = process.env.VERCEL_GIT_COMMIT_REF?.trim();
-  const sanityProjectId = process.env.NEXT_PUBLIC_SANITY_PROJECT_ID?.trim();
-  const sanityDataset = process.env.NEXT_PUBLIC_SANITY_DATASET?.trim();
+  const runtimeInput = socialRuntimeInputFromEnvironment(process.env);
 
   return {
-    environment,
-    gitBranch: gitBranch ?? null,
+    environment: runtimeInput.environment,
+    gitBranch: runtimeInput.gitBranch ?? null,
     enabled: isMediaLibraryEnabled({
       flag: process.env.CCPUN_MEDIA_LIBRARY_ENABLED,
-      environment,
-      projectId,
-      gitBranch,
-      sanityProjectId,
-      sanityDataset,
+      ...runtimeInput,
     }),
   };
+}
+
+export function resolveGoogleDriveSelectedFileVerificationRuntime(
+  env: Record<string, string | undefined> = process.env,
+) {
+  if (env.CCPUN_MEDIA_LIBRARY_ENABLED !== "1") return null;
+  return resolveSocialRuntime(env, { uatBranches: [WEBSITE_42_MEDIA_LIBRARY_BRANCH] });
+}
+
+export function isGoogleDriveSelectedFileVerificationEnabled(
+  env: Record<string, string | undefined> = process.env,
+) {
+  return Boolean(resolveGoogleDriveSelectedFileVerificationRuntime(env));
 }
 
 export const SYNTHETIC_MEDIA_LIBRARY: MediaLibrarySnapshot = {

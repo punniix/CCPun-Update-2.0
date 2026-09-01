@@ -5,14 +5,14 @@ import { requireAdminPermission } from "@/lib/admin/require-permission";
 import { getSocialAnalyticsDashboard, getSocialAnalyticsIngestionRuntimeStatus } from "@/lib/admin/social/analytics-ingestion";
 import SocialStatsDashboard, { type SocialAnalyticsItem } from "@/features/admin/social/SocialStatsDashboard";
 
-export const metadata: Metadata = { title: "Social Stats UAT" };
+export const metadata: Metadata = { title: "Social Stats" };
 
 export default async function SocialAnalyticsUatPage() {
   await requireAdminPermission("social:read");
   if (!getSocialAnalyticsIngestionRuntimeStatus().enabled) notFound();
   const result = await getSocialAnalyticsDashboard()
     .then((items) => ({ items, error: null }))
-    .catch(() => ({ items: [], error: "Neon UAT ติดต่อไม่ได้ชั่วคราว" }));
+    .catch(() => ({ items: [], error: "ฐานข้อมูลสถิติติดต่อไม่ได้ชั่วคราว" }));
   const items: SocialAnalyticsItem[] = result.items.map((item) => ({
     ...item,
     metrics: item.metrics.map((metric) => ({ ...metric, delta: metric.delta })),
@@ -20,7 +20,7 @@ export default async function SocialAnalyticsUatPage() {
 
   return (
     <div>
-      <p className="text-xs font-semibold tracking-[0.12em] text-[#e0c985]">WEBSITE 4.2 · HISTORICAL SOCIAL UAT</p>
+      <p className="text-xs font-semibold tracking-[0.12em] text-[#e0c985]">SOCIAL · HISTORICAL STATS</p>
       <div className="mt-2 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="text-3xl font-semibold">Social Stats</h1>

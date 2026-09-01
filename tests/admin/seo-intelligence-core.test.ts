@@ -2,7 +2,17 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import { CCPUN_VERCEL_PROJECT_IDS } from "../../lib/admin/environment";
-import { ga4QueryInputSchema, gscQueryInputSchema, normalizeGa4LandingPageReport, normalizeGscSearchAnalyticsPage, previousEqualDateRange } from "../../lib/admin/seo-intelligence/contracts";
+import {
+  ga4QueryInputSchema,
+  gscQueryInputSchema,
+  joinGa4DashboardRows,
+  joinGscDashboardRows,
+  normalizeGa4LandingPageReport,
+  normalizeGa4OrganicTotalsReport,
+  normalizeGscSearchAnalyticsPage,
+  normalizeGscSearchAnalyticsTotals,
+  previousEqualDateRange,
+} from "../../lib/admin/seo-intelligence/contracts";
 import { assembleGscObservations, buildGscObservationContexts } from "../../lib/admin/seo-intelligence/gsc-observations";
 import {
   detectSeoOpportunities,
@@ -11,6 +21,9 @@ import {
   isSeoIntelligenceEnabled,
   SYNTHETIC_SEO_OBSERVATIONS,
   WEBSITE_42_GOOGLE_PROVIDER_BRANCH,
+  WEBSITE_42_SEO_PRODUCTION_BRANCH,
+  WEBSITE_42_SEO_PRODUCTION_SANITY_DATASET,
+  WEBSITE_42_SEO_PRODUCTION_SANITY_PROJECT_ID,
   WEBSITE_42_SEO_BRANCH,
   WEBSITE_42_SEO_SANITY_DATASET,
   WEBSITE_42_SEO_SANITY_PROJECT_ID,
@@ -20,13 +33,15 @@ const read = (path: string) => readFileSync(new URL(`../../${path}`, import.meta
 const enabledInput = {
   flag: "1",
   environment: "admin-uat" as const,
+  vercelEnvironment: "preview",
   projectId: CCPUN_VERCEL_PROJECT_IDS.adminProduction,
+  productionAdminProjectId: undefined,
   gitBranch: WEBSITE_42_SEO_BRANCH,
   sanityProjectId: WEBSITE_42_SEO_SANITY_PROJECT_ID,
   sanityDataset: WEBSITE_42_SEO_SANITY_DATASET,
 };
 
-test("SEO Intelligence opens only on the exact Admin UAT branch and data plane", () => {
+test("SEO Intelligence retains exact Admin UAT branches and adds only the exact Production lane", () => {
   assert.equal(isSeoIntelligenceEnabled(enabledInput), true);
   assert.equal(isSeoIntelligenceEnabled({ ...enabledInput, gitBranch: WEBSITE_42_GOOGLE_PROVIDER_BRANCH }), true);
   for (const change of [
@@ -38,6 +53,30 @@ test("SEO Intelligence opens only on the exact Admin UAT branch and data plane",
     { sanityProjectId: "kyfxgjnq" },
     { sanityDataset: "production" },
   ]) assert.equal(isSeoIntelligenceEnabled({ ...enabledInput, ...change }), false, JSON.stringify(change));
+
+  const productionInput = {
+    flag: "1",
+    environment: "production-admin" as const,
+    vercelEnvironment: "production",
+    projectId: CCPUN_VERCEL_PROJECT_IDS.adminProduction,
+    productionAdminProjectId: CCPUN_VERCEL_PROJECT_IDS.adminProduction,
+    gitBranch: WEBSITE_42_SEO_PRODUCTION_BRANCH,
+    sanityProjectId: WEBSITE_42_SEO_PRODUCTION_SANITY_PROJECT_ID,
+    sanityDataset: WEBSITE_42_SEO_PRODUCTION_SANITY_DATASET,
+  };
+  assert.equal(isSeoIntelligenceEnabled(productionInput), true);
+  for (const change of [
+    { flag: "true" },
+    { environment: "admin-uat" as const },
+    { vercelEnvironment: "preview" },
+    { vercelEnvironment: undefined },
+    { projectId: CCPUN_VERCEL_PROJECT_IDS.web },
+    { productionAdminProjectId: CCPUN_VERCEL_PROJECT_IDS.web },
+    { productionAdminProjectId: undefined },
+    { gitBranch: WEBSITE_42_GOOGLE_PROVIDER_BRANCH },
+    { sanityProjectId: WEBSITE_42_SEO_SANITY_PROJECT_ID },
+    { sanityDataset: WEBSITE_42_SEO_SANITY_DATASET },
+  ]) assert.equal(isSeoIntelligenceEnabled({ ...productionInput, ...change }), false, JSON.stringify(change));
 });
 
 test("Four deterministic detectors find intended fixtures and suppress known false positives", () => {
@@ -84,6 +123,22 @@ test("GSC normalization follows requested dimension order and rejects malformed 
   assert.equal(gscQueryInputSchema.safeParse({ siteUrl: "sc-domain:ccpun.com", token: "fixture", startDate: "2026-02-30", endDate: "2026-03-01", dimensions: ["query"] }).success, false);
   assert.deepEqual(previousEqualDateRange("2026-08-01", "2026-08-28"), { startDate: "2026-07-04", endDate: "2026-07-31" });
   assert.throws(() => normalizeGscSearchAnalyticsPage({ rows: [{ keys: ["only-one"], clicks: 1, impressions: 10, ctr: 0.1, position: 2 }] }, ["query", "page"]), /GSC_DIMENSION_MISMATCH/);
+});
+
+test("GSC dashboard uses no-dimension totals and exact query/page joins", () => {
+  assert.deepEqual(normalizeGscSearchAnalyticsTotals({ rows: [{ clicks: 20, impressions: 500, ctr: 0.99, position: 6.5 }] }), {
+    clicks: 20,
+    impressions: 500,
+    ctr: 0.04,
+    position: 6.5,
+  });
+  assert.deepEqual(normalizeGscSearchAnalyticsTotals({ rows: [] }), { clicks: 0, impressions: 0, ctr: 0, position: null });
+  const current = normalizeGscSearchAnalyticsPage({ rows: [{ keys: ["query", "/page/"], clicks: 10, impressions: 200, ctr: 0.05, position: 7 }] }, ["query", "page"]);
+  const exactPrevious = normalizeGscSearchAnalyticsPage({ rows: [{ keys: ["query", "/page/"], clicks: 8, impressions: 160, ctr: 0.05, position: 8 }] }, ["query", "page"]);
+  const nearPrevious = normalizeGscSearchAnalyticsPage({ rows: [{ keys: ["Query", "/page/"], clicks: 99, impressions: 999, ctr: 0.1, position: 1 }] }, ["query", "page"]);
+  assert.equal(joinGscDashboardRows(current, exactPrevious)[0]?.previous?.clicks, 8);
+  assert.equal(joinGscDashboardRows(current, nearPrevious)[0]?.previous, null);
+  assert.throws(() => normalizeGscSearchAnalyticsTotals({ rows: [{ clicks: -1, impressions: 1, ctr: 0, position: 1 }] }));
 });
 
 test("GSC observation assembly joins exact current/previous dimensions and preserves provenance", () => {
@@ -199,6 +254,9 @@ test("GSC provider is server-only, paginated, bounded and never logs credentials
   assert.match(provider, /response\.status === 429/);
   assert.match(provider, /GSC_AUTH_REQUIRED/);
   assert.match(provider, /GSC_TIMEOUT/);
+  assert.match(provider, /fetchGscSearchAnalyticsTotals/);
+  assert.match(provider, /rowLimit: 1/);
+  assert.match(provider, /normalizeGscSearchAnalyticsTotals/);
   assert.doesNotMatch(provider, /console\./);
 });
 
@@ -210,10 +268,10 @@ test("GSC manual sync is human-only, exact-origin, bounded and read-only", () =>
   assert.match(route, /isConfiguredAdminOrigin/);
   assert.match(route, /isSameOriginAdminMutation/);
   assert.match(route, /getSeoIntelligenceRuntimeStatus\(\)\.enabled/);
-  assert.match(route, /current\.rows\.slice\(0, 100\)/);
-  assert.match(route, /assembleGscObservations/);
-  assert.match(route, /detectSeoOpportunities/);
-  assert.match(route, /listPublishedSeoObservationArticles/);
+  assert.match(route, /fetchGscSearchAnalyticsTotals/);
+  assert.match(route, /joinGscDashboardRows/);
+  assert.match(route, /dimensions = \["query", "page"\]/);
+  assert.doesNotMatch(route, /assembleGscObservations|detectSeoOpportunities|listPublishedSeoObservationArticles/);
   assert.match(route, /provider-auth-required/);
   assert.match(route, /provider-rate-limited/);
   assert.match(route, /provider-timeout/);
@@ -227,6 +285,11 @@ test("GSC manual sync is human-only, exact-origin, bounded and read-only", () =>
   assert.match(control, /กำลัง Sync/);
   assert.match(control, /role="alert"/);
   assert.match(control, /ไม่บันทึก DB\/Sanity/);
+  assert.match(control, /ดึงข้อมูลล่าสุดเมื่อ/);
+  assert.match(control, /result\.current\.clicks/);
+  assert.match(control, /result\.comparison\?\.clicks/);
+  assert.match(control, /result\?\.rows\.slice\(0, 10\)/);
+  assert.doesNotMatch(control, /totalRows|comparisonRows|observationCount|skippedRows|opportunityCount/);
 });
 
 test("GA4 landing-page normalization derives engagement and exposes report limitations", () => {
@@ -251,6 +314,21 @@ test("GA4 landing-page normalization derives engagement and exposes report limit
   assert.throws(() => normalizeGa4LandingPageReport({ dimensionHeaders: [{ name: "landingPage" }], metricHeaders: [{ name: "sessions" }, { name: "engagedSessions" }], rows: [{ dimensionValues: [{ value: "/" }], metricValues: [{ value: "1" }, { value: "2" }] }] }), /GA4_VALUE_MISMATCH/);
 });
 
+test("GA4 dashboard uses Organic totals and exact landing-page joins", () => {
+  const aggregate = normalizeGa4OrganicTotalsReport({
+    metricHeaders: [{ name: "sessions" }, { name: "engagedSessions" }],
+    rows: [{ metricValues: [{ value: "50" }, { value: "20" }] }],
+    metadata: { timeZone: "Asia/Bangkok" },
+  });
+  assert.deepEqual(aggregate.totals, { sessions: 50, engagedSessions: 20, engagementRate: 0.4 });
+  assert.equal(aggregate.timeZone, "Asia/Bangkok");
+  assert.deepEqual(normalizeGa4OrganicTotalsReport({ metricHeaders: [{ name: "sessions" }, { name: "engagedSessions" }], rows: [] }).totals, { sessions: 0, engagedSessions: 0, engagementRate: 0 });
+  assert.throws(() => normalizeGa4OrganicTotalsReport({ metricHeaders: [{ name: "sessions" }, { name: "engagedSessions" }], rows: [{ metricValues: [{ value: "1" }, { value: "2" }] }] }), /GA4_VALUE_MISMATCH/);
+  const current = [{ landingPage: "/exact/", sessions: 10, engagedSessions: 4, engagementRate: 0.4 }];
+  const previous = [{ landingPage: "/Exact/", sessions: 100, engagedSessions: 50, engagementRate: 0.5 }];
+  assert.equal(joinGa4DashboardRows(current, previous)[0]?.previous, null);
+});
+
 test("GA4 provider requests bounded Organic Search landing outcomes without credential logging", () => {
   const provider = read("lib/admin/seo-intelligence/providers/ga4.ts");
   const contracts = read("lib/admin/seo-intelligence/contracts.ts");
@@ -261,6 +339,8 @@ test("GA4 provider requests bounded Organic Search landing outcomes without cred
   assert.match(contracts, /max\(10_000\)/);
   assert.match(provider, /AbortSignal\.timeout\(TIMEOUT_MS\)/);
   assert.match(provider, /returnPropertyQuota: true/);
+  assert.match(provider, /fetchGa4OrganicTotals/);
+  assert.match(provider, /normalizeGa4OrganicTotalsReport/);
   assert.doesNotMatch(provider, /console\.|eventCount|activeUsers|keyEvents/);
 });
 
@@ -274,14 +354,33 @@ test("GA4 manual sync is human-only, exact-origin, branch-gated and read-only", 
   assert.match(route, /getSeoIntelligenceRuntimeStatus\(\)\.enabled/);
   assert.match(route, /getGoogleDataAccessToken/);
   assert.match(route, /CCPUN_GA4_PROPERTY_ID/);
-  assert.match(route, /current\.rows\.slice\(0, 100\)/);
-  assert.match(route, /state: comparison \? "ready" : "partial"/);
+  assert.match(route, /fetchGa4OrganicTotals/);
+  assert.match(route, /joinGa4DashboardRows/);
+  assert.match(route, /state: comparison && comparisonTotals \? "ready" : "partial"/);
   assert.match(route, /export async function POST\(request: Request\)/);
   assert.doesNotMatch(route, /export async function (?:GET|PUT|PATCH|DELETE)/);
   assert.doesNotMatch(route, /createClient|sanity|mutate|publish|console\./i);
   assert.match(control, /type="date"/);
-  assert.match(control, /Organic Landing Pages/);
+  assert.match(control, /Organic landing pages/);
   assert.match(control, /ไม่บันทึก DB\/Sanity/);
+  assert.match(control, /ดึงข้อมูลล่าสุดเมื่อ/);
+  assert.match(control, /result\.current\.sessions/);
+  assert.match(control, /result\.comparison\?\.sessions/);
+  assert.match(control, /result\?\.rows\.slice\(0, 10\)/);
+  assert.doesNotMatch(control, /current\.rows|Landing Pages<\/div>/);
+});
+
+test("Organic Search page removes synthetic and operational telemetry", () => {
+  const page = read("features/admin/seo/opportunities/page.tsx");
+  const gscControl = read("features/admin/seo/opportunities/GscManualSync.tsx");
+  const ga4Control = read("features/admin/seo/opportunities/Ga4ManualSync.tsx");
+  assert.match(page, /Organic Search Performance/);
+  assert.match(page, /runtime\.environment === "production-admin" \? "Production" : "UAT"/);
+  assert.match(page, /laneLabel=\{laneLabel\}/);
+  assert.doesNotMatch(page, /Performance UAT|READ-ONLY UAT/);
+  assert.match(gscControl, /Search Console สำหรับ \$\{laneLabel\}/);
+  assert.match(ga4Control, /GA4 สำหรับ \$\{laneLabel\}/);
+  assert.doesNotMatch(page, /getSyntheticSeoIntelligenceSnapshot|Market provider states|snapshot\.opportunities|Observations/);
 });
 
 test("SEO opportunities API is authenticated, exact-origin and GET-only", () => {

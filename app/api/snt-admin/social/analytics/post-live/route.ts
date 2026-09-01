@@ -2,8 +2,10 @@ import { NextResponse } from "next/server";
 import { isConfiguredAdminOrigin } from "@/lib/admin/auth-config";
 import { getAdminIdentity } from "@/lib/admin/identity";
 import { hasAdminPermission } from "@/lib/admin/rbac";
-import { getSocialOperationsRuntimeStatus } from "@/lib/admin/social/operations";
-import { SYNTHETIC_POST_LIVE_REPORT } from "@/lib/admin/social/post-live";
+import {
+  isSyntheticPostLiveRuntimeEnabled,
+  SYNTHETIC_POST_LIVE_REPORT,
+} from "@/lib/admin/social/post-live";
 
 export async function GET(request: Request) {
   const identity = await getAdminIdentity();
@@ -14,7 +16,7 @@ export async function GET(request: Request) {
   if (!isConfiguredAdminOrigin(request.url, process.env.AUTH_URL)) {
     return NextResponse.json({ error: "forbidden-origin" }, { status: 403 });
   }
-  if (!getSocialOperationsRuntimeStatus().enabled) {
+  if (!isSyntheticPostLiveRuntimeEnabled(process.env)) {
     return NextResponse.json({ error: "not-found" }, { status: 404 });
   }
 

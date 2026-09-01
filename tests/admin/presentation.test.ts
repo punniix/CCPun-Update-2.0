@@ -58,6 +58,25 @@ test("production-capable admin surfaces do not hard-code UAT copy", () => {
   assert.doesNotMatch(login, /พื้นที่ทดสอบ/);
   assert.doesNotMatch(audit, /Sanity UAT/);
   assert.doesNotMatch(audit, /สลับไปอ่าน Production/);
+
+  for (const path of [
+    "features/admin/social/operations-page.tsx",
+    "features/admin/social/calendar-page.tsx",
+    "features/admin/social/analytics-page.tsx",
+    "features/admin/social/overview-page.tsx",
+    "features/admin/social/meta-connection-page.tsx",
+    "features/admin/social/SocialPostsWorkspace.tsx",
+    "features/admin/social/SocialWorkspaceSummary.tsx",
+    "features/admin/social/provider-readonly-panels.tsx",
+    "features/admin/social/SocialSheetsExport.tsx",
+  ]) {
+    const source = readFileSync(path, "utf8");
+    assert.doesNotMatch(source, /Sanity UAT|Neon UAT|ฐานข้อมูล UAT|SANITY UAT|LIVE UAT|HISTORICAL SOCIAL UAT/);
+  }
+
+  const socialOverview = readFileSync("features/admin/social/overview-page.tsx", "utf8");
+  assert.match(socialOverview, /isSocialProviderExecutionGateEnabled\(\)/);
+  assert.match(socialOverview, /providerWriteEnabled \? "Provider write เปิดเฉพาะคำสั่ง manual ที่ผ่าน approval และ safety gate" : "Provider write ปิดอยู่"/);
 });
 
 test("content list separates document state from content review state", () => {

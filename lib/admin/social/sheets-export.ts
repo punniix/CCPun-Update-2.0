@@ -3,20 +3,19 @@ import { z } from "zod";
 import {
   SOCIAL_PUBLICATION_EXECUTION_MIGRATION_CHECKSUM,
   SOCIAL_PUBLICATION_EXECUTION_MIGRATION_VERSION,
-  SOCIAL_PUBLICATION_UAT_NEON,
-  isSocialPublicationApprovalEnabled,
+  resolveSocialPublicationRuntime,
 } from "./publishing";
+import {
+  SOCIAL_PROVIDER_HISTORY_MIGRATION_CHECKSUM,
+  SOCIAL_PROVIDER_HISTORY_MIGRATION_VERSION,
+  socialAnalyticsMigrationForLane,
+} from "./runtime";
 import {
   evaluateGoogleDriveInteractiveAuthorization,
   googleDriveInteractiveAuthorizationSchema,
 } from "../media/google-drive-foundation";
 
 if (typeof window !== "undefined") throw new Error("SOCIAL_SHEETS_EXPORT_SERVER_ONLY");
-
-const SOCIAL_ANALYTICS_MIGRATION_VERSION = "20260831_website_42_social_analytics_ingestion";
-const SOCIAL_ANALYTICS_MIGRATION_CHECKSUM = "sha256:ea2ba4d0a028569cbc53cc2fe7cdcdb0ecfa1df3ae777ef7baadf9aa08b9950c";
-const SOCIAL_PROVIDER_HISTORY_MIGRATION_VERSION = "20260901_website_42_social_provider_native_history";
-const SOCIAL_PROVIDER_HISTORY_MIGRATION_CHECKSUM = "sha256:cc4c2516ad261983d3d3997796711fb9b0290afe8625ab82fc002f4536bc549c";
 
 const googleAccessTokenSchema = z.string().trim().min(1).max(8_192)
   .regex(/^[\x21-\x7E]+$/, "Google access token must be one printable header value");
@@ -128,9 +127,14 @@ export function buildSocialExportSheets(data: SocialSheetsExportData): SocialExp
 }
 
 async function verifiedSql(env: Record<string, string | undefined>) {
-  if (env.CCPUN_SOCIAL_ANALYTICS_INGESTION_ENABLED !== "1" || !isSocialPublicationApprovalEnabled(env)) {
+  const runtime = env.CCPUN_SOCIAL_ANALYTICS_INGESTION_ENABLED === "1"
+    ? resolveSocialPublicationRuntime(env)
+    : null;
+  if (!runtime) {
     throw new Error("SOCIAL_SHEETS_EXPORT_NOT_CONFIGURED");
   }
+  const identity = runtime.neonIdentity;
+  const analyticsMigration = socialAnalyticsMigrationForLane(runtime.lane);
   const sql = neon(env.CCPUN_SOCIAL_DATABASE_URL!.trim(), { fetchOptions: { signal: AbortSignal.timeout(30_000) } });
   const rows = await sql.query(
     `SELECT current_database() AS database_name,current_user AS role_name,
@@ -139,14 +143,13 @@ async function verifiedSql(env: Record<string, string | undefined>) {
        EXISTS (SELECT 1 FROM ccpun_social.schema_migration WHERE version=$5 AND checksum=$6) AS publication_current,
        EXISTS (SELECT 1 FROM ccpun_social.system_identity WHERE singleton=true AND project_id=$7 AND branch_id=$8
          AND endpoint_id=$9 AND database_name=$10) AS identity_current`,
-    [SOCIAL_ANALYTICS_MIGRATION_VERSION, SOCIAL_ANALYTICS_MIGRATION_CHECKSUM,
+    [analyticsMigration.version, analyticsMigration.checksum,
       SOCIAL_PROVIDER_HISTORY_MIGRATION_VERSION, SOCIAL_PROVIDER_HISTORY_MIGRATION_CHECKSUM,
       SOCIAL_PUBLICATION_EXECUTION_MIGRATION_VERSION, SOCIAL_PUBLICATION_EXECUTION_MIGRATION_CHECKSUM,
-      SOCIAL_PUBLICATION_UAT_NEON.projectId, SOCIAL_PUBLICATION_UAT_NEON.branchId,
-      SOCIAL_PUBLICATION_UAT_NEON.endpointId, SOCIAL_PUBLICATION_UAT_NEON.database],
+      identity.projectId, identity.branchId, identity.endpointId, identity.database],
   ) as Array<{ database_name: string; role_name: string; analytics_current: boolean; history_current: boolean; publication_current: boolean; identity_current: boolean }>;
   const row = rows[0];
-  if (!row || row.database_name !== SOCIAL_PUBLICATION_UAT_NEON.database || row.role_name !== SOCIAL_PUBLICATION_UAT_NEON.role
+  if (!row || row.database_name !== identity.database || row.role_name !== identity.role
     || !row.analytics_current || !row.history_current || !row.publication_current || !row.identity_current) {
     throw new Error("SOCIAL_SHEETS_EXPORT_IDENTITY_MISMATCH");
   }

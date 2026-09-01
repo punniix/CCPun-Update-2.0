@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test, { afterEach } from "node:test";
 import {
+  getAdminGoogleOAuthCredentials,
   hasStrongAuthSecret,
   getLocalAdminCookieNamespace,
   getLocalAdminOrigin,
@@ -151,6 +152,41 @@ test("Auth.js fails closed when the session secret is missing or too short", () 
   assert.equal(hasStrongAuthSecret("short"), false);
   assert.equal(hasStrongAuthSecret("a".repeat(31)), false);
   assert.equal(hasStrongAuthSecret("a".repeat(32)), true);
+});
+
+test("Production Admin may reuse the complete Google data OAuth pair without changing UAT", () => {
+  const dataOnly = {
+    CCPUN_GOOGLE_DATA_CLIENT_ID: "data-client",
+    CCPUN_GOOGLE_DATA_CLIENT_SECRET: "data-secret",
+  };
+
+  assert.deepEqual(getAdminGoogleOAuthCredentials("production-admin", dataOnly), {
+    clientId: "data-client",
+    clientSecret: "data-secret",
+  });
+  assert.equal(getAdminGoogleOAuthCredentials("admin-uat", dataOnly), null);
+  assert.deepEqual(
+    getAdminGoogleOAuthCredentials("admin-uat", {
+      AUTH_GOOGLE_ID: "uat-client",
+      AUTH_GOOGLE_SECRET: "uat-secret",
+    }),
+    { clientId: "uat-client", clientSecret: "uat-secret" },
+  );
+  assert.deepEqual(
+    getAdminGoogleOAuthCredentials("production-admin", {
+      ...dataOnly,
+      AUTH_GOOGLE_ID: "incomplete-auth-client",
+    }),
+    { clientId: "data-client", clientSecret: "data-secret" },
+  );
+  assert.deepEqual(
+    getAdminGoogleOAuthCredentials("production-admin", {
+      ...dataOnly,
+      AUTH_GOOGLE_ID: "auth-client",
+      AUTH_GOOGLE_SECRET: "auth-secret",
+    }),
+    { clientId: "auth-client", clientSecret: "auth-secret" },
+  );
 });
 
 test("Auth.js never assigns an Admin role while authentication is misconfigured", () => {

@@ -2,7 +2,7 @@ import "server-only";
 
 import { randomUUID } from "node:crypto";
 import { createClient, groq } from "next-sanity";
-import { getAdminEnvironment, isAdminDataPlaneAllowed } from "../environment";
+import { isAdminDataPlaneAllowed } from "../environment";
 import { getAdminSanityWriteToken } from "../sanity-credentials";
 import {
   buildSocialDraftCreateDocument,
@@ -14,22 +14,20 @@ import {
   socialLogicalId,
   type SocialDraftRequest,
 } from "./draft-contract";
-import { WEBSITE_42_SANITY_DATASET, WEBSITE_42_SANITY_PROJECT_ID } from "./foundation";
+import { resolveSocialRuntime, SOCIAL_UAT_RUNTIME_BRANCHES } from "./runtime";
 
 export { socialDraftRequestSchema } from "./draft-contract";
 
 function client() {
-  if (getAdminEnvironment() !== "admin-uat"
-    || process.env.NEXT_PUBLIC_SANITY_PROJECT_ID?.trim() !== WEBSITE_42_SANITY_PROJECT_ID
-    || process.env.NEXT_PUBLIC_SANITY_DATASET?.trim() !== WEBSITE_42_SANITY_DATASET
-    || !isAdminDataPlaneAllowed(WEBSITE_42_SANITY_DATASET)) {
+  const runtime = resolveSocialRuntime(process.env, { uatBranches: SOCIAL_UAT_RUNTIME_BRANCHES });
+  if (!runtime || !isAdminDataPlaneAllowed(runtime.sanityDataset)) {
     throw new Error("SOCIAL_DRAFT_UAT_ONLY");
   }
   const token = getAdminSanityWriteToken();
   if (!token) throw new Error("SOCIAL_DRAFT_WRITE_NOT_CONFIGURED");
   return createClient({
-    projectId: WEBSITE_42_SANITY_PROJECT_ID,
-    dataset: WEBSITE_42_SANITY_DATASET,
+    projectId: runtime.sanityProjectId,
+    dataset: runtime.sanityDataset,
     apiVersion: "2026-08-20",
     token,
     useCdn: false,

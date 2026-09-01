@@ -1,9 +1,8 @@
 import { createHash } from "node:crypto";
 import { z } from "zod";
-import { CCPUN_VERCEL_PROJECT_IDS, parseAdminEnvironment } from "../environment";
 import { mediaIdSchema } from "../media/foundation";
-import { WEBSITE_42_SANITY_DATASET, WEBSITE_42_SANITY_PROJECT_ID } from "./foundation";
 import { WEBSITE_42_SOCIAL_ANALYTICS_BRANCH } from "./provider-readonly";
+import { resolveSocialRuntime, SOCIAL_UAT_NEON_IDENTITY } from "./runtime";
 
 const boundedId = z.string().trim().min(1).max(120).regex(/^[A-Za-z0-9_.:-]+$/);
 const revisionSchema = z.string().trim().min(1).max(120);
@@ -18,40 +17,18 @@ export const SOCIAL_PUBLICATION_EXECUTION_MIGRATION_VERSION = "20260901_website_
 export const SOCIAL_PUBLICATION_EXECUTION_MIGRATION_CHECKSUM = "sha256:9c9a95c3f29d0c912b6b0c226fea873569809f49ebc8f1a66ab32699bde85bba";
 export const SOCIAL_COMMENT_EXECUTION_MIGRATION_VERSION = "20260901_website_42_social_comment_execution_v1";
 export const SOCIAL_COMMENT_EXECUTION_MIGRATION_CHECKSUM = "sha256:c9a5512469d8894ccbdebf5c051d7471aef1f9d59973b6a71f5d0f2b7618155d";
-export const SOCIAL_PUBLICATION_UAT_NEON = {
-  projectId: "young-term-47483330",
-  branchId: "br-crimson-mouse-az7ajkv8",
-  endpointId: "ep-mute-frost-aztvz394",
-  database: "neondb",
-  role: "ccpun_social_runtime",
-} as const;
+export const SOCIAL_PUBLICATION_UAT_NEON = SOCIAL_UAT_NEON_IDENTITY;
 
-function isExactUatConnectionString(value: string | undefined) {
-  if (!value) return false;
-  try {
-    const url = new URL(value);
-    return url.protocol === "postgresql:"
-      && decodeURIComponent(url.username) === SOCIAL_PUBLICATION_UAT_NEON.role
-      && Boolean(url.password)
-      && decodeURIComponent(url.pathname.slice(1)) === SOCIAL_PUBLICATION_UAT_NEON.database
-      && [
-        `${SOCIAL_PUBLICATION_UAT_NEON.endpointId}.c-3.ap-southeast-1.aws.neon.tech`,
-        `${SOCIAL_PUBLICATION_UAT_NEON.endpointId}-pooler.c-3.ap-southeast-1.aws.neon.tech`,
-      ].includes(url.hostname);
-  } catch {
-    return false;
-  }
+export function resolveSocialPublicationRuntime(env: Record<string, string | undefined> = process.env) {
+  if (env.CCPUN_SOCIAL_OPERATIONS_ENABLED !== "1") return null;
+  return resolveSocialRuntime(env, {
+    uatBranches: [WEBSITE_42_SOCIAL_ANALYTICS_BRANCH],
+    requireUatNeon: true,
+  });
 }
 
 export function isSocialPublicationApprovalEnabled(env: Record<string, string | undefined> = process.env) {
-  const projectId = env.VERCEL_PROJECT_ID?.trim() || env.NEXT_PUBLIC_CCPUN_VERCEL_PROJECT_ID?.trim();
-  return env.CCPUN_SOCIAL_OPERATIONS_ENABLED === "1"
-    && parseAdminEnvironment(env.CCPUN_APP_ENV) === "admin-uat"
-    && projectId === CCPUN_VERCEL_PROJECT_IDS.adminProduction
-    && env.VERCEL_GIT_COMMIT_REF?.trim() === WEBSITE_42_SOCIAL_ANALYTICS_BRANCH
-    && env.NEXT_PUBLIC_SANITY_PROJECT_ID?.trim() === WEBSITE_42_SANITY_PROJECT_ID
-    && env.NEXT_PUBLIC_SANITY_DATASET?.trim() === WEBSITE_42_SANITY_DATASET
-    && isExactUatConnectionString(env.CCPUN_SOCIAL_DATABASE_URL?.trim());
+  return Boolean(resolveSocialPublicationRuntime(env));
 }
 
 export function isSocialProviderExecutionGateEnabled(env: Record<string, string | undefined> = process.env) {

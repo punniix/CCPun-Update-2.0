@@ -7,11 +7,12 @@ import { getSocialAnalyticsIngestionRuntimeStatus } from "@/lib/admin/social/ana
 import { getSocialProviderReadiness } from "@/lib/admin/social/provider-readonly";
 import { YouTubeReadOnlyPanel } from "./provider-readonly-panels";
 
-export const metadata: Metadata = { title: "YouTube Connection UAT" };
+export const metadata: Metadata = { title: "YouTube Connection" };
 
 export default async function YouTubeConnectionUatPage() {
   await requireAdminPermission("social:read");
-  if (!getSocialOperationsRuntimeStatus().enabled) notFound();
+  const runtime = getSocialOperationsRuntimeStatus();
+  if (!runtime.enabled || runtime.environment === "production-admin") notFound();
   const readiness = getSocialProviderReadiness("youtube");
   const missing = readiness.required.filter((item) => !item.valid).map((item) => item.name);
   return <div>

@@ -5,15 +5,14 @@ import { neon } from "@neondatabase/serverless";
 import { createClient, groq } from "next-sanity";
 import { z } from "zod";
 import { getAdminSanityReadToken } from "../sanity-credentials";
-import { WEBSITE_42_SANITY_DATASET, WEBSITE_42_SANITY_PROJECT_ID } from "./foundation";
 import {
   SOCIAL_COMMENT_EXECUTION_MIGRATION_CHECKSUM,
   SOCIAL_COMMENT_EXECUTION_MIGRATION_VERSION,
   SOCIAL_PUBLICATION_EXECUTION_MIGRATION_CHECKSUM,
   SOCIAL_PUBLICATION_EXECUTION_MIGRATION_VERSION,
-  SOCIAL_PUBLICATION_UAT_NEON,
   isSocialPublicationApprovalEnabled,
   planSocialPublicationApproval,
+  resolveSocialPublicationRuntime,
 } from "./publishing";
 
 export { isSocialPublicationApprovalEnabled };
@@ -159,12 +158,14 @@ function assertApprovedCommentBinding(
   });
 }
 
-function sanityReadClient() {
+function sanityReadClient(env: Record<string, string | undefined>) {
+  const runtime = resolveSocialPublicationRuntime(env);
+  if (!runtime) throw new Error("SOCIAL_PUBLICATION_APPROVAL_NOT_CONFIGURED");
   const token = getAdminSanityReadToken();
   if (!token) throw new Error("SOCIAL_SANITY_READ_NOT_CONFIGURED");
   return createClient({
-    projectId: WEBSITE_42_SANITY_PROJECT_ID,
-    dataset: WEBSITE_42_SANITY_DATASET,
+    projectId: runtime.sanityProjectId,
+    dataset: runtime.sanityDataset,
     apiVersion: "2026-08-20",
     token,
     useCdn: false,
@@ -172,8 +173,8 @@ function sanityReadClient() {
   });
 }
 
-async function readCurrentApprovedVariant(variantId: string) {
-  const client = sanityReadClient();
+async function readCurrentApprovedVariant(variantId: string, env: Record<string, string | undefined>) {
+  const client = sanityReadClient(env);
   const publishedId = variantId.replace(/^drafts\./, "");
   const draftId = `drafts.${publishedId}`;
   const raw = await client.fetch(groq`coalesce(
@@ -206,7 +207,7 @@ async function readCurrentApprovedVariant(variantId: string) {
 }
 
 export async function listApprovedSocialVariants(env: Record<string, string | undefined> = process.env) {
-  const client = sanityReadClient();
+  const client = sanityReadClient(env);
   const raw = await client.fetch(groq`*[
     _type == "socialVariant"
     && review.status == "approved"
@@ -287,7 +288,9 @@ export async function listApprovedSocialVariants(env: Record<string, string | un
 }
 
 async function verifiedSql(env: Record<string, string | undefined>) {
-  if (!isSocialPublicationApprovalEnabled(env)) throw new Error("SOCIAL_PUBLICATION_APPROVAL_NOT_CONFIGURED");
+  const runtime = resolveSocialPublicationRuntime(env);
+  if (!runtime) throw new Error("SOCIAL_PUBLICATION_APPROVAL_NOT_CONFIGURED");
+  const identity = runtime.neonIdentity;
   const sql = neon(env.CCPUN_SOCIAL_DATABASE_URL!.trim(), { fetchOptions: { signal: AbortSignal.timeout(15_000) } });
   const rows = await sql.query(
     `SELECT current_database() AS database_name,current_user AS role_name,
@@ -297,12 +300,11 @@ async function verifiedSql(env: Record<string, string | undefined>) {
          AND endpoint_id=$7 AND database_name=$8) AS identity_current`,
     [SOCIAL_PUBLICATION_EXECUTION_MIGRATION_VERSION, SOCIAL_PUBLICATION_EXECUTION_MIGRATION_CHECKSUM,
       SOCIAL_COMMENT_EXECUTION_MIGRATION_VERSION, SOCIAL_COMMENT_EXECUTION_MIGRATION_CHECKSUM,
-      SOCIAL_PUBLICATION_UAT_NEON.projectId, SOCIAL_PUBLICATION_UAT_NEON.branchId,
-      SOCIAL_PUBLICATION_UAT_NEON.endpointId, SOCIAL_PUBLICATION_UAT_NEON.database],
+      identity.projectId, identity.branchId, identity.endpointId, identity.database],
   ) as Array<{ database_name: string; role_name: string; execution_ledger_current: boolean; comment_ledger_current: boolean; identity_current: boolean }>;
   const row = rows[0];
-  if (!row || row.database_name !== SOCIAL_PUBLICATION_UAT_NEON.database
-    || row.role_name !== SOCIAL_PUBLICATION_UAT_NEON.role || !row.execution_ledger_current
+  if (!row || row.database_name !== identity.database
+    || row.role_name !== identity.role || !row.execution_ledger_current
     || !row.comment_ledger_current || !row.identity_current) {
     throw new Error("SOCIAL_PUBLICATION_APPROVAL_IDENTITY_MISMATCH");
   }
@@ -315,8 +317,9 @@ export async function approveSocialPublication(input: {
   requestId: string;
   env?: Record<string, string | undefined>;
 }) {
+  const env = input.env ?? process.env;
   const request = socialPublicationApprovalRequestSchema.parse(input.request);
-  const variant = await readCurrentApprovedVariant(request.variantId);
+  const variant = await readCurrentApprovedVariant(request.variantId, env);
   const now = new Date().toISOString();
   const plan = planSocialPublicationApproval({
     variantId: variant.variantId,
@@ -336,7 +339,6 @@ export async function approveSocialPublication(input: {
   });
   if (plan.state !== "ready" || !plan.jobType || !plan.publicationStatus) throw new Error("SOCIAL_PUBLICATION_REVISION_CONFLICT");
 
-  const env = input.env ?? process.env;
   const sql = await verifiedSql(env);
   const publicationId = `publication:${digest(plan.idempotencyKey).slice(0, 32)}`;
   const jobId = `job:${digest(`${plan.idempotencyKey}:job`).slice(0, 32)}`;

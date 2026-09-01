@@ -3,10 +3,13 @@ import { SYNTHETIC_MARKET_PROVIDER_FIXTURES } from "./providers/ubersuggest";
 
 export const WEBSITE_42_SEO_BRANCH = "codex/website-42-seo-observation-assembler-20260829";
 export const WEBSITE_42_GOOGLE_PROVIDER_BRANCH = "codex/website-42-google-provider-prep-20260829";
+export const WEBSITE_42_SEO_PRODUCTION_BRANCH = "v4-production";
 export const WEBSITE_42_SEO_RULE_VERSION = "seo-intelligence-core-v1";
 export const WEBSITE_42_SEO_BASELINE_VERSION = "synthetic-uat-v1";
 export const WEBSITE_42_SEO_SANITY_PROJECT_ID = "ccb9lnw5";
 export const WEBSITE_42_SEO_SANITY_DATASET = "uat";
+export const WEBSITE_42_SEO_PRODUCTION_SANITY_PROJECT_ID = "kyfxgjnq";
+export const WEBSITE_42_SEO_PRODUCTION_SANITY_DATASET = "production";
 
 export const SEO_BRAND_TERMS = ["ccpun", "cc pun", "ปั้น"] as const;
 
@@ -268,17 +271,28 @@ export function getSyntheticSeoIntelligenceSnapshot() {
 export function isSeoIntelligenceEnabled(input: {
   flag: string | undefined;
   environment: AdminEnvironment;
+  vercelEnvironment: string | undefined;
   projectId: string | undefined;
+  productionAdminProjectId: string | undefined;
   gitBranch: string | undefined;
   sanityProjectId: string | undefined;
   sanityDataset: string | undefined;
 }): boolean {
-  return input.flag === "1" &&
-    input.environment === "admin-uat" &&
-    input.projectId === CCPUN_VERCEL_PROJECT_IDS.adminProduction &&
+  if (input.flag !== "1" || input.projectId !== CCPUN_VERCEL_PROJECT_IDS.adminProduction) return false;
+
+  const uatLane = input.environment === "admin-uat" &&
     (input.gitBranch === WEBSITE_42_SEO_BRANCH || input.gitBranch === WEBSITE_42_GOOGLE_PROVIDER_BRANCH) &&
     input.sanityProjectId === WEBSITE_42_SEO_SANITY_PROJECT_ID &&
     input.sanityDataset === WEBSITE_42_SEO_SANITY_DATASET;
+
+  const productionLane = input.environment === "production-admin" &&
+    input.vercelEnvironment === "production" &&
+    input.productionAdminProjectId === CCPUN_VERCEL_PROJECT_IDS.adminProduction &&
+    input.gitBranch === WEBSITE_42_SEO_PRODUCTION_BRANCH &&
+    input.sanityProjectId === WEBSITE_42_SEO_PRODUCTION_SANITY_PROJECT_ID &&
+    input.sanityDataset === WEBSITE_42_SEO_PRODUCTION_SANITY_DATASET;
+
+  return uatLane || productionLane;
 }
 
 export function getSeoIntelligenceRuntimeStatus() {
@@ -288,7 +302,9 @@ export function getSeoIntelligenceRuntimeStatus() {
     enabled: isSeoIntelligenceEnabled({
       flag: process.env.CCPUN_SEO_INTELLIGENCE_ENABLED,
       environment,
+      vercelEnvironment: process.env.VERCEL_ENV?.trim(),
       projectId: process.env.VERCEL_PROJECT_ID?.trim() || process.env.NEXT_PUBLIC_CCPUN_VERCEL_PROJECT_ID?.trim(),
+      productionAdminProjectId: process.env.CCPUN_PRODUCTION_ADMIN_VERCEL_PROJECT_ID?.trim() || process.env.NEXT_PUBLIC_CCPUN_PRODUCTION_ADMIN_VERCEL_PROJECT_ID?.trim(),
       gitBranch: process.env.VERCEL_GIT_COMMIT_REF?.trim(),
       sanityProjectId: process.env.NEXT_PUBLIC_SANITY_PROJECT_ID?.trim(),
       sanityDataset: process.env.NEXT_PUBLIC_SANITY_DATASET?.trim(),

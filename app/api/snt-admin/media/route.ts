@@ -5,6 +5,7 @@ import { hasAdminPermission } from "@/lib/admin/rbac";
 import {
   getMediaLibraryRuntimeStatus,
   getMediaStorageProviderState,
+  isGoogleDriveSelectedFileVerificationEnabled,
   mediaLibrarySnapshotSchema,
   SYNTHETIC_MEDIA_LIBRARY,
 } from "@/lib/admin/media/foundation";
@@ -48,7 +49,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const identity = await getAdminIdentity();
   if (!identity) return NextResponse.json({ error: "unauthorized" }, { status: 401, headers: NO_STORE_HEADERS });
-  if (identity.actorType !== "human" || !hasAdminPermission(identity.role, "social:read")) {
+  if (identity.actorType !== "human" || identity.role !== "owner" || !hasAdminPermission(identity.role, "social:read")) {
     return NextResponse.json({ error: "forbidden" }, { status: 403, headers: NO_STORE_HEADERS });
   }
   if (
@@ -57,7 +58,7 @@ export async function POST(request: Request) {
   ) {
     return NextResponse.json({ error: "forbidden-origin" }, { status: 403, headers: NO_STORE_HEADERS });
   }
-  if (!getMediaLibraryRuntimeStatus().enabled) {
+  if (!isGoogleDriveSelectedFileVerificationEnabled(process.env)) {
     return NextResponse.json({ error: "not-found" }, { status: 404, headers: NO_STORE_HEADERS });
   }
 

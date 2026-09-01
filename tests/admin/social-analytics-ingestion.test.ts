@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import test from "node:test";
@@ -8,16 +9,14 @@ const migrationChecksum = "sha256:ea2ba4d0a028569cbc53cc2fe7cdcdb0ecfa1df3ae777e
 const historyMigrationVersion = "20260901_website_42_social_provider_native_history";
 const historyMigrationChecksum = "sha256:cc4c2516ad261983d3d3997796711fb9b0290afe8625ab82fc002f4536bc549c";
 
-test("analytics ingestion opens only on the exact Admin and Neon UAT lane", () => {
+test("analytics ingestion delegates exact UAT and Production identity to the centralized runtime", () => {
   const service = read("lib/admin/social/analytics-ingestion.ts");
   for (const required of [
     /CCPUN_SOCIAL_ANALYTICS_INGESTION_ENABLED === "1"/,
-    /=== "admin-uat"/,
     /WEBSITE_42_SOCIAL_ANALYTICS_BRANCH/,
-    /WEBSITE_42_SANITY_PROJECT_ID/,
-    /WEBSITE_42_SANITY_DATASET/,
-    /decodeURIComponent\(url\.username\) === UAT_NEON\.role/,
-    /Boolean\(url\.password\)/,
+    /resolveSocialRuntime/,
+    /requireUatNeon: true/,
+    /runtime\.neonIdentity/,
   ]) assert.match(service, required);
   for (const duplicate of ["CCPUN_NEON_PROJECT_ID", "CCPUN_NEON_BRANCH_ID", "CCPUN_NEON_ENDPOINT_ID", "CCPUN_NEON_DATABASE"]) {
     assert.doesNotMatch(service, new RegExp(duplicate));
@@ -40,6 +39,30 @@ test("analytics migration is checksum-locked, UAT-identified and least privilege
   assert.match(migration, /IF NOT EXISTS \(SELECT 1 FROM pg_roles WHERE rolname = 'ccpun_social_runtime'\)/);
   assert.doesNotMatch(migration, /CREATE ROLE|DROP TABLE|DELETE FROM|TRUNCATE/i);
   assert.doesNotMatch(source, /access.?token|refresh.?token|client.?secret/i);
+});
+
+test("Production bootstrap is atomic, Production-identified and keeps frozen UAT migrations untouched", () => {
+  const cwd = new URL("../..", import.meta.url);
+  const bootstrap = execFileSync(process.execPath, ["scripts/build-social-production-bootstrap.mjs"], { cwd, encoding: "utf8" });
+  const readback = execFileSync(process.execPath, ["scripts/build-social-production-bootstrap.mjs", "--readback"], { cwd, encoding: "utf8" });
+  for (const identity of ["lively-bar-43618798", "br-long-resonance-b3ys5xrv", "ep-broad-butterfly-b3ro7u8w", "neondb"]) {
+    assert.match(bootstrap, new RegExp(identity));
+    assert.match(readback, new RegExp(identity));
+  }
+  for (const uatIdentity of ["young-term-47483330", "br-crimson-mouse-az7ajkv8", "ep-mute-frost-aztvz394"]) {
+    assert.doesNotMatch(bootstrap, new RegExp(uatIdentity));
+  }
+  assert.equal((bootstrap.match(/^BEGIN;$/gm) ?? []).length, 1);
+  assert.equal((bootstrap.match(/^COMMIT;$/gm) ?? []).length, 1);
+  assert.match(bootstrap, /20260901_website_42_social_analytics_ingestion_production/);
+  assert.match(bootstrap, /sha256:ef14d2a6c6c86ce16610fb63d73e46e647fc60f3233e1c20b0489b422899e76e/);
+  assert.match(readback, /runtime_role_restricted/);
+  assert.match(readback, /NOT role\.rolinherit/);
+  assert.match(readback, /pg_auth_members/);
+  assert.match(readback, /unsafe_publication_grants_denied/);
+  for (const privilege of ["DELETE", "TRUNCATE", "REFERENCES", "TRIGGER"]) {
+    assert.match(readback, new RegExp(`has_table_privilege\\('ccpun_social_runtime',[\\s\\S]*'${privilege}'\\)`));
+  }
 });
 
 test("readback avoids broad catalog checks and verifies every write boundary", () => {
@@ -69,7 +92,7 @@ test("provider-native history is additive, checksum-locked and change-only", () 
   assert.doesNotMatch(migration, /DROP TABLE|DELETE FROM|TRUNCATE/i);
 
   const service = read("lib/admin/social/analytics-ingestion.ts");
-  assert.match(service, new RegExp(historyMigrationVersion));
+  assert.match(read("lib/admin/social/runtime.ts"), new RegExp(historyMigrationVersion));
   assert.match(service, /14 \* 24 \* 60 \* 60 \* 1000/);
   assert.match(service, /ON CONFLICT \(content_id,content_hash\) DO NOTHING/);
   assert.match(service, /ON CONFLICT \(content_id,metrics_hash\) DO NOTHING/);

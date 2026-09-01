@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import { CCPUN_VERCEL_PROJECT_IDS } from "../../lib/admin/environment";
 import { SYNTHETIC_SOCIAL_FOUNDATION } from "../../lib/admin/social/foundation";
 import { SYNTHETIC_PUBLISHED_SOCIAL_RECORDS } from "../../lib/admin/social/operations";
 import {
+  isSyntheticPostLiveRuntimeEnabled,
   normalizePostLiveSnapshot,
   postLiveSnapshotSchema,
   SYNTHETIC_POST_LIVE_REPORT,
@@ -36,6 +38,36 @@ test("Provider-neutral contract exposes unavailable and unsupported states witho
   assert.equal(postLiveSnapshotSchema.safeParse({ ...base, fetchedAt: "2026-08-28T08:00:00.000Z" }).success, false);
 });
 
+test("synthetic Post-Live runtime is UAT-only and fails closed in Production", () => {
+  const uatEnv = {
+    CCPUN_SOCIAL_OPERATIONS_ENABLED: "1",
+    CCPUN_APP_ENV: "admin-uat",
+    VERCEL_PROJECT_ID: CCPUN_VERCEL_PROJECT_IDS.adminProduction,
+    VERCEL_GIT_COMMIT_REF: "codex/website-42-social-analytics-ingestion-20260831",
+    NEXT_PUBLIC_SANITY_PROJECT_ID: "ccb9lnw5",
+    NEXT_PUBLIC_SANITY_DATASET: "uat",
+  };
+  assert.equal(isSyntheticPostLiveRuntimeEnabled(uatEnv), true);
+  assert.equal(isSyntheticPostLiveRuntimeEnabled({ ...uatEnv, CCPUN_SOCIAL_OPERATIONS_ENABLED: "0" }), false);
+
+  const productionEnv = {
+    CCPUN_SOCIAL_OPERATIONS_ENABLED: "1",
+    CCPUN_APP_ENV: "production-admin",
+    VERCEL_ENV: "production",
+    VERCEL_PROJECT_ID: CCPUN_VERCEL_PROJECT_IDS.adminProduction,
+    CCPUN_PRODUCTION_ADMIN_VERCEL_PROJECT_ID: CCPUN_VERCEL_PROJECT_IDS.adminProduction,
+    VERCEL_GIT_COMMIT_REF: "v4-production",
+    NEXT_PUBLIC_SANITY_PROJECT_ID: "kyfxgjnq",
+    NEXT_PUBLIC_SANITY_DATASET: "production",
+    CCPUN_NEON_PROJECT_ID: "production-project-id",
+    CCPUN_NEON_BRANCH_ID: "br-production-id",
+    CCPUN_NEON_ENDPOINT_ID: "ep-production-id",
+    CCPUN_NEON_DATABASE: "production_social",
+    CCPUN_SOCIAL_DATABASE_URL: "postgresql://ccpun_social_runtime:secret@ep-production-id-pooler.ap-southeast-1.aws.neon.tech/production_social",
+  };
+  assert.equal(isSyntheticPostLiveRuntimeEnabled(productionEnv), false);
+});
+
 test("Post-Live preview route is authenticated, exact-origin and GET-only", () => {
   const route = read("app/api/snt-admin/social/analytics/post-live/route.ts");
   const page = read("features/admin/social/post-live-page.tsx");
@@ -44,14 +76,15 @@ test("Post-Live preview route is authenticated, exact-origin and GET-only", () =
   assert.match(route, /getAdminIdentity\(\)/);
   assert.match(route, /hasAdminPermission\(identity\.role, "social:read"\)/);
   assert.match(route, /isConfiguredAdminOrigin\(request\.url, process\.env\.AUTH_URL\)/);
-  assert.match(route, /getSocialOperationsRuntimeStatus\(\)\.enabled/);
+  assert.match(route, /isSyntheticPostLiveRuntimeEnabled\(process\.env\)/);
   assert.match(route, /export async function GET\(request: Request\)/);
   assert.doesNotMatch(route, /export async function (?:POST|PUT|PATCH|DELETE)/);
   assert.doesNotMatch(route, /fetch\(|setInterval|cron|createClient/);
   assert.match(page, /requireAdminPermission\("social:read"\)/);
+  assert.match(page, /runtime\.environment === "production-admin"/);
   assert.match(page, /Real-time polling, background sync/);
   assert.equal(entry.trim(), 'export { metadata, default } from "@/features/admin/social/post-live-page";');
-  assert.match(operations, /distribution\/analytics\/post-live/);
+  assert.match(operations, /showDeferredConnections \? <Link href="\/snt-admin\/distribution\/analytics\/post-live\/"/);
 });
 
 test("Post-Live ingestion normalizes historical provider evidence without enabling provider calls", () => {

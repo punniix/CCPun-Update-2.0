@@ -1,11 +1,14 @@
 import { z } from "zod";
-import { CCPUN_VERCEL_PROJECT_IDS, parseAdminEnvironment } from "../environment";
-import { WEBSITE_42_SANITY_DATASET, WEBSITE_42_SANITY_PROJECT_ID } from "./foundation";
+import {
+  resolveSocialRuntime,
+  SOCIAL_UAT_ANALYTICS_BRANCH,
+  SOCIAL_UAT_PROVIDER_BRANCH,
+} from "./runtime";
 
 if (typeof window !== "undefined") throw new Error("SOCIAL_PROVIDER_READINESS_SERVER_ONLY");
 
-export const WEBSITE_42_SOCIAL_PROVIDER_BRANCH = "codex/website-42-social-provider-readonly-20260831";
-export const WEBSITE_42_SOCIAL_ANALYTICS_BRANCH = "codex/website-42-social-analytics-ingestion-20260831";
+export const WEBSITE_42_SOCIAL_PROVIDER_BRANCH = SOCIAL_UAT_PROVIDER_BRANCH;
+export const WEBSITE_42_SOCIAL_ANALYTICS_BRANCH = SOCIAL_UAT_ANALYTICS_BRANCH;
 export const SOCIAL_READ_ONLY_SCOPES = {
   meta: ["pages_show_list", "pages_read_engagement", "instagram_basic"],
   youtube: ["https://www.googleapis.com/auth/youtube.readonly"],
@@ -24,19 +27,15 @@ export function getSocialProviderReadiness(
   env: Record<string, string | undefined> = process.env,
 ) {
   const provider = providerSchema.parse(providerValue);
-  const environment = parseAdminEnvironment(env.CCPUN_APP_ENV);
-  const projectId = env.VERCEL_PROJECT_ID?.trim() || env.NEXT_PUBLIC_CCPUN_VERCEL_PROJECT_ID?.trim();
-  const laneReady = env.CCPUN_SOCIAL_PROVIDER_READS_ENABLED === "1"
-    && environment === "admin-uat"
-    && projectId === CCPUN_VERCEL_PROJECT_IDS.adminProduction
-    && [WEBSITE_42_SOCIAL_PROVIDER_BRANCH, WEBSITE_42_SOCIAL_ANALYTICS_BRANCH].includes(env.VERCEL_GIT_COMMIT_REF?.trim() ?? "")
-    && env.NEXT_PUBLIC_SANITY_PROJECT_ID?.trim() === WEBSITE_42_SANITY_PROJECT_ID
-    && env.NEXT_PUBLIC_SANITY_DATASET?.trim() === WEBSITE_42_SANITY_DATASET;
+  const runtime = resolveSocialRuntime(env, {
+      uatBranches: [WEBSITE_42_SOCIAL_PROVIDER_BRANCH, WEBSITE_42_SOCIAL_ANALYTICS_BRANCH],
+    });
+  const laneReady = env.CCPUN_SOCIAL_PROVIDER_READS_ENABLED === "1" && Boolean(runtime);
   const prefix = provider === "meta" ? "META" : provider === "youtube" ? "YOUTUBE" : "TIKTOK";
   const scopeVariable = `CCPUN_${prefix}_GRANTED_SCOPES`;
   const tokenVariable = `CCPUN_${prefix}_ACCESS_TOKEN`;
   const graphVersion = provider === "meta" ? env.CCPUN_META_GRAPH_VERSION?.trim() : undefined;
-  const analyticsLane = env.VERCEL_GIT_COMMIT_REF?.trim() === WEBSITE_42_SOCIAL_ANALYTICS_BRANCH
+  const analyticsLane = Boolean(runtime)
     && env.CCPUN_SOCIAL_ANALYTICS_INGESTION_ENABLED === "1";
   const scopeReady = provider === "meta"
     ? SOCIAL_READ_ONLY_SCOPES.meta.every((scope) => env[scopeVariable]?.split(",").map((item) => item.trim()).includes(scope))

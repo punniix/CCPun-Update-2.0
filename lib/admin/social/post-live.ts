@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { socialPlatformSchema, SYNTHETIC_SOCIAL_FOUNDATION } from "./foundation";
 import { SYNTHETIC_PUBLISHED_SOCIAL_RECORDS, SYNTHETIC_SOCIAL_ANALYTICS } from "./operations";
+import { resolveSocialRuntime, SOCIAL_UAT_RUNTIME_BRANCHES } from "./runtime";
 
 const boundedId = z.string().trim().min(1).max(120).regex(/^[A-Za-z0-9_.:-]+$/);
 const metricUnitSchema = z.enum(["count", "seconds", "minutes", "percent"]);
@@ -51,6 +52,14 @@ export const postLiveReportSchema = z.object({
   generatedAt: z.string().datetime(),
   snapshots: z.array(postLiveSnapshotSchema).min(1).max(20),
 });
+
+export function isSyntheticPostLiveRuntimeEnabled(
+  env: Record<string, string | undefined> = process.env,
+) {
+  if (env.CCPUN_SOCIAL_OPERATIONS_ENABLED !== "1") return false;
+  const runtime = resolveSocialRuntime(env, { uatBranches: SOCIAL_UAT_RUNTIME_BRANCHES });
+  return runtime?.lane === "uat";
+}
 
 export function normalizePostLiveSnapshot(
   input: Omit<z.input<typeof postLiveSnapshotSchema>, "collectionMode" | "realtimePollingAllowed" | "providerRequestAllowed">,

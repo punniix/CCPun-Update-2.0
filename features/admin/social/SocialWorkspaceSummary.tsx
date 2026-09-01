@@ -29,10 +29,10 @@ function formatDate(value: string | null | undefined) {
 }
 
 function workspaceNotice(workspace: Workspace | null) {
-  if (!workspace) return "กำลังโหลดข้อมูล UAT…";
+  if (!workspace) return "กำลังโหลดข้อมูล…";
   if (workspace.draftError && workspace.publicationError) return "โหลด Drafts และ Publications ไม่สำเร็จ";
-  if (workspace.draftError) return "โหลด Publications ได้ แต่ Drafts ต้องใช้สิทธิ์ Owner หรือ Sanity UAT ยังไม่พร้อม";
-  if (workspace.publicationError) return "โหลด Drafts ได้ แต่ Publications UAT ยังไม่พร้อม";
+  if (workspace.draftError) return "โหลด Publications ได้ แต่ Drafts ต้องใช้สิทธิ์ Owner หรือ Sanity ยังไม่พร้อม";
+  if (workspace.publicationError) return "โหลด Drafts ได้ แต่ Publications ยังไม่พร้อม";
   return "ข้อมูลจาก Sanity Drafts และ publication records จริง";
 }
 
@@ -53,7 +53,7 @@ export function SocialOverviewSummary() {
 
   return <>
     <p aria-live="polite" className="mt-4 text-xs text-white/55">{workspaceNotice(workspace)}</p>
-    <section aria-label="สถานะ Social จาก UAT" className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6">
+    <section aria-label="สถานะ Social" className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6">
       {[
         ["Sanity Drafts", counts.drafts], ["อยู่ระหว่าง Review", counts.review], ["Review approved", counts.approved],
         ["พร้อม/นัดหมาย", counts.scheduled], ["Mobile handoff", counts.handoff], ["เผยแพร่แล้ว", counts.published],

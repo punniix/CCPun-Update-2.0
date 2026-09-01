@@ -1,6 +1,7 @@
 import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
 import {
+  getAdminGoogleOAuthCredentials,
   getLocalAdminCookieNamespace,
   hasStrongAuthSecret,
   isSecureAdminAuthUrl,
@@ -12,14 +13,13 @@ import {
   hasConfiguredAdminUsers,
 } from "@/lib/admin/rbac";
 
-const googleClientId = process.env.AUTH_GOOGLE_ID?.trim();
-const googleClientSecret = process.env.AUTH_GOOGLE_SECRET?.trim();
 const authSecret = process.env.AUTH_SECRET?.trim();
 const authUrl = process.env.AUTH_URL?.trim();
 const adminEnvironment = getAdminEnvironment();
+const googleCredentials = getAdminGoogleOAuthCredentials(adminEnvironment);
 const localCookieNamespace = getLocalAdminCookieNamespace(adminEnvironment);
 
-const googleConfigured = Boolean(googleClientId && googleClientSecret);
+const googleConfigured = Boolean(googleCredentials);
 const adminAuthConfigured = Boolean(
   hasStrongAuthSecret(authSecret) && googleConfigured && hasConfiguredAdminUsers(adminEnvironment) && isSecureAdminAuthUrl(authUrl),
 );
@@ -53,8 +53,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: adminAuthConfigured
     ? [
         Google({
-          clientId: googleClientId!,
-          clientSecret: googleClientSecret!,
+          clientId: googleCredentials!.clientId,
+          clientSecret: googleCredentials!.clientSecret,
         }),
       ]
     : [],

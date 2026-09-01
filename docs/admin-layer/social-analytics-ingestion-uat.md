@@ -1,6 +1,6 @@
-# Social Analytics Ingestion UAT
+# Social Analytics Ingestion — UAT and Gated Production
 
-This stacked lane adds owner-triggered Meta/Instagram, YouTube and TikTok historical metric snapshots to the existing Neon UAT resource. Meta also stores a separate provider-native content registry for downstream analysis without pretending imported posts belong to the Admin publishing lifecycle. It does not create infrastructure, store provider tokens or raw provider payloads, poll in the background, or call a provider write endpoint. Deep Meta reach and YouTube watch-time remain deferred until their additional read scopes are approved.
+This contract adds owner-triggered historical metric snapshots to the exact gated Neon runtime lane. UAT supports Meta/Instagram, YouTube and TikTok; this Production release enables Meta only. Meta also stores a separate provider-native content registry for downstream analysis without pretending imported posts belong to the Admin publishing lifecycle. It does not create infrastructure, store provider tokens or raw provider payloads, poll in the background, or call a provider write endpoint. Deep Meta reach and YouTube watch-time remain deferred until their additional read scopes are approved.
 
 ## Exact Preview lane
 
@@ -17,6 +17,27 @@ This stacked lane adds owner-triggered Meta/Instagram, YouTube and TikTok histor
 
 The existing Admin Auth variables remain required. Never bind this lane to `Production`, `v4-production`, `admin.ccpun.com`, or `ccpun-web`.
 
+## Exact gated Production lane
+
+Production support remains fail-closed and is separate from the Preview lane above. It requires all of the following together:
+
+- Vercel environment: `Production`
+- Git branch: `v4-production`
+- `CCPUN_APP_ENV=production-admin`
+- `CCPUN_PRODUCTION_ADMIN_VERCEL_PROJECT_ID` must equal the Vercel-supplied Production Admin `VERCEL_PROJECT_ID`
+- `NEXT_PUBLIC_SANITY_PROJECT_ID=kyfxgjnq`
+- `NEXT_PUBLIC_SANITY_DATASET=production`
+- `CCPUN_SOCIAL_OPERATIONS_ENABLED=1`
+- `CCPUN_SOCIAL_PROVIDER_READS_ENABLED=1`
+- `CCPUN_SOCIAL_ANALYTICS_INGESTION_ENABLED=1`
+- `CCPUN_NEON_PROJECT_ID=lively-bar-43618798`
+- `CCPUN_NEON_BRANCH_ID=br-long-resonance-b3ys5xrv`
+- `CCPUN_NEON_ENDPOINT_ID=ep-broad-butterfly-b3ro7u8w`
+- `CCPUN_NEON_DATABASE=neondb`
+- `CCPUN_SOCIAL_DATABASE_URL` must be a Sensitive connection for `ccpun_social_runtime` whose endpoint and database match the four Production identity variables above
+
+Generate the reviewed Production bootstrap with `node scripts/build-social-production-bootstrap.mjs` and its readback with the same command plus `--readback`; both must pass against the exact Production identity before enabling ingestion. Keep `CCPUN_SOCIAL_PROVIDER_WRITES_ENABLED` absent or `0` unless a separate exact Production publishing authorization exists. YouTube and TikTok remain outside this release; do not bind their Production token or scope variables.
+
 ## Exact Neon UAT lane
 
 - Project: `young-term-47483330`
@@ -27,7 +48,7 @@ The existing Admin Auth variables remain required. Never bind this lane to `Prod
 
 Apply the complete `db/migrations/20260831_website_42_social_analytics_ingestion.sql` and then `db/migrations/20260901_website_42_social_provider_native_history.sql` in Neon SQL Editor using the existing UAT owner role only after each migration's prerequisite ledger rows match their frozen checksums. Do not apply them to any other project, branch, endpoint or database. Then run the matching `*_readback.sql` files; every returned boolean must be `t`.
 
-Bind `CCPUN_SOCIAL_DATABASE_URL` as a Sensitive connection for `ccpun_social_runtime` to the exact Preview branch only. Never bind an owner role. The application parses the runtime role, exact UAT endpoint and database directly from this URL, then re-verifies `current_user`, `current_database()`, `ccpun_social.system_identity` and every required migration checksum before each database operation. The duplicate `CCPUN_NEON_PROJECT_ID`, `CCPUN_NEON_BRANCH_ID`, `CCPUN_NEON_ENDPOINT_ID` and `CCPUN_NEON_DATABASE` variables are intentionally not used.
+Bind `CCPUN_SOCIAL_DATABASE_URL` as a Sensitive connection for `ccpun_social_runtime` to the exact Preview branch only. Never bind an owner role. The application parses the runtime role, exact UAT endpoint and database directly from this URL, then re-verifies `current_user`, `current_database()`, `ccpun_social.system_identity` and every required migration checksum before each database operation. The duplicate `CCPUN_NEON_PROJECT_ID`, `CCPUN_NEON_BRANCH_ID`, `CCPUN_NEON_ENDPOINT_ID` and `CCPUN_NEON_DATABASE` variables are intentionally not used in UAT; unlike UAT, the gated Production lane requires all four as an additional exact-identity boundary.
 
 The application re-verifies the runtime role, database, both migration checksums and stored resource identity before each manual sync. The first successful Meta sync after the provider-history migration follows cursor pagination for the complete history available to the authorized account. Later manual syncs use the previous success time minus a 14-day overlap; Instagram media is cursor-only, so it stops after the first page wholly older than the overlap window.
 
@@ -68,7 +89,7 @@ Rollback is configuration-only: remove or disable `CCPUN_SOCIAL_ANALYTICS_INGEST
 | Public config | `NEXT_PUBLIC_CCPUN_GOOGLE_DRIVE_APP_ID` | Required numeric Google Cloud project number passed to `PickerBuilder.setAppId`; not the OAuth client ID |
 | Config | `CCPUN_GOOGLE_DRIVE_ADMIN_ROOT_FOLDER_ID` | Required server-side approved Drive root; immutable folder ID, not a secret |
 | Config | `CCPUN_GOOGLE_DRIVE_MEDIA_ROOT_FOLDER_ID` | Required server-side approved media root; immutable folder ID, not a secret |
-| Remove from PR57 | `CCPUN_NEON_PROJECT_ID`, `CCPUN_NEON_BRANCH_ID`, `CCPUN_NEON_ENDPOINT_ID`, `CCPUN_NEON_DATABASE` | Duplicated by the validated URL plus database identity row |
+| Remove from PR57 Preview only | `CCPUN_NEON_PROJECT_ID`, `CCPUN_NEON_BRANCH_ID`, `CCPUN_NEON_ENDPOINT_ID`, `CCPUN_NEON_DATABASE` | Duplicated by the UAT URL plus database identity row; all four are required in the gated Production lane |
 | Remove from PR57 | `CCPUN_SOCIAL_PUBLICATION_APPROVAL_ENABLED` | Approval reuses `CCPUN_SOCIAL_OPERATIONS_ENABLED` and the owner/identity/migration gates |
 | Remove from PR57 | `CCPUN_SOCIAL_DATA_MODE` | Current operations do not use a synthetic/live selector |
 | Legacy only | `CCPUN_SOCIAL_ENABLED` | Retained only for the frozen Foundation branch; do not set on PR57 |
