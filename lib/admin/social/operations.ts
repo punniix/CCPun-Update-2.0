@@ -252,7 +252,6 @@ export function buildSyntheticContentCalendar(
 
 export function isSocialOperationsEnabled(input: {
   flag: string | undefined;
-  dataMode: string | undefined;
   environment: AdminEnvironment;
   projectId: string | undefined;
   gitBranch: string | undefined;
@@ -260,7 +259,6 @@ export function isSocialOperationsEnabled(input: {
   sanityDataset: string | undefined;
 }) {
   return input.flag === "1"
-    && input.dataMode === "synthetic"
     && input.environment === "admin-uat"
     && input.projectId === CCPUN_VERCEL_PROJECT_IDS.adminProduction
     && [WEBSITE_42_SOCIAL_OPERATIONS_BRANCH, WEBSITE_42_SOCIAL_PROVIDER_BRANCH, WEBSITE_42_SOCIAL_ANALYTICS_BRANCH].includes(input.gitBranch ?? "")
@@ -274,7 +272,6 @@ export function getSocialOperationsRuntimeStatus() {
     environment,
     enabled: isSocialOperationsEnabled({
       flag: process.env.CCPUN_SOCIAL_OPERATIONS_ENABLED,
-      dataMode: process.env.CCPUN_SOCIAL_DATA_MODE,
       environment,
       projectId: process.env.VERCEL_PROJECT_ID?.trim() || process.env.NEXT_PUBLIC_CCPUN_VERCEL_PROJECT_ID?.trim(),
       gitBranch: process.env.VERCEL_GIT_COMMIT_REF?.trim(),

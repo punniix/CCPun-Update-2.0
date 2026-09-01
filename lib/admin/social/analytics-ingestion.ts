@@ -15,6 +15,7 @@ export const SOCIAL_ANALYTICS_MIGRATION_VERSION = "20260831_website_42_social_an
 export const SOCIAL_ANALYTICS_MIGRATION_CHECKSUM = "sha256:ea2ba4d0a028569cbc53cc2fe7cdcdb0ecfa1df3ae777ef7baadf9aa08b9950c";
 export const SOCIAL_PROVIDER_HISTORY_MIGRATION_VERSION = "20260901_website_42_social_provider_native_history";
 export const SOCIAL_PROVIDER_HISTORY_MIGRATION_CHECKSUM = "sha256:cc4c2516ad261983d3d3997796711fb9b0290afe8625ab82fc002f4536bc549c";
+export const SOCIAL_ANALYTICS_DASHBOARD_CONTENT_LIMIT = 10_000;
 export const socialAnalyticsProviderSchema = z.enum(["meta", "youtube", "tiktok"]);
 
 const UAT_NEON = {
@@ -42,7 +43,33 @@ const dashboardRowsSchema = z.array(z.object({
   publication_id: z.string().trim().min(1).max(120), provider: socialAnalyticsProviderSchema,
   platform: z.enum(["facebook", "instagram", "youtube", "tiktok"]), platform_object_id: z.string().trim().min(1).max(200),
   fetched_at: z.coerce.date(), native_metrics: z.array(metricSchema).min(1).max(20), limitations: z.array(z.string()).min(1).max(10),
-})).max(400);
+  format: z.string().trim().min(1).max(80).nullable(), published_at: z.coerce.date().nullable(),
+  snapshot_count: z.coerce.number().int().positive(),
+})).max(SOCIAL_ANALYTICS_DASHBOARD_CONTENT_LIMIT * 2);
+const providerDashboardRowsSchema = z.array(z.object({
+  content_id: z.string().trim().min(1).max(120), provider: socialAnalyticsProviderSchema,
+  platform: z.enum(["facebook", "instagram", "youtube", "tiktok"]), provider_object_id: z.string().trim().min(1).max(200),
+  linked_publication_id: z.string().trim().min(1).max(120).nullable(), published_at: z.coerce.date(),
+  text_content: z.string().max(50_000), media_type: z.string().trim().min(1).max(80),
+  permalink_url: z.string().min(1).max(1_000).nullable(), thumbnail_url: z.string().min(1).max(2_000).nullable(),
+  fetched_at: z.coerce.date().nullable(), native_metrics: z.array(metricSchema).min(1).max(20).nullable(),
+  previous_native_metrics: z.array(metricSchema).min(1).max(20).nullable(), snapshot_count: z.coerce.number().int().nonnegative(),
+})).max(SOCIAL_ANALYTICS_DASHBOARD_CONTENT_LIMIT);
+
+function safeProviderUrl(value: string | null, platform: "facebook" | "instagram" | "youtube" | "tiktok", kind: "permalink" | "thumbnail") {
+  if (!value) return null;
+  const allowed = kind === "permalink"
+    ? { facebook: ["facebook.com", "fb.com"], instagram: ["instagram.com"], youtube: ["youtube.com", "youtu.be"], tiktok: ["tiktok.com"] }[platform]
+    : { facebook: ["fbcdn.net"], instagram: ["cdninstagram.com", "fbcdn.net"], youtube: ["ytimg.com", "ggpht.com"], tiktok: ["tiktokcdn.com"] }[platform];
+  try {
+    const url = new URL(value);
+    const host = url.hostname.toLowerCase();
+    return url.protocol === "https:" && !url.username && !url.password
+      && allowed.some((domain) => host === domain || host.endsWith(`.${domain}`)) ? url.toString() : null;
+  } catch {
+    return null;
+  }
+}
 
 function isExactUatConnectionString(value: string | undefined) {
   if (!value) return false;
@@ -61,8 +88,6 @@ export function isSocialAnalyticsIngestionEnabled(env: Record<string, string | u
   return env.CCPUN_SOCIAL_ANALYTICS_INGESTION_ENABLED === "1" && parseAdminEnvironment(env.CCPUN_APP_ENV) === "admin-uat"
     && projectId === CCPUN_VERCEL_PROJECT_IDS.adminProduction && env.VERCEL_GIT_COMMIT_REF?.trim() === WEBSITE_42_SOCIAL_ANALYTICS_BRANCH
     && env.NEXT_PUBLIC_SANITY_PROJECT_ID?.trim() === WEBSITE_42_SANITY_PROJECT_ID && env.NEXT_PUBLIC_SANITY_DATASET?.trim() === WEBSITE_42_SANITY_DATASET
-    && env.CCPUN_NEON_PROJECT_ID?.trim() === UAT_NEON.projectId && env.CCPUN_NEON_BRANCH_ID?.trim() === UAT_NEON.branchId
-    && env.CCPUN_NEON_ENDPOINT_ID?.trim() === UAT_NEON.endpointId && env.CCPUN_NEON_DATABASE?.trim() === UAT_NEON.database
     && isExactUatConnectionString(env.CCPUN_SOCIAL_DATABASE_URL?.trim());
 }
 
@@ -253,20 +278,83 @@ export async function recordSocialAnalyticsFailure(input: {
 
 export async function getSocialAnalyticsDashboard(env: Record<string, string | undefined> = process.env) {
   const sql = await verifiedSql(env);
+  const providerRows = providerDashboardRowsSchema.parse(await sql.query(
+    `SELECT content.id AS content_id,content.provider,content.platform,content.provider_object_id,
+       content.linked_publication_id,content.published_at,content.text_content,content.media_type,
+       content.permalink_url,content.thumbnail_url,latest.fetched_at,latest.native_metrics,
+       previous.native_metrics AS previous_native_metrics,
+       (SELECT count(*) FROM ccpun_social.social_provider_metric_snapshot AS snapshot_count
+        WHERE snapshot_count.content_id=content.id) AS snapshot_count
+     FROM ccpun_social.social_provider_content AS content
+     LEFT JOIN LATERAL (
+       SELECT snapshot.fetched_at,snapshot.native_metrics
+       FROM ccpun_social.social_provider_metric_snapshot AS snapshot
+       WHERE snapshot.content_id=content.id ORDER BY snapshot.fetched_at DESC LIMIT 1
+     ) AS latest ON true
+     LEFT JOIN LATERAL (
+       SELECT snapshot.native_metrics
+       FROM ccpun_social.social_provider_metric_snapshot AS snapshot
+       WHERE snapshot.content_id=content.id ORDER BY snapshot.fetched_at DESC OFFSET 1 LIMIT 1
+     ) AS previous ON true
+     ORDER BY content.published_at DESC LIMIT $1`,
+    [SOCIAL_ANALYTICS_DASHBOARD_CONTENT_LIMIT],
+  ));
   const rows = dashboardRowsSchema.parse(await sql.query(
-    `SELECT publication_id,provider,platform,platform_object_id,fetched_at,native_metrics,limitations
-     FROM ccpun_social.social_metric_snapshot ORDER BY fetched_at DESC LIMIT 400`,
+    `WITH ranked AS (
+       SELECT snapshot.publication_id,snapshot.provider,snapshot.platform,snapshot.platform_object_id,
+         snapshot.fetched_at,snapshot.native_metrics,snapshot.limitations,publication.published_at,
+         variant.format,row_number() OVER (PARTITION BY snapshot.publication_id ORDER BY snapshot.fetched_at DESC) AS snapshot_rank,
+         count(*) OVER (PARTITION BY snapshot.publication_id) AS snapshot_count
+       FROM ccpun_social.social_metric_snapshot AS snapshot
+       LEFT JOIN ccpun_social.social_publication AS publication ON publication.id=snapshot.publication_id
+       LEFT JOIN ccpun_social.social_variant_link AS variant ON variant.variant_id=publication.variant_id
+     )
+     SELECT publication_id,provider,platform,platform_object_id,fetched_at,native_metrics,limitations,format,published_at,snapshot_count
+     FROM ranked WHERE snapshot_rank <= 2 ORDER BY fetched_at DESC LIMIT $1`,
+    [SOCIAL_ANALYTICS_DASHBOARD_CONTENT_LIMIT * 2],
   ));
   const grouped = new Map<string, typeof rows>();
   for (const row of rows) grouped.set(row.publication_id, [...(grouped.get(row.publication_id) ?? []), row]);
-  return [...grouped.values()].map((snapshots) => {
+  const providerItems = providerRows.map((content) => {
+    const previous = new Map(content.previous_native_metrics?.map((metric) => [metric.key, metric.value]) ?? []);
+    return {
+      publicationId: content.linked_publication_id ?? content.content_id,
+      contentId: content.content_id,
+      linkedPublicationId: content.linked_publication_id,
+      provider: content.provider,
+      platform: content.platform,
+      platformObjectId: content.provider_object_id,
+      fetchedAt: content.fetched_at?.toISOString() ?? content.published_at.toISOString(),
+      snapshotCount: content.snapshot_count,
+      format: content.media_type,
+      mediaType: content.media_type,
+      title: null,
+      text: content.text_content.trim() || null,
+      permalink: safeProviderUrl(content.permalink_url, content.platform, "permalink"),
+      thumbnail: safeProviderUrl(content.thumbnail_url, content.platform, "thumbnail"),
+      publishedAt: content.published_at.toISOString(),
+      source: "provider-content" as const,
+      metrics: (content.native_metrics ?? []).map((metric) => ({
+        ...metric,
+        delta: previous.has(metric.key) ? metric.value - previous.get(metric.key)! : null,
+      })),
+      limitation: "Provider-native content history; an unlinked item has no CCPun publication lifecycle yet",
+    };
+  });
+  const providerObjects = new Set(providerItems.map((item) => `${item.provider}:${item.platform}:${item.platformObjectId}`));
+  const publicationItems = [...grouped.values()].map((snapshots) => {
     const latest = snapshots[0]!;
     const previous = new Map(snapshots[1]?.native_metrics.map((metric) => [metric.key, metric.value]) ?? []);
     return {
       publicationId: latest.publication_id, provider: latest.provider, platform: latest.platform,
-      platformObjectId: latest.platform_object_id, fetchedAt: latest.fetched_at.toISOString(), snapshotCount: snapshots.length,
+      platformObjectId: latest.platform_object_id, fetchedAt: latest.fetched_at.toISOString(), snapshotCount: latest.snapshot_count,
+      contentId: null, linkedPublicationId: latest.publication_id, format: latest.format ?? "unknown", mediaType: null,
+      title: null, text: null, permalink: null, thumbnail: null, publishedAt: latest.published_at?.toISOString() ?? null,
+      source: "publication-snapshot" as const,
       metrics: latest.native_metrics.map((metric) => ({ ...metric, delta: previous.has(metric.key) ? metric.value - previous.get(metric.key)! : null })),
       limitation: latest.limitations[0],
     };
   });
+  return [...providerItems, ...publicationItems.filter((item) => !providerObjects.has(`${item.provider}:${item.platform}:${item.platformObjectId}`))]
+    .sort((a, b) => Date.parse(b.publishedAt ?? b.fetchedAt) - Date.parse(a.publishedAt ?? a.fetchedAt));
 }

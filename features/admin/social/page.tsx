@@ -40,7 +40,7 @@ export default async function SocialFoundationUatPage() {
   await requireAdminPermission("social:read");
   const runtime = getSocialFoundationRuntimeStatus();
   if (!runtime.enabled && getSocialOperationsRuntimeStatus().enabled) {
-    redirect("/snt-admin/distribution/operations/");
+    redirect("/snt-admin/distribution/overview/");
   }
   const mediaRuntime = getMediaLibraryRuntimeStatus();
   if (!runtime.enabled && !mediaRuntime.enabled) notFound();

@@ -16,12 +16,15 @@ test("analytics ingestion opens only on the exact Admin and Neon UAT lane", () =
     /WEBSITE_42_SOCIAL_ANALYTICS_BRANCH/,
     /WEBSITE_42_SANITY_PROJECT_ID/,
     /WEBSITE_42_SANITY_DATASET/,
-    /CCPUN_NEON_PROJECT_ID[\s\S]*UAT_NEON\.projectId/,
-    /CCPUN_NEON_BRANCH_ID[\s\S]*UAT_NEON\.branchId/,
-    /CCPUN_NEON_ENDPOINT_ID[\s\S]*UAT_NEON\.endpointId/,
     /decodeURIComponent\(url\.username\) === UAT_NEON\.role/,
     /Boolean\(url\.password\)/,
   ]) assert.match(service, required);
+  for (const duplicate of ["CCPUN_NEON_PROJECT_ID", "CCPUN_NEON_BRANCH_ID", "CCPUN_NEON_ENDPOINT_ID", "CCPUN_NEON_DATABASE"]) {
+    assert.doesNotMatch(service, new RegExp(duplicate));
+  }
+  assert.match(service, /identity_current/);
+  assert.match(service, /SOCIAL_ANALYTICS_MIGRATION_CHECKSUM/);
+  assert.match(service, /SOCIAL_PROVIDER_HISTORY_MIGRATION_CHECKSUM/);
   assert.match(service, /import "server-only"/);
 });
 
@@ -101,4 +104,43 @@ test("manual provider persistence stays human-only, same-origin and provider-wri
   assert.match(panel, /Sync และบันทึกสถิติย้อนหลัง/);
   assert.match(dashboard, /ไม่รวม Views\/Reach ข้ามแพลตฟอร์ม/);
   assert.match(dashboard, /metric\.delta/);
+});
+
+test("Unified dashboard includes every current provider-content row and exact-dedupes linked snapshots", () => {
+  const service = read("lib/admin/social/analytics-ingestion.ts");
+  const dashboard = read("features/admin/social/analytics-page.tsx");
+  assert.match(service, /FROM ccpun_social\.social_provider_content AS content/);
+  assert.match(service, /SOCIAL_ANALYTICS_DASHBOARD_CONTENT_LIMIT = 10_000/);
+  assert.match(service, /ORDER BY content\.published_at DESC LIMIT \$1[\s\S]*SOCIAL_ANALYTICS_DASHBOARD_CONTENT_LIMIT/);
+  assert.match(service, /LEFT JOIN LATERAL[\s\S]*ORDER BY snapshot\.fetched_at DESC LIMIT 1/);
+  assert.match(service, /OFFSET 1 LIMIT 1/);
+  assert.match(service, /content\.linked_publication_id/);
+  assert.match(service, /format: content\.media_type/);
+  assert.match(service, /mediaType: content\.media_type/);
+  assert.match(service, /text: content\.text_content\.trim\(\) \|\| null/);
+  assert.match(service, /permalink: safeProviderUrl\(content\.permalink_url/);
+  assert.match(service, /thumbnail: safeProviderUrl\(content\.thumbnail_url/);
+  assert.match(service, /publishedAt: content\.published_at\.toISOString\(\)/);
+  assert.match(service, /providerObjects[\s\S]*provider[\s\S]*platform[\s\S]*platformObjectId/);
+  assert.match(service, /publicationItems\.filter/);
+  assert.doesNotMatch(service, /social_provider_content[\s\S]{0,500}LIMIT (?:379|400)\b/);
+  assert.doesNotMatch(dashboard, /SYNTHETIC_SOCIAL_OPERATIONS|formatByPublication/);
+});
+
+test("dashboard suppresses stored non-HTTPS and non-provider URLs before rendering", () => {
+  const service = read("lib/admin/social/analytics-ingestion.ts");
+  assert.match(service, /function safeProviderUrl/);
+  assert.match(service, /url\.protocol === "https:"/);
+  assert.match(service, /host\.endsWith\(`\.\$\{domain\}`\)/);
+  assert.match(service, /permalink: safeProviderUrl\(content\.permalink_url, content\.platform, "permalink"\)/);
+  assert.match(service, /thumbnail: safeProviderUrl\(content\.thumbnail_url, content\.platform, "thumbnail"\)/);
+});
+
+test("Every manual Meta sync upserts newly discovered unlinked content without a fixed baseline count", () => {
+  const service = read("lib/admin/social/analytics-ingestion.ts");
+  assert.match(service, /providerContents\.flatMap/);
+  assert.match(service, /linkedPublicationId: linked\.get\([\s\S]*\) \?\? null/);
+  assert.match(service, /ON CONFLICT \(provider,platform,provider_object_id\) DO UPDATE SET/);
+  assert.match(service, /14 \* 24 \* 60 \* 60 \* 1000/);
+  assert.doesNotMatch(service, /\b379\b/);
 });
