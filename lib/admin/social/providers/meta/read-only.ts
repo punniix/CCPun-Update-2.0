@@ -17,10 +17,13 @@ const responseSchema = z.object({
   })).max(20),
 });
 const summarySchema = z.object({ summary: z.object({ total_count: z.number().int().nonnegative().safe() }) });
+const metaDateTimeSchema = z.string()
+  .transform((value) => value.replace(/([+-]\d{2})(\d{2})$/, "$1:$2"))
+  .pipe(z.string().datetime({ offset: true }));
 const facebookPostsSchema = z.object({ data: z.array(z.object({
   id: z.string().trim().min(1).max(200),
   message: z.string().max(5000).optional().default(""),
-  created_time: z.string().datetime({ offset: true }),
+  created_time: metaDateTimeSchema,
   permalink_url: z.string().url().max(1000).optional(),
   shares: z.object({ count: z.number().int().nonnegative().safe() }).optional(),
   comments: summarySchema.optional(),
@@ -30,7 +33,7 @@ const instagramMediaSchema = z.object({ data: z.array(z.object({
   id: z.string().trim().min(1).max(200),
   caption: z.string().max(5000).optional().default(""),
   media_type: z.string().trim().min(1).max(40),
-  timestamp: z.string().datetime({ offset: true }),
+  timestamp: metaDateTimeSchema,
   permalink: z.string().url().max(1000).optional(),
   like_count: z.number().int().nonnegative().safe().optional(),
   comments_count: z.number().int().nonnegative().safe().optional(),

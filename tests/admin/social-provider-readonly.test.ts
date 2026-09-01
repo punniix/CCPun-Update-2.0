@@ -49,10 +49,10 @@ test("Meta discovery accepts a scoped system-user token and returns only sanitiz
       { id: "page-1", name: "CCPun", instagram_business_account: { id: "ig-1", username: "ccpun" } },
     ] }), { status: 200 });
     if (url.includes("/published_posts")) return new Response(JSON.stringify({ data: [{
-      id: "facebook-post-1", message: "One", created_time: "2026-08-31T10:00:00+00:00",
+      id: "facebook-post-1", message: "One", created_time: "2026-08-31T10:00:00+0000",
       shares: { count: 3 }, comments: { summary: { total_count: 2 } }, reactions: { summary: { total_count: 10 } },
     }] }));
-    return new Response(JSON.stringify({ data: [{ id: "ig-post-1", caption: "IG", media_type: "IMAGE", timestamp: "2026-08-31T10:00:00+00:00", like_count: 20, comments_count: 4 }] }));
+    return new Response(JSON.stringify({ data: [{ id: "ig-post-1", caption: "IG", media_type: "IMAGE", timestamp: "2026-08-31T10:00:00+0000", like_count: 20, comments_count: 4 }] }));
   });
   assert.match(requests[0]!.url, /^https:\/\/graph\.facebook\.com\/v24\.0\/me\/accounts\?/);
   assert.equal(requests.every((request) => !request.url.includes("meta-access")), true);
@@ -62,6 +62,8 @@ test("Meta discovery accepts a scoped system-user token and returns only sanitiz
   assert.equal(result.providerRequestAllowed, true);
   assert.equal(result.providerWriteAllowed, false);
   assert.equal(JSON.stringify(result).includes("meta-access"), false);
+  assert.equal(result.facebookPosts[0]?.publishedAt, "2026-08-31T10:00:00+00:00");
+  assert.equal(result.instagramMedia[0]?.publishedAt, "2026-08-31T10:00:00+00:00");
   assert.deepEqual(result.facebookPosts[0]?.metrics, { likes: 10, comments: 2, shares: 3 });
   const matched = matchMetaHistoricalAnalytics([
     { publicationId: "facebook-publication", platform: "facebook", platformObjectId: "facebook-post-1" },
