@@ -24,6 +24,15 @@ function providerError(provider: string, code: string) {
   return null;
 }
 
+function databaseError(error: unknown) {
+  const code = typeof error === "object" && error !== null && "code" in error
+    && typeof error.code === "string" ? error.code : "";
+  if (code === "28P01") return { error: "database-auth-required", status: 409 };
+  if (code === "42501") return { error: "database-forbidden", status: 409 };
+  if (["3D000", "3F000", "42P01"].includes(code)) return { error: "database-not-ready", status: 409 };
+  return { error: "database-unavailable", status: 503 };
+}
+
 export async function POST(request: Request, context: { params: Promise<{ provider: string }> }) {
   const parsed = socialAnalyticsProviderSchema.safeParse((await context.params).provider);
   if (!parsed.success) return NextResponse.json({ error: "not-found" }, { status: 404 });
@@ -50,7 +59,8 @@ export async function POST(request: Request, context: { params: Promise<{ provid
       return NextResponse.json({ error: mapped.error, requestId }, { status: mapped.status, headers: mapped.status === 429 ? { "Retry-After": "60" } : undefined });
     }
     if (code === "SOCIAL_ANALYTICS_NOT_CONFIGURED" || code === "SOCIAL_ANALYTICS_IDENTITY_MISMATCH") return NextResponse.json({ error: "database-not-ready", requestId }, { status: 409 });
-    return NextResponse.json({ error: "database-unavailable", requestId }, { status: 503 });
+    const database = databaseError(error);
+    return NextResponse.json({ error: database.error, requestId }, { status: database.status });
   } finally {
     inFlight.delete(provider);
   }

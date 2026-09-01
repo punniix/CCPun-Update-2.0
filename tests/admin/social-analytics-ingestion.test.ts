@@ -58,6 +58,9 @@ test("manual provider persistence stays human-only, same-origin and provider-wri
   assert.match(route, /isSameOriginAdminMutation\(request\.url, request\.headers\.get\("origin"\)\)/);
   assert.match(route, /socialAnalyticsProviderSchema\.safeParse/);
   assert.match(route, /export async function POST\(request: Request/);
+  assert.match(route, /code === "28P01"[\s\S]*database-auth-required/);
+  assert.match(route, /code === "42501"[\s\S]*database-forbidden/);
+  assert.match(route, /\["3D000", "3F000", "42P01"\][\s\S]*database-not-ready/);
   assert.doesNotMatch(route, /export async function (?:GET|PUT|PATCH|DELETE)/);
   assert.match(service, /variant\.channel IN \('facebook','instagram','youtube','tiktok'\)/);
   assert.match(service, /fetchMetaReadOnlyDiscovery/);
