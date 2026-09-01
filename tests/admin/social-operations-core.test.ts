@@ -12,6 +12,7 @@ import {
   SYNTHETIC_SOCIAL_OPERATIONS,
   WEBSITE_42_SOCIAL_OPERATIONS_BRANCH,
 } from "../../lib/admin/social/operations";
+import { WEBSITE_42_SOCIAL_PROVIDER_BRANCH } from "../../lib/admin/social/provider-readonly";
 
 const read = (path: string) => readFileSync(new URL(`../../${path}`, import.meta.url), "utf8");
 
@@ -27,6 +28,7 @@ const enabledInput = {
 
 test("Social operations requires the exact Admin UAT lane", () => {
   assert.equal(isSocialOperationsEnabled(enabledInput), true);
+  assert.equal(isSocialOperationsEnabled({ ...enabledInput, gitBranch: WEBSITE_42_SOCIAL_PROVIDER_BRANCH }), true);
   for (const change of [
     { flag: "0" },
     { dataMode: "live" },
