@@ -28,7 +28,9 @@ test("Provider readiness requires the exact UAT lane and exact read-only scopes"
   assert.equal(meta.providerWriteAllowed, false);
   assert.equal(meta.backgroundSyncAllowed, false);
   assert.equal(JSON.stringify(meta).includes("not-returned"), false);
-  assert.equal(getSocialProviderReadiness("meta", { ...lane, CCPUN_META_ACCESS_TOKEN: "x", CCPUN_META_GRAPH_VERSION: "v24.0", CCPUN_META_GRANTED_SCOPES: "pages_show_list,pages_read_engagement,instagram_basic,pages_manage_posts" }).status, "configuration-required");
+  const metaWithPublishingScope = getSocialProviderReadiness("meta", { ...lane, CCPUN_META_ACCESS_TOKEN: "x", CCPUN_META_GRAPH_VERSION: "v24.0", CCPUN_META_GRANTED_SCOPES: "pages_show_list,pages_read_engagement,instagram_basic,pages_manage_posts" });
+  assert.equal(metaWithPublishingScope.status, "manual-sync-ready");
+  assert.equal(metaWithPublishingScope.providerWriteAllowed, false);
   assert.equal(getSocialProviderReadiness("youtube", { ...lane, CCPUN_YOUTUBE_ACCESS_TOKEN: "x", CCPUN_YOUTUBE_GRANTED_SCOPES: "https://www.googleapis.com/auth/youtube.readonly" }).status, "manual-sync-ready");
   assert.equal(getSocialProviderReadiness("tiktok", { ...lane, CCPUN_TIKTOK_ACCESS_TOKEN: "x", CCPUN_TIKTOK_GRANTED_SCOPES: "user.info.basic,video.list", CCPUN_APP_ENV: "production-admin" }).status, "configuration-required");
 });

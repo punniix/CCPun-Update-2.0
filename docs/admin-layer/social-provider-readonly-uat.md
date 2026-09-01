@@ -23,7 +23,7 @@ Required Preview variables for the exact branch:
 
 - `CCPUN_META_ACCESS_TOKEN` — server-only Secret
 - `CCPUN_META_GRAPH_VERSION` — Config copied from the approved Meta app's current Graph API version; the application intentionally has no guessed default
-- `CCPUN_META_GRANTED_SCOPES=pages_show_list,pages_read_engagement,instagram_basic`
+- `CCPUN_META_GRANTED_SCOPES` — comma-separated scopes actually granted to the UAT token; reads require at least `pages_show_list,pages_read_engagement,instagram_basic`. Publishing scopes may be present for later UAT, but every provider write remains disabled in this release.
 - `CCPUN_META_PAGE_ID` — optional explicit Page selection; required when the account manages more than one Page
 
 The accepted scope set is exact. Publishing and Page-management permissions are rejected. Manual Sync reads Page/Instagram identity plus native engagement counters for at most 20 recent items. The response never includes the User or Page credential.

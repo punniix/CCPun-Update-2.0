@@ -35,7 +35,9 @@ export function getSocialProviderReadiness(
   const scopeVariable = `CCPUN_${prefix}_GRANTED_SCOPES`;
   const tokenVariable = `CCPUN_${prefix}_ACCESS_TOKEN`;
   const graphVersion = provider === "meta" ? env.CCPUN_META_GRAPH_VERSION?.trim() : undefined;
-  const scopeReady = exactScopes(env[scopeVariable], SOCIAL_READ_ONLY_SCOPES[provider]);
+  const scopeReady = provider === "meta"
+    ? SOCIAL_READ_ONLY_SCOPES.meta.every((scope) => env[scopeVariable]?.split(",").map((item) => item.trim()).includes(scope))
+    : exactScopes(env[scopeVariable], SOCIAL_READ_ONLY_SCOPES[provider]);
   const tokenReady = Boolean(env[tokenVariable]?.trim());
   const versionReady = provider !== "meta" || /^v\d{1,2}\.\d{1,2}$/.test(graphVersion ?? "");
 
@@ -55,6 +57,6 @@ export function getSocialProviderReadiness(
     scopes: [...SOCIAL_READ_ONLY_SCOPES[provider]],
     providerWriteAllowed: false as const,
     backgroundSyncAllowed: false as const,
-    limitation: "เจ้าของต้องกด Sync เอง ข้อมูลไม่ถูกบันทึก และไม่มี publishing/upload scope",
+    limitation: "เจ้าของต้องกด Sync เอง ข้อมูลไม่ถูกบันทึก และ provider writes ยังปิดแม้ token มี publishing scope",
   };
 }
