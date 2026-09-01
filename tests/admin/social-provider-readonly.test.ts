@@ -111,6 +111,25 @@ test("Meta history follows cursors and applies the 14-day window without putting
   assert.equal(requests.every((url) => !url.includes("meta-secret")), true);
 });
 
+test("Meta auth diagnostics log only safe endpoint and provider codes", async () => {
+  const original = console.error;
+  const logs: unknown[][] = [];
+  console.error = (...values) => logs.push(values);
+  try {
+    await assert.rejects(fetchMetaReadOnlyDiscovery({
+      ...lane,
+      CCPUN_META_ACCESS_TOKEN: "meta-secret",
+      CCPUN_META_GRAPH_VERSION: "v26.0",
+      CCPUN_META_GRANTED_SCOPES: "pages_show_list,pages_read_engagement,instagram_basic",
+    }, async () => new Response(JSON.stringify({ error: { type: "OAuthException", code: 190, error_subcode: 463, message: "secret detail" } }), { status: 401 })), /META_READ_AUTH_REQUIRED/);
+  } finally {
+    console.error = original;
+  }
+  assert.deepEqual(logs, [["[meta-read]", { endpoint: "/v26.0/me/accounts", status: 401, graphType: "OAuthException", graphCode: 190, graphSubcode: 463 }]]);
+  assert.equal(JSON.stringify(logs).includes("meta-secret"), false);
+  assert.equal(JSON.stringify(logs).includes("secret detail"), false);
+});
+
 test("YouTube manual read returns channel and recent video metrics without exposing the token", async () => {
   const requests: string[] = [];
   const result = await fetchYouTubeReadOnlyDiscovery({

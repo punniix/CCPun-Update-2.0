@@ -64,6 +64,17 @@ async function request(url: string, token: string, fetcher: FetchLike) {
     if (error instanceof Error && ["TimeoutError", "AbortError"].includes(error.name)) throw new Error("META_READ_TIMEOUT");
     throw new Error("META_READ_UNAVAILABLE");
   }
+  if (!response.ok) {
+    const body = await response.json().catch(() => null) as { error?: { type?: unknown; code?: unknown; error_subcode?: unknown } } | null;
+    const endpoint = new URL(url).pathname;
+    console.error("[meta-read]", {
+      endpoint,
+      status: response.status,
+      graphType: typeof body?.error?.type === "string" ? body.error.type : undefined,
+      graphCode: typeof body?.error?.code === "number" ? body.error.code : undefined,
+      graphSubcode: typeof body?.error?.error_subcode === "number" ? body.error.error_subcode : undefined,
+    });
+  }
   if (response.status === 401 || response.status === 403) throw new Error("META_READ_AUTH_REQUIRED");
   if (response.status === 429) throw new Error("META_READ_RATE_LIMITED");
   if (!response.ok) throw new Error("META_READ_UNAVAILABLE");
