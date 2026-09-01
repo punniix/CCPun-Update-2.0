@@ -7,6 +7,8 @@ import { z } from "zod";
 import { getAdminSanityReadToken } from "../sanity-credentials";
 import { WEBSITE_42_SANITY_DATASET, WEBSITE_42_SANITY_PROJECT_ID } from "./foundation";
 import {
+  SOCIAL_COMMENT_EXECUTION_MIGRATION_CHECKSUM,
+  SOCIAL_COMMENT_EXECUTION_MIGRATION_VERSION,
   SOCIAL_PUBLICATION_EXECUTION_MIGRATION_CHECKSUM,
   SOCIAL_PUBLICATION_EXECUTION_MIGRATION_VERSION,
   SOCIAL_PUBLICATION_UAT_NEON,
@@ -17,6 +19,16 @@ import {
 export { isSocialPublicationApprovalEnabled };
 
 const boundedId = z.string().trim().min(1).max(120).regex(/^[A-Za-z0-9_.:-]+$/);
+const commentSeriesSchema = z.array(z.object({
+  position: z.number().int().min(1).max(20),
+  text: z.string().min(1).max(2_000),
+})).max(20).superRefine((comments, context) => {
+  comments.forEach((comment, index) => {
+    if (comment.position !== index + 1) {
+      context.addIssue({ code: "custom", path: [index, "position"], message: "Comment positions must be consecutive and ordered" });
+    }
+  });
+});
 export const socialPublicationApprovalRequestSchema = z.strictObject({
   variantId: boundedId,
   expectedRevision: z.string().trim().min(1).max(120),
@@ -34,6 +46,8 @@ const sanityVariantSchema = z.object({
   publishingMode: z.enum(["direct", "native-scheduled", "native-finish"]),
   reviewStatus: z.literal("approved"),
   linkUrl: z.string().url().refine((value) => new URL(value).protocol === "https:").nullable(),
+  commentSeriesMode: z.enum(["top-level", "threaded"]),
+  commentSeries: commentSeriesSchema,
 });
 
 const sanityExecutableVariantSchema = sanityVariantSchema.extend({
@@ -60,6 +74,9 @@ const sanityExecutableVariantSchema = sanityVariantSchema.extend({
     valid = media.length === 1 && media[0]?.role === "primary" && media[0]?.mimeType === "video/mp4";
   }
   if (!valid) context.addIssue({ code: "custom", path: ["mediaBindings"], message: "Approved media binding is incomplete" });
+  if (variant.platform !== "facebook" && variant.commentSeries.length > 0) {
+    context.addIssue({ code: "custom", path: ["commentSeries"], message: "Comment Series belongs to Facebook only" });
+  }
 });
 
 const approvedVariantListSchema = z.array(sanityVariantSchema.extend({
@@ -99,6 +116,13 @@ const approvedSnapshotRowsSchema = z.array(z.object({
   job_version: z.number().int().min(1),
   attempt_count: z.number().int().min(0),
 })).max(1);
+const approvedCommentRowsSchema = z.array(z.object({
+  id: boundedId,
+  position: z.number().int().min(1).max(20),
+  parent_item_id: boundedId.nullable(),
+  status: z.enum(["draft", "approved", "queued", "processing", "published", "failed", "cancelled"]),
+  platform_comment_id: z.string().trim().min(1).max(200).nullable(),
+})).max(20);
 
 function digest(value: string) {
   return createHash("sha256").update(value).digest("hex");
@@ -110,6 +134,29 @@ function safeActorRef(actor: string) {
 
 function sameSchedule(existing: Date | null, requested: string | null) {
   return existing?.toISOString() === requested || (existing === null && requested === null);
+}
+
+function commentIdentity(idempotencyKey: string, position: number) {
+  return `comment:${digest(`${idempotencyKey}:comment:${position}`).slice(0, 32)}`;
+}
+
+function assertApprovedCommentBinding(
+  rows: z.infer<typeof approvedCommentRowsSchema>,
+  idempotencyKey: string,
+  mode: "top-level" | "threaded",
+  comments: z.infer<typeof commentSeriesSchema>,
+) {
+  if (rows.length !== comments.length) throw new Error("SOCIAL_COMMENT_SERIES_PERSISTENCE_CONFLICT");
+  rows.forEach((row, index) => {
+    const position = index + 1;
+    const expectedId = commentIdentity(idempotencyKey, position);
+    const expectedParentId = mode === "threaded" && position > 1
+      ? commentIdentity(idempotencyKey, position - 1)
+      : null;
+    if (row.id !== expectedId || row.position !== position || row.parent_item_id !== expectedParentId) {
+      throw new Error("SOCIAL_COMMENT_SERIES_PERSISTENCE_CONFLICT");
+    }
+  });
 }
 
 function sanityReadClient() {
@@ -141,6 +188,8 @@ async function readCurrentApprovedVariant(variantId: string) {
     format,
     publishingMode,
     "linkUrl": coalesce(linkUrl, null),
+    "commentSeriesMode": coalesce(commentSeriesMode, "top-level"),
+    "commentSeries": coalesce(commentSeries[] | order(position asc){ position, text }, []),
     "mediaBindings": coalesce(mediaReferences[]{
       assetId,
       role,
@@ -170,6 +219,8 @@ export async function listApprovedSocialVariants(env: Record<string, string | un
     "platform": channel,
     format,
     publishingMode,
+    "commentSeriesMode": coalesce(commentSeriesMode, "top-level"),
+    "commentSeries": coalesce(commentSeries[] | order(position asc){ position, text }, []),
     "reviewStatus": review.status,
     title,
     "caption": coalesce(caption, null),
@@ -219,6 +270,8 @@ export async function listApprovedSocialVariants(env: Record<string, string | un
       title: variant.title,
       caption: variant.caption,
       linkUrl: variant.linkUrl,
+      commentSeriesMode: variant.commentSeriesMode,
+      commentSeries: variant.commentSeries,
       mediaMetadata: variant.mediaMetadata,
       publication: publication ? {
         publicationId: publication.publication_id,
@@ -238,16 +291,19 @@ async function verifiedSql(env: Record<string, string | undefined>) {
   const sql = neon(env.CCPUN_SOCIAL_DATABASE_URL!.trim(), { fetchOptions: { signal: AbortSignal.timeout(15_000) } });
   const rows = await sql.query(
     `SELECT current_database() AS database_name,current_user AS role_name,
-       EXISTS (SELECT 1 FROM ccpun_social.schema_migration WHERE version=$1 AND checksum=$2) AS ledger_current,
-       EXISTS (SELECT 1 FROM ccpun_social.system_identity WHERE singleton=true AND project_id=$3 AND branch_id=$4
-         AND endpoint_id=$5 AND database_name=$6) AS identity_current`,
+       EXISTS (SELECT 1 FROM ccpun_social.schema_migration WHERE version=$1 AND checksum=$2) AS execution_ledger_current,
+       EXISTS (SELECT 1 FROM ccpun_social.schema_migration WHERE version=$3 AND checksum=$4) AS comment_ledger_current,
+       EXISTS (SELECT 1 FROM ccpun_social.system_identity WHERE singleton=true AND project_id=$5 AND branch_id=$6
+         AND endpoint_id=$7 AND database_name=$8) AS identity_current`,
     [SOCIAL_PUBLICATION_EXECUTION_MIGRATION_VERSION, SOCIAL_PUBLICATION_EXECUTION_MIGRATION_CHECKSUM,
+      SOCIAL_COMMENT_EXECUTION_MIGRATION_VERSION, SOCIAL_COMMENT_EXECUTION_MIGRATION_CHECKSUM,
       SOCIAL_PUBLICATION_UAT_NEON.projectId, SOCIAL_PUBLICATION_UAT_NEON.branchId,
       SOCIAL_PUBLICATION_UAT_NEON.endpointId, SOCIAL_PUBLICATION_UAT_NEON.database],
-  ) as Array<{ database_name: string; role_name: string; ledger_current: boolean; identity_current: boolean }>;
+  ) as Array<{ database_name: string; role_name: string; execution_ledger_current: boolean; comment_ledger_current: boolean; identity_current: boolean }>;
   const row = rows[0];
   if (!row || row.database_name !== SOCIAL_PUBLICATION_UAT_NEON.database
-    || row.role_name !== SOCIAL_PUBLICATION_UAT_NEON.role || !row.ledger_current || !row.identity_current) {
+    || row.role_name !== SOCIAL_PUBLICATION_UAT_NEON.role || !row.execution_ledger_current
+    || !row.comment_ledger_current || !row.identity_current) {
     throw new Error("SOCIAL_PUBLICATION_APPROVAL_IDENTITY_MISMATCH");
   }
   return sql;
@@ -297,6 +353,12 @@ export async function approveSocialPublication(input: {
   ))[0] ?? null;
   const existing = await readApprovedSnapshot();
   if (existing) {
+    const existingComments = approvedCommentRowsSchema.parse(await sql.query(
+      `SELECT id,position,parent_item_id,status,platform_comment_id
+       FROM ccpun_social.social_comment_item WHERE publication_id=$1 ORDER BY position`,
+      [existing.publication_id],
+    ));
+    assertApprovedCommentBinding(existingComments, existing.idempotency_key, variant.commentSeriesMode, variant.commentSeries);
     const unchanged = existing.execution_target === plan.executionTarget
       && sameSchedule(existing.scheduled_at, request.scheduledAt);
     if (unchanged) {
@@ -380,6 +442,22 @@ export async function approveSocialPublication(input: {
        ON CONFLICT (idempotency_key) DO NOTHING`,
       [jobId, publicationId, plan.jobType, `${plan.idempotencyKey}:job`, plan.executionTarget],
     ),
+    ...variant.commentSeries.map((comment) => {
+      const commentId = commentIdentity(plan.idempotencyKey, comment.position);
+      const parentId = variant.commentSeriesMode === "threaded" && comment.position > 1
+        ? commentIdentity(plan.idempotencyKey, comment.position - 1)
+        : null;
+      return transaction.query(
+        `INSERT INTO ccpun_social.social_comment_item
+         (id,publication_id,position,parent_item_id,status,idempotency_key)
+         SELECT $1,$2,$3,$4,'approved',$5
+         FROM ccpun_social.social_publication
+         WHERE id=$2 AND approved_revision=$6 AND approved_version=$7
+         ON CONFLICT (idempotency_key) DO NOTHING`,
+        [commentId, publicationId, comment.position, parentId,
+          `${plan.idempotencyKey}:comment:${comment.position}`, variant.revision, variant.version],
+      );
+    }),
     ...(plan.executionTarget === "instagram-mobile-handoff" ? [transaction.query(
       `INSERT INTO ccpun_social.social_mobile_handoff
        (id,publication_id,variant_id,approved_revision,approved_version,media_asset_ids,status,idempotency_key)
@@ -402,6 +480,12 @@ export async function approveSocialPublication(input: {
 
   const persisted = await readApprovedSnapshot();
   if (!persisted) throw new Error("SOCIAL_PUBLICATION_PERSISTENCE_CONFLICT");
+  const persistedComments = approvedCommentRowsSchema.parse(await sql.query(
+    `SELECT id,position,parent_item_id,status,platform_comment_id
+     FROM ccpun_social.social_comment_item WHERE publication_id=$1 ORDER BY position`,
+    [persisted.publication_id],
+  ));
+  assertApprovedCommentBinding(persistedComments, persisted.idempotency_key, variant.commentSeriesMode, variant.commentSeries);
   return { ...plan, idempotencyKey: persisted.idempotency_key,
     publicationId: persisted.publication_id, jobId: persisted.job_id };
 }

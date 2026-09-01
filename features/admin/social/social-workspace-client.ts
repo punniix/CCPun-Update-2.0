@@ -11,6 +11,7 @@ import {
 
 export type { GoogleDriveAuthorization, GoogleDrivePickerFile, SocialMediaReference, VerifiedGoogleDriveFile } from "@/features/admin/social/social-workspace-media";
 export type SocialChannel = "facebook" | "instagram";
+export type SocialCommentSeriesItem = { position: number; text: string };
 
 export type SocialDraftApiItem = {
   variantId: string;
@@ -25,6 +26,8 @@ export type SocialDraftApiItem = {
   publishingMode: string;
   reviewStatus: string;
   mediaReferences: SocialMediaReference[];
+  commentSeriesMode: "top-level" | "threaded";
+  commentSeries: SocialCommentSeriesItem[];
 };
 
 export type SocialMasterContentChoice = {
@@ -46,6 +49,8 @@ export type ApprovedVariantApi = {
   caption: string | null;
   linkUrl: string | null;
   mediaMetadata: SocialMediaReference[];
+  commentSeriesMode: "top-level" | "threaded";
+  commentSeries: SocialCommentSeriesItem[];
   publication: null | {
     publicationId: string;
     status: string;
@@ -105,6 +110,19 @@ function normalizedFormat(platform: SocialChannel, value: string) {
   return platform === "facebook" ? normalizeFacebookFormat(value) ?? value : value;
 }
 
+function commentSeries(value: unknown): SocialCommentSeriesItem[] {
+  if (!Array.isArray(value)) return [];
+  const comments: SocialCommentSeriesItem[] = [];
+  for (const entry of value) {
+    const item = object(entry);
+    if (item && typeof item.position === "number" && Number.isInteger(item.position)
+      && item.position >= 1 && item.position <= 20 && typeof item.text === "string" && item.text.length <= 2_000) {
+      comments.push({ position: item.position, text: item.text });
+    }
+  }
+  return comments.sort((left, right) => left.position - right.position);
+}
+
 function draft(value: unknown): SocialDraftApiItem | null {
   const item = object(value);
   if (!item || typeof item.variantId !== "string" || typeof item.revision !== "string"
@@ -126,6 +144,8 @@ function draft(value: unknown): SocialDraftApiItem | null {
     publishingMode: item.publishingMode,
     reviewStatus: item.reviewStatus,
     mediaReferences: item.mediaReferences.map(mediaReference).filter((entry): entry is SocialMediaReference => Boolean(entry)),
+    commentSeriesMode: item.commentSeriesMode === "threaded" ? "threaded" : "top-level",
+    commentSeries: item.channel === "facebook" ? commentSeries(item.commentSeries) : [],
   };
 }
 
@@ -158,6 +178,8 @@ function approvedVariant(value: unknown): ApprovedVariantApi | null {
     caption: item.caption,
     linkUrl: item.format === "link-post" ? httpsLinkUrl(item.linkUrl) : null,
     mediaMetadata: item.mediaMetadata.map(mediaReference).filter((entry): entry is SocialMediaReference => Boolean(entry)),
+    commentSeriesMode: item.commentSeriesMode === "threaded" ? "threaded" : "top-level",
+    commentSeries: item.platform === "facebook" ? commentSeries(item.commentSeries) : [],
     publication: publication && typeof publication.publicationId === "string" && typeof publication.status === "string" ? {
       publicationId: publication.publicationId,
       status: publication.status,

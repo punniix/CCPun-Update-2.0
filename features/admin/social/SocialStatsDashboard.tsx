@@ -3,6 +3,7 @@
 /* eslint-disable @next/next/no-img-element -- Provider thumbnail hosts are dynamic runtime data. */
 
 import { useMemo, useState } from "react";
+import SocialSheetsExport from "@/features/admin/social/SocialSheetsExport";
 
 type AnalyticsPlatform = "facebook" | "instagram" | "youtube" | "tiktok";
 type MetricUnit = "count" | "seconds" | "minutes";
@@ -179,6 +180,7 @@ export default function SocialStatsDashboard({ items }: { items: SocialAnalytics
 
   return (
     <div className="mt-7">
+      <SocialSheetsExport />
       <section aria-labelledby="social-stats-filter-title" className="rounded-3xl border border-white/10 bg-white/[0.035] p-4 sm:p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>

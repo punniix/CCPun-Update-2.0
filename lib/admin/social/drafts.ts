@@ -63,6 +63,8 @@ export async function getSocialDraftWorkspace() {
         channel,
         format,
         publishingMode,
+        "commentSeriesMode": coalesce(commentSeriesMode, "top-level"),
+        "commentSeries": coalesce(commentSeries[] | order(position asc){ position, text }, []),
         "reviewStatus": review.status,
         "mediaReferences": coalesce(mediaReferences[]{ assetId, role, "order": coalesce(order, null), "mimeType": coalesce(mimeType, null), "sha256Checksum": coalesce(sha256Checksum, null), "widthPx": coalesce(widthPx, null), "heightPx": coalesce(heightPx, null), "durationMs": coalesce(durationMs, null) }, [])
       },

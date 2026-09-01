@@ -3,6 +3,8 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import {
+  SOCIAL_COMMENT_EXECUTION_MIGRATION_CHECKSUM,
+  SOCIAL_COMMENT_EXECUTION_MIGRATION_VERSION,
   SOCIAL_PUBLICATION_EXECUTION_MIGRATION_CHECKSUM,
   SOCIAL_PUBLICATION_EXECUTION_MIGRATION_VERSION,
   canAdvanceSocialVariantProjection,
@@ -14,6 +16,8 @@ import {
 const read = (path: string) => readFileSync(new URL(`../../${path}`, import.meta.url), "utf8");
 const migration = read("db/migrations/20260901_website_42_social_publication_execution_v1.sql");
 const readback = read("db/migrations/20260901_website_42_social_publication_execution_v1_readback.sql");
+const commentMigration = read("db/migrations/20260901_website_42_social_comment_execution_v1.sql");
+const commentReadback = read("db/migrations/20260901_website_42_social_comment_execution_v1_readback.sql");
 
 test("Social publication execution migration is identity-pinned and checksum locked", () => {
   const source = migration.split("-- checksum-source-begin\n")[1]?.split("-- checksum-source-end")[0];
@@ -38,6 +42,21 @@ test("Social publication execution migration is identity-pinned and checksum loc
     assert.match(readback, new RegExp(denial));
   }
   assert.match(readback, new RegExp(SOCIAL_PUBLICATION_EXECUTION_MIGRATION_CHECKSUM));
+});
+
+test("Comment execution privileges ship as an additive checksum-locked migration", () => {
+  const source = commentMigration.split("-- checksum-source-begin\n")[1]?.split("-- checksum-source-end")[0];
+  assert.ok(source);
+  assert.equal(`sha256:${createHash("sha256").update(source).digest("hex")}`, SOCIAL_COMMENT_EXECUTION_MIGRATION_CHECKSUM);
+  assert.equal((commentMigration.match(new RegExp(SOCIAL_COMMENT_EXECUTION_MIGRATION_CHECKSUM, "g")) ?? []).length, 2);
+  assert.match(commentMigration, new RegExp(SOCIAL_COMMENT_EXECUTION_MIGRATION_VERSION));
+  assert.match(commentMigration, new RegExp(SOCIAL_PUBLICATION_EXECUTION_MIGRATION_CHECKSUM));
+  assert.match(commentMigration, /GRANT UPDATE \(status, platform_comment_id, updated_at\)/);
+  assert.match(commentReadback, /BEGIN READ ONLY/);
+  for (const result of ["comment_select", "comment_insert", "comment_status_update", "comment_platform_id_update",
+    "comment_delete_denied", "comment_truncate_denied", "comment_references_denied", "comment_trigger_denied",
+    "comment_table_wide_update_denied"]) assert.match(commentReadback, new RegExp(result));
+  assert.match(commentReadback, new RegExp(SOCIAL_COMMENT_EXECUTION_MIGRATION_CHECKSUM));
 });
 
 test("One approved snapshot retains one execution identity when only its schedule changes", () => {
@@ -119,6 +138,10 @@ test("Approved-variant loader keeps editorial fields in Sanity and joins only op
   assert.match(store, /"revision": _rev/);
   assert.match(store, /title,[\s\S]*"caption": coalesce\(caption, null\)/);
   assert.match(store, /"mediaMetadata": coalesce\(mediaReferences/);
+  assert.match(store, /"commentSeries": coalesce\(commentSeries\[\] \| order\(position asc\)/);
+  assert.match(store, /INSERT INTO ccpun_social\.social_comment_item/);
+  assert.match(store, /approved_revision=\$6 AND approved_version=\$7/);
+  assert.match(store, /assertApprovedCommentBinding/);
   assert.match(store, /SELECT DISTINCT ON \(publication\.variant_id\)[\s\S]*FROM ccpun_social\.social_publication/);
   assert.match(store, /LEFT JOIN LATERAL[\s\S]*social_publication_job/);
   assert.match(store, /jobVersion: publication\.job_version/);

@@ -18,6 +18,10 @@ const mediaReferenceSchema = z.strictObject({
     context.addIssue({ code: "custom", path: ["order"], message: "Only carousel items use an explicit order" });
   }
 });
+const commentSeriesItemSchema = z.strictObject({
+  position: z.number().int().min(1).max(20),
+  text: z.string().min(1).max(2_000).refine((value) => value.trim().length > 0, "Comment text is required"),
+});
 
 const fields = {
   masterContentId: boundedId,
@@ -28,6 +32,8 @@ const fields = {
   format: z.enum(["text-post", "link-post", "image-post", "album", "carousel", "reel", "video", "short", "photo-post", "live"]),
   publishingMode: z.enum(["direct", "native-scheduled", "native-finish"]),
   mediaReferences: z.array(mediaReferenceSchema).max(20).default([]),
+  commentSeriesMode: z.enum(["top-level", "threaded"]).default("top-level"),
+  commentSeries: z.array(commentSeriesItemSchema).max(20).default([]),
 };
 
 const createRequestSchema = z.strictObject({ action: z.literal("create"), ...fields });
@@ -55,6 +61,14 @@ export const socialDraftRequestSchema = z.discriminatedUnion("action", [createRe
     if (request.format !== "link-post" && request.linkUrl !== null) {
       context.addIssue({ code: "custom", path: ["linkUrl"], message: "Only link posts may carry a link URL" });
     }
+    if (request.channel !== "facebook" && request.commentSeries.length > 0) {
+      context.addIssue({ code: "custom", path: ["commentSeries"], message: "Comment Series belongs to a Facebook main post only" });
+    }
+    request.commentSeries.forEach((comment, index) => {
+      if (comment.position !== index + 1) {
+        context.addIssue({ code: "custom", path: ["commentSeries", index, "position"], message: "Comment positions must be consecutive and ordered" });
+      }
+    });
   });
 export type SocialDraftRequest = z.infer<typeof socialDraftRequestSchema>;
 type SocialDraftFields = Omit<SocialDraftRequest, "action" | "variantId" | "expectedRevision">;
@@ -86,6 +100,8 @@ export const socialDraftWorkspaceSchema = z.strictObject({
     publishingMode: fields.publishingMode,
     reviewStatus: z.enum(["drafting", "content-review", "fact-check", "compliance-review", "ready-for-coo", "approved"]),
     mediaReferences: z.array(mediaReferenceSchema).max(20),
+    commentSeriesMode: z.enum(["top-level", "threaded"]),
+    commentSeries: z.array(commentSeriesItemSchema).max(20),
   })).max(200),
   masterContentChoices: z.array(z.strictObject({
     id: boundedId,
@@ -109,6 +125,13 @@ function keyedMedia(references: SocialDraftFields["mediaReferences"]) {
   }));
 }
 
+function keyedComments(comments: SocialDraftFields["commentSeries"]) {
+  return comments.map((comment) => ({
+    _key: createHash("sha256").update(`${comment.position}:${comment.text}`).digest("hex").slice(0, 24),
+    ...comment,
+  }));
+}
+
 function draftFields(input: SocialDraftFields, masterContentId: string) {
   return {
     masterContent: { _type: "reference", _ref: masterContentId },
@@ -119,6 +142,8 @@ function draftFields(input: SocialDraftFields, masterContentId: string) {
     format: input.format,
     publishingMode: input.publishingMode,
     mediaReferences: keyedMedia(input.mediaReferences),
+    commentSeriesMode: input.commentSeriesMode,
+    commentSeries: keyedComments(input.commentSeries),
   };
 }
 

@@ -132,6 +132,10 @@ const contracts: Record<string, RouteContract> = {
     methods: ["GET", "POST"], identity: /getAdminIdentity\(\)/, authorization: /identity\.actorType !== "human" \|\| identity\.role !== "owner"/,
     validation: { file: "app/api/snt-admin/social/drafts/route.ts", pattern: /socialDraftRequestSchema\.safeParse\(await request\.json\(\)\.catch/, },
   },
+  "app/api/snt-admin/social/export/sheets/route.ts": {
+    methods: ["POST"], identity: /getAdminIdentity\(\)/, authorization: /identity\.actorType !== "human" \|\| identity\.role !== "owner"/,
+    validation: { file: "app/api/snt-admin/social/export/sheets/route.ts", pattern: /socialSheetsExportRequestSchema\.safeParse\(await request\.json\(\)\.catch/, },
+  },
   "app/api/snt-admin/social/publications/route.ts": {
     methods: ["GET", "POST"], identity: /getAdminIdentity\(\)/, authorization: /"social:read"[\s\S]*identity\.actorType !== "human" \|\| identity\.role !== "owner"/,
     validation: { file: "app/api/snt-admin/social/publications/route.ts", pattern: /socialPublicationApprovalRequestSchema\.safeParse\(await request\.json\(\)\.catch/, },
@@ -151,6 +155,10 @@ const contracts: Record<string, RouteContract> = {
   "app/api/snt-admin/social/providers/meta/discovery/route.ts": {
     methods: ["POST"], identity: /getAdminIdentity\(\)/, authorization: /"social:read"/,
     validation: { file: "app/api/snt-admin/social/providers/meta/discovery/route.ts", pattern: /isSameOriginAdminMutation\(request\.url, request\.headers\.get\("origin"\)\)/, exception: "No request body; provider selection is server-owned." },
+  },
+  "app/api/snt-admin/social/providers/meta/handoff/route.ts": {
+    methods: ["POST"], identity: /getAdminIdentity\(\)/, authorization: /"social:read"/,
+    validation: { file: "app/api/snt-admin/social/providers/meta/handoff/route.ts", pattern: /googleDriveSelectedFileRequestSchema\.safeParse/, },
   },
   "app/api/snt-admin/social/providers/tiktok/discovery/route.ts": {
     methods: ["POST"], identity: /getAdminIdentity\(\)/, authorization: /"social:read"/,

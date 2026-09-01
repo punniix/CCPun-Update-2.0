@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import { executeSocialPublication } from "../../lib/admin/social/execution-store";
@@ -22,6 +23,11 @@ const enabledEnv = {
   CCPUN_META_GRANTED_SCOPES: "pages_show_list,pages_read_engagement,pages_manage_posts,instagram_basic,instagram_content_publish",
 };
 const approvedSha256 = "a".repeat(64);
+const publicationKey = "social-execution:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+
+function commentId(position: number) {
+  return `comment:${createHash("sha256").update(`${publicationKey}:comment:${position}`).digest("hex").slice(0, 32)}`;
+}
 
 type FakeRow = Record<string, unknown> & {
   publication_id: string;
@@ -40,7 +46,6 @@ type FakeRow = Record<string, unknown> & {
 };
 
 function baseRow(overrides: Record<string, unknown> = {}): FakeRow {
-  const publicationKey = "social-execution:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
   return {
     publication_id: "publication:001",
     variant_id: "socialVariant-001",
@@ -84,19 +89,26 @@ function approvedVariant(overrides: Record<string, unknown> = {}) {
     title: "CCPun post",
     caption: "ข้อความ CCPun",
     linkUrl: null,
+    commentSeriesMode: "top-level" as const,
+    commentSeries: [],
     mediaMetadata: [],
     publication: null,
     ...overrides,
   };
 }
 
-function fakeSql(initial = baseRow()) {
-  const state = { row: { ...initial }, queries: [] as string[] };
+function fakeSql(initial = baseRow(), initialComments: Array<{
+  id: string; position: number; parent_item_id: string | null;
+  status: "approved" | "processing" | "published" | "failed";
+  platform_comment_id: string | null;
+}> = []) {
+  const state = { row: { ...initial }, comments: initialComments.map((comment) => ({ ...comment })), queries: [] as string[] };
   return {
     state,
     sql: {
       async query(query: string, params: unknown[] = []) {
         state.queries.push(query);
+        if (query.includes("social-execution:load-comments")) return state.comments;
         if (query.includes("social-execution:load")) return [state.row];
         if (query.includes("social-execution:deny")) return [];
         if (query.includes("social-execution:claim")) {
@@ -117,6 +129,28 @@ function fakeSql(initial = baseRow()) {
             lock_owner: state.row.lock_owner,
             lock_expires_at: state.row.lock_expires_at,
           }];
+        }
+        if (query.includes("social-execution:checkpoint-main")) {
+          state.row.platform_object_id = String(params[4]);
+          return [{ publication_id: state.row.publication_id }];
+        }
+        if (query.includes("social-execution:comment-start")) {
+          const comment = state.comments.find((item) => item.id === params[4]);
+          if (!comment || comment.status !== "approved") return [];
+          comment.status = "processing";
+          return [{ comment_id: comment.id }];
+        }
+        if (query.includes("social-execution:comment-finish")) {
+          const comment = state.comments.find((item) => item.id === params[4]);
+          if (!comment || comment.status !== "processing") return [];
+          comment.status = "published";
+          comment.platform_comment_id = String(params[5]);
+          return [{ comment_id: comment.id }];
+        }
+        if (query.includes("social-execution:comment-reset")) {
+          const comment = state.comments.find((item) => item.id === params[1]);
+          if (comment?.status === "processing" && !comment.platform_comment_id) comment.status = "approved";
+          return [];
         }
         if (query.includes("social-execution:finish")) {
           state.row.job_status = "succeeded";
@@ -464,6 +498,163 @@ test("Approved Facebook Link Post uses its explicit HTTPS linkUrl and never pars
   assert.equal(result.state, "published");
   assert.equal(requests[1]!.body.get("link"), "https://ccpun.com/link");
   assert.equal(requests[1]!.body.get("message"), "อ่านต่อ");
+});
+
+test("Facebook Comment Series checkpoints the main post then publishes four threaded comments in exact order", async () => {
+  const comments = [1, 2, 3, 4].map((position) => ({
+    id: commentId(position),
+    position,
+    parent_item_id: position === 1 ? null : commentId(position - 1),
+    status: "approved" as const,
+    platform_comment_id: null,
+  }));
+  const database = fakeSql(baseRow(), comments);
+  const providerComments: Array<{ parentObjectId: string; message: string }> = [];
+  const result = await executeSocialPublication({
+    request: { publicationId: "publication:001", expectedJobVersion: 1 },
+    actor: "owner@example.com",
+    requestId: "request-facebook-comments",
+    env: enabledEnv,
+    dependencies: {
+      sql: database.sql,
+      readVariant: async () => approvedVariant({
+        caption: "สรุปสั้น",
+        commentSeriesMode: "threaded",
+        commentSeries: [1, 2, 3, 4].map((position) => ({ position, text: `รายละเอียด ${position}` })),
+      }),
+      fetcher: async (input) => String(input).includes("/me/accounts")
+        ? new Response(JSON.stringify({ data: [{ id: "page-1", access_token: "page-secret" }] }))
+        : new Response(JSON.stringify({ id: "main-post-1" })),
+      publishComment: async (input) => {
+        providerComments.push({ parentObjectId: input.parentObjectId, message: input.message });
+        return { platformCommentId: `provider-comment-${providerComments.length}` };
+      },
+      now: () => new Date("2026-09-01T00:00:00.000Z"),
+    },
+  });
+
+  assert.deepEqual(result, {
+    state: "published",
+    publicationId: "publication:001",
+    jobId: "job:001",
+    platformObjectId: "main-post-1",
+    commentsPublished: 4,
+  });
+  assert.deepEqual(providerComments, [
+    { parentObjectId: "main-post-1", message: "รายละเอียด 1" },
+    { parentObjectId: "provider-comment-1", message: "รายละเอียด 2" },
+    { parentObjectId: "provider-comment-2", message: "รายละเอียด 3" },
+    { parentObjectId: "provider-comment-3", message: "รายละเอียด 4" },
+  ]);
+  assert.deepEqual(database.state.comments.map((comment) => comment.platform_comment_id), [
+    "provider-comment-1", "provider-comment-2", "provider-comment-3", "provider-comment-4",
+  ]);
+  const mainCheckpoint = database.state.queries.findIndex((query) => query.includes("social-execution:checkpoint-main"));
+  const firstComment = database.state.queries.findIndex((query) => query.includes("social-execution:comment-start"));
+  assert.equal(mainCheckpoint >= 0 && firstComment > mainCheckpoint, true);
+});
+
+test("Scheduled Facebook Comment Series fails closed before any provider mutation", async () => {
+  const database = fakeSql(baseRow({
+    execution_target: "facebook-native-scheduled",
+    publishing_mode: "native-scheduled",
+    scheduled_at: "2026-09-02T01:00:00.000Z",
+  }), [{ id: commentId(1), position: 1, parent_item_id: null, status: "approved", platform_comment_id: null }]);
+  let providerCalls = 0;
+  await assert.rejects(executeSocialPublication({
+    request: { publicationId: "publication:001", expectedJobVersion: 1 },
+    actor: "owner@example.com",
+    requestId: "request-scheduled-comments",
+    env: enabledEnv,
+    dependencies: {
+      sql: database.sql,
+      readVariant: async () => approvedVariant({
+        publishingMode: "native-scheduled",
+        commentSeriesMode: "threaded",
+        commentSeries: [{ position: 1, text: "ยังไม่ควรยิง" }],
+      }),
+      fetcher: async () => { providerCalls += 1; return new Response(); },
+      now: () => new Date("2026-09-01T00:00:00.000Z"),
+    },
+  }), /SOCIAL_EXECUTION_SCHEDULED_COMMENTS_UNSUPPORTED/);
+  assert.equal(providerCalls, 0);
+  assert.equal(database.state.row.last_error_category, "conflict");
+});
+
+test("A rate-limited first comment is reset safely and retry resumes without republishing the main post", async () => {
+  const database = fakeSql(baseRow(), [
+    { id: commentId(1), position: 1, parent_item_id: null, status: "approved", platform_comment_id: null },
+  ]);
+  let mainPostCalls = 0;
+  let commentCalls = 0;
+  const request = { publicationId: "publication:001", expectedJobVersion: 1 };
+  const common = {
+    actor: "owner@example.com",
+    env: enabledEnv,
+    dependencies: {
+      sql: database.sql,
+      readVariant: async () => approvedVariant({
+        commentSeriesMode: "top-level",
+        commentSeries: [{ position: 1, text: "คอมเมนต์แรก" }],
+      }),
+      fetcher: async (input: string | URL | Request) => {
+        const url = String(input);
+        if (url.includes("/me/accounts")) return new Response(JSON.stringify({ data: [{ id: "page-1", access_token: "page-secret" }] }));
+        mainPostCalls += 1;
+        return new Response(JSON.stringify({ id: "main-post-1" }));
+      },
+      publishComment: async () => {
+        commentCalls += 1;
+        if (commentCalls === 1) throw new Error("META_API_RATE_LIMITED");
+        return { platformCommentId: "provider-comment-1" };
+      },
+      now: () => new Date("2026-09-01T00:00:00.000Z"),
+    },
+  };
+  await assert.rejects(executeSocialPublication({ ...common, request, requestId: "request-comment-rate-limit" }), /META_API_RATE_LIMITED/);
+  assert.equal(database.state.comments[0]!.status, "approved");
+  assert.equal(database.state.row.platform_object_id, "main-post-1");
+  assert.equal(database.state.row.last_error_category, "rate-limit");
+
+  const result = await executeSocialPublication({
+    ...common,
+    request: { ...request, expectedJobVersion: database.state.row.job_version },
+    requestId: "request-comment-retry",
+  });
+  assert.equal(result.state, "published");
+  assert.equal(mainPostCalls, 1);
+  assert.equal(commentCalls, 2);
+  assert.equal(database.state.comments[0]!.platform_comment_id, "provider-comment-1");
+});
+
+test("Known no-mutation comment errors reset safely while every ambiguous post-start error requires reconciliation", async () => {
+  for (const scenario of [
+    { code: "META_API_INVALID_REQUEST", expectedCommentStatus: "approved", expectedCategory: "invalid-request", expectedError: /SOCIAL_EXECUTION_INVALID_PROVIDER_REQUEST/ },
+    { code: "META_API_TIMEOUT", expectedCommentStatus: "processing", expectedCategory: "unknown", expectedError: /SOCIAL_EXECUTION_RECONCILIATION_REQUIRED/ },
+    { code: "META_API_INVALID_RESPONSE", expectedCommentStatus: "processing", expectedCategory: "unknown", expectedError: /SOCIAL_EXECUTION_RECONCILIATION_REQUIRED/ },
+  ] as const) {
+    const database = fakeSql(baseRow({ platform_object_id: "main-post-existing" }), [
+      { id: commentId(1), position: 1, parent_item_id: null, status: "approved", platform_comment_id: null },
+    ]);
+    await assert.rejects(executeSocialPublication({
+      request: { publicationId: "publication:001", expectedJobVersion: 1 },
+      actor: "owner@example.com",
+      requestId: `request-comment-${scenario.code.toLowerCase()}`,
+      env: enabledEnv,
+      dependencies: {
+        sql: database.sql,
+        readVariant: async () => approvedVariant({
+          commentSeriesMode: "top-level",
+          commentSeries: [{ position: 1, text: "คอมเมนต์" }],
+        }),
+        fetcher: async () => { throw new Error("Main post must not be published again"); },
+        publishComment: async () => { throw new Error(scenario.code); },
+        now: () => new Date("2026-09-01T00:00:00.000Z"),
+      },
+    }), scenario.expectedError);
+    assert.equal(database.state.comments[0]!.status, scenario.expectedCommentStatus);
+    assert.equal(database.state.row.last_error_category, scenario.expectedCategory);
+  }
 });
 
 test("Mocked Facebook native schedule claims once and uses the Page token returned by Meta", async () => {

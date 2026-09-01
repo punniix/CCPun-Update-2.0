@@ -53,8 +53,14 @@ Rollback is configuration-only: remove or disable `CCPUN_SOCIAL_ANALYTICS_INGEST
 | Config | `CCPUN_META_GRAPH_VERSION` | Required; explicit approved Graph API version |
 | Config | `CCPUN_META_GRANTED_SCOPES` | Required server-side scope attestation |
 | Optional config | `CCPUN_META_PAGE_ID` | Set only when the token manages more than one Page |
+| Public config | `NEXT_PUBLIC_CCPUN_GOOGLE_DRIVE_OAUTH_CLIENT_ID` | Required for owner-triggered Drive Picker, Instagram mobile handoff and Google Sheets export |
+| Public config | `NEXT_PUBLIC_CCPUN_GOOGLE_DRIVE_PICKER_API_KEY` | Required for Drive Picker only; restrict the key to the exact Preview origin and Google Picker API |
+| Config | `CCPUN_GOOGLE_DRIVE_ADMIN_ROOT_FOLDER_ID` | Required server-side approved Drive root; immutable folder ID, not a secret |
+| Config | `CCPUN_GOOGLE_DRIVE_MEDIA_ROOT_FOLDER_ID` | Required server-side approved media root; immutable folder ID, not a secret |
 | Remove from PR57 | `CCPUN_NEON_PROJECT_ID`, `CCPUN_NEON_BRANCH_ID`, `CCPUN_NEON_ENDPOINT_ID`, `CCPUN_NEON_DATABASE` | Duplicated by the validated URL plus database identity row |
 | Remove from PR57 | `CCPUN_SOCIAL_PUBLICATION_APPROVAL_ENABLED` | Approval reuses `CCPUN_SOCIAL_OPERATIONS_ENABLED` and the owner/identity/migration gates |
 | Remove from PR57 | `CCPUN_SOCIAL_DATA_MODE` | Current operations do not use a synthetic/live selector |
 | Legacy only | `CCPUN_SOCIAL_ENABLED` | Retained only for the frozen Foundation branch; do not set on PR57 |
 | Optional fallback | `NEXT_PUBLIC_CCPUN_VERCEL_PROJECT_ID` | Not needed when Vercel supplies `VERCEL_PROJECT_ID` |
+
+Enable Google Drive API, Google Picker API and Google Sheets API in the same UAT Google Cloud project before browser UAT. Google access tokens remain memory-only and are never copied into Vercel, Sanity or Neon.

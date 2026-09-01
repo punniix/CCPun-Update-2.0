@@ -82,7 +82,7 @@ Official references:
 
 Purpose: use the owner's existing Drive as the source of truth for private strategy/research documents and long-lived media while avoiding a paid duplicate store.
 
-1. Enable **Google Drive API** and **Google Picker API** in a UAT Google Cloud project.
+1. Enable **Google Drive API**, **Google Picker API** and **Google Sheets API** in a UAT Google Cloud project.
 2. Request only `https://www.googleapis.com/auth/drive.file`; do not request broad `drive` or `drive.readonly` access.
 3. Use Google Picker so the owner explicitly shares/selects the folder and files.
 4. Select the existing folder named **`CCPun-Financial Advisor Project`**.
@@ -91,7 +91,7 @@ Purpose: use the owner's existing Drive as the source of truth for private strat
 7. Let Admin show only selected-file metadata, link and Drive-hosted preview; never copy the document body into Sanity or Neon.
 8. Keep media bytes out of Vercel Functions. Use direct/resumable provider upload or temporary object staging only when required.
 
-The current adapter accepts a short-lived access token in memory and fetches metadata only. It does not yet implement OAuth, persist refresh tokens or create a provider connection. Do not put Drive tokens in Sanity, Neon documents, source, logs, or browser storage.
+The current PR57 browser flow requests a short-lived owner access token, keeps it in React memory only, opens Google Picker and revalidates selected-file metadata, approved roots, size and SHA-256 before approval or execution. The same memory-only authorization can create a manual Google Sheets export. It does not persist refresh tokens or create a background provider connection. Do not put Drive tokens in Sanity, Neon documents, source, logs or browser storage.
 
 Official references:
 

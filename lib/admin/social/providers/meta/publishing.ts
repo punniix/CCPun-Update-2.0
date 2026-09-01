@@ -18,6 +18,7 @@ const META_INSTAGRAM_DISCOVERY_SCOPES = [
 const graphIdSchema = z.string().trim().min(1).max(120).regex(/^[A-Za-z0-9_.:-]+$/);
 const graphVersionSchema = z.string().trim().regex(/^v\d{1,2}\.\d{1,2}$/);
 const messageSchema = z.string().trim().min(1).max(10_000);
+const commentMessageSchema = z.string().trim().min(1).max(2_000);
 const httpsUrlSchema = z.string().url().max(4_000).refine((value) => new URL(value).protocol === "https:", "HTTPS URL required");
 const providerWriteAuthorizationSchema = z.strictObject({ providerWriteAllowed: z.literal(true) });
 const graphIdResponseSchema = z.strictObject({ id: graphIdSchema });
@@ -337,6 +338,36 @@ export async function scheduleFacebookPagePost(
     now: parsed.now,
     authorization: parsed.authorization,
   }, env, fetcher);
+}
+
+export async function publishFacebookPageComment(
+  input: {
+    pageId?: string;
+    parentObjectId: string;
+    message: string;
+    authorization: { providerWriteAllowed: true };
+  },
+  env: MetaEnvironment = process.env,
+  fetcher: FetchLike = fetch,
+) {
+  const parsed = z.strictObject({
+    pageId: graphIdSchema.optional(),
+    parentObjectId: graphIdSchema,
+    message: commentMessageSchema,
+    authorization: providerWriteAuthorizationSchema,
+  }).parse(input);
+  assertMetaWriteBoundary(parsed.authorization, env);
+  const configured = configuredMeta(env, META_FACEBOOK_PUBLISHING_SCOPES);
+  const page = await discoverManagedPage(configured, fetcher, parsed.pageId);
+  if (!page.access_token) throw new Error("META_PAGE_ACCESS_TOKEN_REQUIRED");
+  const response = graphIdResponseSchema.safeParse(await metaRequest(
+    `https://graph.facebook.com/${configured.version}/${encodeURIComponent(parsed.parentObjectId)}/comments`,
+    page.access_token,
+    fetcher,
+    { method: "POST", body: formBody({ message: parsed.message }) },
+  ));
+  if (!response.success) throw new Error("META_API_INVALID_RESPONSE");
+  return { platformCommentId: response.data.id };
 }
 
 export async function publishFacebookPageContent(

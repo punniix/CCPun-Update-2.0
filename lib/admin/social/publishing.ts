@@ -16,6 +16,8 @@ const executionTargetSchema = z.enum([
 
 export const SOCIAL_PUBLICATION_EXECUTION_MIGRATION_VERSION = "20260901_website_42_social_publication_execution_v1";
 export const SOCIAL_PUBLICATION_EXECUTION_MIGRATION_CHECKSUM = "sha256:9c9a95c3f29d0c912b6b0c226fea873569809f49ebc8f1a66ab32699bde85bba";
+export const SOCIAL_COMMENT_EXECUTION_MIGRATION_VERSION = "20260901_website_42_social_comment_execution_v1";
+export const SOCIAL_COMMENT_EXECUTION_MIGRATION_CHECKSUM = "sha256:c9a5512469d8894ccbdebf5c051d7471aef1f9d59973b6a71f5d0f2b7618155d";
 export const SOCIAL_PUBLICATION_UAT_NEON = {
   projectId: "young-term-47483330",
   branchId: "br-crimson-mouse-az7ajkv8",

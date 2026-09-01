@@ -8,6 +8,8 @@ import {
   parseGoogleDriveApprovedRootFolderIds,
 } from "../media/google-drive-foundation";
 import {
+  SOCIAL_COMMENT_EXECUTION_MIGRATION_CHECKSUM,
+  SOCIAL_COMMENT_EXECUTION_MIGRATION_VERSION,
   SOCIAL_PUBLICATION_EXECUTION_MIGRATION_CHECKSUM,
   SOCIAL_PUBLICATION_EXECUTION_MIGRATION_VERSION,
   SOCIAL_PUBLICATION_UAT_NEON,
@@ -16,6 +18,7 @@ import {
 } from "./publishing";
 import {
   type ApprovedMetaMediaDescriptor,
+  publishFacebookPageComment,
   publishFacebookPageContent,
 } from "./providers/meta/publishing";
 
@@ -86,6 +89,14 @@ const claimedRowsSchema = z.array(z.object({
   lock_expires_at: z.coerce.date(),
 })).max(1);
 const stateChangeRowsSchema = z.array(z.object({ publication_id: boundedId })).max(1);
+const commentStateRowsSchema = z.array(z.object({ comment_id: boundedId })).max(1);
+const executionCommentRowsSchema = z.array(z.object({
+  id: boundedId,
+  position: z.number().int().min(1).max(20),
+  parent_item_id: boundedId.nullable(),
+  status: z.enum(["draft", "approved", "queued", "processing", "published", "failed", "cancelled"]),
+  platform_comment_id: z.string().trim().min(1).max(200).nullable(),
+})).max(20);
 
 type SqlLike = { query: (query: string, params?: unknown[]) => Promise<unknown> };
 type ApprovedVariant = {
@@ -97,6 +108,8 @@ type ApprovedVariant = {
   publishingMode: "direct" | "native-scheduled" | "native-finish";
   caption: string | null;
   linkUrl: string | null;
+  commentSeriesMode: "top-level" | "threaded";
+  commentSeries: Array<{ position: number; text: string }>;
   mediaMetadata: Array<{
     assetId: string;
     role: "primary" | "carousel-item" | "cover" | "thumbnail" | "caption";
@@ -112,6 +125,7 @@ type ExecutionDependencies = {
   sql?: SqlLike;
   readVariant?: (variantId: string, env: Record<string, string | undefined>) => Promise<ApprovedVariant | null>;
   fetcher?: typeof fetch;
+  publishComment?: typeof publishFacebookPageComment;
   fetchDriveBinary?: typeof fetchGoogleDriveSelectedFileBinary;
   now?: () => Date;
 };
@@ -124,6 +138,10 @@ function safeActorRef(actor: string) {
   return `admin:${digest(actor).slice(0, 32)}`;
 }
 
+function commentIdentity(idempotencyKey: string, position: number) {
+  return `comment:${digest(`${idempotencyKey}:comment:${position}`).slice(0, 32)}`;
+}
+
 export function isSocialProviderExecutionEnabled(env: Record<string, string | undefined> = process.env) {
   return isSocialProviderExecutionGateEnabled(env);
 }
@@ -132,19 +150,24 @@ async function verifiedSql(env: Record<string, string | undefined>) {
   if (!isSocialProviderExecutionEnabled(env)) throw new Error("SOCIAL_PROVIDER_WRITES_NOT_CONFIGURED");
   const sql = neon(env.CCPUN_SOCIAL_DATABASE_URL!.trim(), { fetchOptions: { signal: AbortSignal.timeout(15_000) } });
   const rows = z.array(z.object({
-    database_name: z.string(), role_name: z.string(), ledger_current: z.boolean(), identity_current: z.boolean(),
+    database_name: z.string(), role_name: z.string(), execution_ledger_current: z.boolean(),
+    comment_ledger_current: z.boolean(), identity_current: z.boolean(),
   })).max(1).parse(await sql.query(
     `SELECT current_database() AS database_name,current_user AS role_name,
-       EXISTS (SELECT 1 FROM ccpun_social.schema_migration WHERE version=$1 AND checksum=$2) AS ledger_current,
-       EXISTS (SELECT 1 FROM ccpun_social.system_identity WHERE singleton=true AND project_id=$3 AND branch_id=$4
-         AND endpoint_id=$5 AND database_name=$6) AS identity_current`,
+       EXISTS (SELECT 1 FROM ccpun_social.schema_migration WHERE version=$1 AND checksum=$2) AS execution_ledger_current,
+       EXISTS (SELECT 1 FROM ccpun_social.schema_migration WHERE version=$3 AND checksum=$4) AS comment_ledger_current,
+       EXISTS (SELECT 1 FROM ccpun_social.system_identity WHERE singleton=true AND project_id=$5 AND branch_id=$6
+         AND endpoint_id=$7 AND database_name=$8) AS identity_current`,
     [SOCIAL_PUBLICATION_EXECUTION_MIGRATION_VERSION, SOCIAL_PUBLICATION_EXECUTION_MIGRATION_CHECKSUM,
+      SOCIAL_COMMENT_EXECUTION_MIGRATION_VERSION, SOCIAL_COMMENT_EXECUTION_MIGRATION_CHECKSUM,
       SOCIAL_PUBLICATION_UAT_NEON.projectId, SOCIAL_PUBLICATION_UAT_NEON.branchId,
       SOCIAL_PUBLICATION_UAT_NEON.endpointId, SOCIAL_PUBLICATION_UAT_NEON.database],
   ));
   const row = rows[0];
   if (!row || row.database_name !== SOCIAL_PUBLICATION_UAT_NEON.database || row.role_name !== SOCIAL_PUBLICATION_UAT_NEON.role
-    || !row.ledger_current || !row.identity_current) throw new Error("SOCIAL_PROVIDER_WRITES_IDENTITY_MISMATCH");
+    || !row.execution_ledger_current || !row.comment_ledger_current || !row.identity_current) {
+    throw new Error("SOCIAL_PROVIDER_WRITES_IDENTITY_MISMATCH");
+  }
   return sql as SqlLike;
 }
 
@@ -165,6 +188,16 @@ async function loadExecution(sql: SqlLike, publicationId: string) {
      WHERE publication.id=$1 ORDER BY job.created_at DESC LIMIT 1`,
     [publicationId],
   ))[0] ?? null;
+}
+
+async function loadExecutionComments(sql: SqlLike, publicationId: string) {
+  return executionCommentRowsSchema.parse(await sql.query(
+    `/* social-execution:load-comments */
+     SELECT id,position,parent_item_id,status,platform_comment_id
+     FROM ccpun_social.social_comment_item
+     WHERE publication_id=$1 ORDER BY position`,
+    [publicationId],
+  ));
 }
 
 async function claimExecution(sql: SqlLike, input: {
@@ -199,6 +232,88 @@ async function claimExecution(sql: SqlLike, input: {
     [input.publicationId, input.jobId, input.expectedVersion, input.workerId, input.now, input.lockExpiresAt,
       `audit:${input.requestId}:claim`, input.actorRef, input.requestId],
   ))[0] ?? null;
+}
+
+async function checkpointMainPost(sql: SqlLike, input: {
+  publicationId: string; jobId: string; claimedVersion: number; workerId: string;
+  platformObjectId: string; actorRef: string; requestId: string;
+}) {
+  return stateChangeRowsSchema.parse(await sql.query(
+    `/* social-execution:checkpoint-main */
+     WITH eligible_job AS MATERIALIZED (
+       SELECT publication_id FROM ccpun_social.social_publication_job
+       WHERE id=$2 AND publication_id=$1 AND status='processing' AND version=$3 AND lock_owner=$4
+       FOR UPDATE
+     ), checkpointed AS (
+       UPDATE ccpun_social.social_publication SET platform_object_id=$5,updated_at=now()
+       WHERE id=$1 AND status='processing' AND platform_object_id IS NULL
+         AND EXISTS (SELECT 1 FROM eligible_job)
+       RETURNING id AS publication_id
+     ), audit AS (
+       INSERT INTO ccpun_social.social_execution_audit
+         (id,actor_type,actor_ref,action,object_type,object_id,request_ref,outcome)
+       SELECT $6,'human',$7,'publication:checkpoint','publication',$1,$8,'succeeded'
+       FROM checkpointed ON CONFLICT (id) DO NOTHING RETURNING id
+     )
+     SELECT publication_id FROM checkpointed`,
+    [input.publicationId, input.jobId, input.claimedVersion, input.workerId, input.platformObjectId,
+      `audit:${input.requestId}:main`, input.actorRef, input.requestId],
+  ))[0] ?? null;
+}
+
+async function startCommentMutation(sql: SqlLike, input: {
+  publicationId: string; jobId: string; claimedVersion: number; workerId: string; commentId: string;
+}) {
+  return commentStateRowsSchema.parse(await sql.query(
+    `/* social-execution:comment-start */
+     WITH eligible_job AS MATERIALIZED (
+       SELECT publication_id FROM ccpun_social.social_publication_job
+       WHERE id=$2 AND publication_id=$1 AND status='processing' AND version=$3 AND lock_owner=$4
+       FOR UPDATE
+     )
+     UPDATE ccpun_social.social_comment_item SET status='processing',updated_at=now()
+     WHERE id=$5 AND publication_id=$1 AND status='approved' AND platform_comment_id IS NULL
+       AND EXISTS (SELECT 1 FROM eligible_job)
+     RETURNING id AS comment_id`,
+    [input.publicationId, input.jobId, input.claimedVersion, input.workerId, input.commentId],
+  ))[0] ?? null;
+}
+
+async function checkpointComment(sql: SqlLike, input: {
+  publicationId: string; jobId: string; claimedVersion: number; workerId: string;
+  commentId: string; platformCommentId: string; actorRef: string; requestId: string;
+}) {
+  return commentStateRowsSchema.parse(await sql.query(
+    `/* social-execution:comment-finish */
+     WITH eligible_job AS MATERIALIZED (
+       SELECT publication_id FROM ccpun_social.social_publication_job
+       WHERE id=$2 AND publication_id=$1 AND status='processing' AND version=$3 AND lock_owner=$4
+       FOR UPDATE
+     ), checkpointed AS (
+       UPDATE ccpun_social.social_comment_item
+       SET status='published',platform_comment_id=$6,updated_at=now()
+       WHERE id=$5 AND publication_id=$1 AND status='processing' AND platform_comment_id IS NULL
+         AND EXISTS (SELECT 1 FROM eligible_job)
+       RETURNING id AS comment_id
+     ), audit AS (
+       INSERT INTO ccpun_social.social_execution_audit
+         (id,actor_type,actor_ref,action,object_type,object_id,request_ref,outcome)
+       SELECT $7,'human',$8,'comment:publish','comment',$5,$9,'succeeded'
+       FROM checkpointed ON CONFLICT (id) DO NOTHING RETURNING id
+     )
+     SELECT comment_id FROM checkpointed`,
+    [input.publicationId, input.jobId, input.claimedVersion, input.workerId, input.commentId,
+      input.platformCommentId, `audit:${input.requestId}:${input.commentId}`, input.actorRef, input.requestId],
+  ))[0] ?? null;
+}
+
+async function resetUnmutatedComment(sql: SqlLike, publicationId: string, commentId: string) {
+  await sql.query(
+     `/* social-execution:comment-reset */
+     UPDATE ccpun_social.social_comment_item SET status='approved',updated_at=now()
+     WHERE id=$2 AND publication_id=$1 AND status='processing' AND platform_comment_id IS NULL`,
+    [publicationId, commentId],
+  );
 }
 
 async function finishExecution(sql: SqlLike, input: {
@@ -281,11 +396,35 @@ function failure(error: unknown) {
   if (code === "META_API_TIMEOUT") return { code, category: "timeout" as const };
   if (code === "META_API_UNAVAILABLE") return { code, category: "provider-unavailable" as const };
   if (code.startsWith("SOCIAL_EXECUTION_EDITORIAL_") || code === "SOCIAL_EXECUTION_AUTHORIZATION_DENIED"
-    || code === "SOCIAL_EXECUTION_TRUSTED_MEDIA_REQUIRED" || code === "SOCIAL_EXECUTION_UNSUPPORTED_FORMAT") {
+    || code === "SOCIAL_EXECUTION_TRUSTED_MEDIA_REQUIRED" || code === "SOCIAL_EXECUTION_UNSUPPORTED_FORMAT"
+    || code === "SOCIAL_EXECUTION_SCHEDULED_COMMENTS_UNSUPPORTED") {
     return { code, category: "conflict" as const };
   }
   if (code.startsWith("META_") || error instanceof z.ZodError) return { code: "SOCIAL_EXECUTION_INVALID_PROVIDER_REQUEST", category: "invalid-request" as const };
   return { code: "SOCIAL_EXECUTION_FAILED", category: "unknown" as const };
+}
+
+function validateApprovedComments(
+  publicationIdempotencyKey: string,
+  variant: ApprovedVariant,
+  rows: z.infer<typeof executionCommentRowsSchema>,
+) {
+  if (rows.length !== variant.commentSeries.length) throw new Error("SOCIAL_EXECUTION_EDITORIAL_COMMENT_CONFLICT");
+  rows.forEach((row, index) => {
+    const position = index + 1;
+    const expectedId = commentIdentity(publicationIdempotencyKey, position);
+    const expectedParent = variant.commentSeriesMode === "threaded" && position > 1
+      ? commentIdentity(publicationIdempotencyKey, position - 1)
+      : null;
+    if (variant.commentSeries[index]?.position !== position || row.id !== expectedId
+      || row.position !== position || row.parent_item_id !== expectedParent
+      || (row.status === "published") !== Boolean(row.platform_comment_id)) {
+      throw new Error("SOCIAL_EXECUTION_EDITORIAL_COMMENT_CONFLICT");
+    }
+  });
+  if (variant.commentSeries.length > 0 && variant.publishingMode !== "direct") {
+    throw new Error("SOCIAL_EXECUTION_SCHEDULED_COMMENTS_UNSUPPORTED");
+  }
 }
 
 function approvedFacebookContent(variant: ApprovedVariant, resolvedMedia: ApprovedMetaMediaDescriptor[] = []) {
@@ -453,7 +592,8 @@ export async function executeSocialPublication(input: {
   });
   if (!claimed) throw new Error("SOCIAL_EXECUTION_CAS_CONFLICT");
 
-  let providerCompleted = false;
+  let providerMutationUncheckpointed = false;
+  let activeCommentId: string | null = null;
   let resolvedMedia: ApprovedMetaMediaDescriptor[] = [];
   try {
     const readVariant = input.dependencies?.readVariant ?? (async (variantId: string, currentEnv: Record<string, string | undefined>) => {
@@ -465,6 +605,8 @@ export async function executeSocialPublication(input: {
       || variant.platform !== row.channel || variant.format !== row.format || variant.publishingMode !== row.publishing_mode) {
       throw new Error("SOCIAL_EXECUTION_EDITORIAL_CONFLICT");
     }
+    const commentRows = await loadExecutionComments(sql, row.publication_id);
+    validateApprovedComments(row.publication_idempotency_key, variant, commentRows);
     resolvedMedia = await resolveApprovedDriveMedia({
       request,
       variant,
@@ -502,40 +644,117 @@ export async function executeSocialPublication(input: {
     });
     if (!authorization.providerWriteAllowed) throw new Error("SOCIAL_EXECUTION_AUTHORIZATION_DENIED");
 
-    const providerInput = {
-      pageId: env.CCPUN_META_PAGE_ID?.trim() || undefined,
-      content: facebookContent,
-      now: authorizationNow.toISOString(),
-      ...(row.execution_target === "facebook-native-scheduled" ? { scheduledAt: row.scheduled_at!.toISOString() } : {}),
-      authorization: { providerWriteAllowed: true as const },
-    };
-    const providerResult = await publishFacebookPageContent(providerInput, env, input.dependencies?.fetcher ?? fetch);
-    providerCompleted = true;
+    const pageId = env.CCPUN_META_PAGE_ID?.trim() || undefined;
+    let platformObjectId = row.platform_object_id;
+    if (!platformObjectId) {
+      const providerInput = {
+        pageId,
+        content: facebookContent,
+        now: authorizationNow.toISOString(),
+        ...(row.execution_target === "facebook-native-scheduled" ? { scheduledAt: row.scheduled_at!.toISOString() } : {}),
+        authorization: { providerWriteAllowed: true as const },
+      };
+      const providerResult = await publishFacebookPageContent(providerInput, env, input.dependencies?.fetcher ?? fetch);
+      platformObjectId = providerResult.platformObjectId;
+      providerMutationUncheckpointed = true;
+      if (commentRows.length > 0) {
+        const checkpointed = await checkpointMainPost(sql, {
+          publicationId: row.publication_id,
+          jobId: row.job_id,
+          claimedVersion: claimed.version,
+          workerId,
+          platformObjectId,
+          actorRef,
+          requestId: input.requestId,
+        });
+        if (!checkpointed) throw new Error("SOCIAL_EXECUTION_RECONCILIATION_REQUIRED");
+        providerMutationUncheckpointed = false;
+      }
+    }
+
+    if (commentRows.length > 0) {
+      const publishComment = input.dependencies?.publishComment ?? publishFacebookPageComment;
+      for (const [index, comment] of commentRows.entries()) {
+        if (comment.status === "published") continue;
+        if (comment.status !== "approved") throw new Error("SOCIAL_EXECUTION_RECONCILIATION_REQUIRED");
+        const parentObjectId = variant.commentSeriesMode === "threaded" && index > 0
+          ? commentRows[index - 1]?.platform_comment_id
+          : platformObjectId;
+        if (!parentObjectId) throw new Error("SOCIAL_EXECUTION_RECONCILIATION_REQUIRED");
+        const started = await startCommentMutation(sql, {
+          publicationId: row.publication_id,
+          jobId: row.job_id,
+          claimedVersion: claimed.version,
+          workerId,
+          commentId: comment.id,
+        });
+        if (!started) throw new Error("SOCIAL_EXECUTION_RECONCILIATION_REQUIRED");
+        activeCommentId = comment.id;
+        const result = await publishComment({
+          pageId,
+          parentObjectId,
+          message: variant.commentSeries[index]!.text,
+          authorization: { providerWriteAllowed: true },
+        }, env, input.dependencies?.fetcher ?? fetch);
+        providerMutationUncheckpointed = true;
+        const checkpointed = await checkpointComment(sql, {
+          publicationId: row.publication_id,
+          jobId: row.job_id,
+          claimedVersion: claimed.version,
+          workerId,
+          commentId: comment.id,
+          platformCommentId: result.platformCommentId,
+          actorRef,
+          requestId: input.requestId,
+        });
+        if (!checkpointed) throw new Error("SOCIAL_EXECUTION_RECONCILIATION_REQUIRED");
+        comment.status = "published";
+        comment.platform_comment_id = result.platformCommentId;
+        activeCommentId = null;
+        providerMutationUncheckpointed = false;
+      }
+    }
+
     const scheduled = row.execution_target === "facebook-native-scheduled";
+    providerMutationUncheckpointed = true;
     const finished = await finishExecution(sql, {
       publicationId: row.publication_id,
       jobId: row.job_id,
       claimedVersion: claimed.version,
       workerId,
-      platformObjectId: providerResult.platformObjectId,
+      platformObjectId,
       status: scheduled ? "native-scheduled" : "published",
       publishedAt: scheduled ? null : (input.dependencies?.now?.() ?? new Date()).toISOString(),
       actorRef,
       requestId: input.requestId,
     });
     if (!finished) throw new Error("SOCIAL_EXECUTION_RECONCILIATION_REQUIRED");
+    providerMutationUncheckpointed = false;
     return {
       state: scheduled ? "scheduled" as const : "published" as const,
       publicationId: row.publication_id,
       jobId: row.job_id,
-      platformObjectId: providerResult.platformObjectId,
+      platformObjectId,
+      ...(commentRows.length > 0 ? { commentsPublished: commentRows.length } : {}),
     };
   } catch (error) {
     await Promise.allSettled(resolvedMedia.map((media) => media.body.cancel()));
-    if (providerCompleted) throw new Error("SOCIAL_EXECUTION_RECONCILIATION_REQUIRED");
+    const errorCode = error instanceof Error ? error.message : "";
+    const knownNoCommentMutation = [
+      "META_API_AUTH_REQUIRED", "META_API_SCOPE_REQUIRED", "META_API_RATE_LIMITED",
+      "META_API_INVALID_REQUEST", "META_PROVIDER_WRITES_DISABLED",
+      "META_PAGE_SELECTION_REQUIRED", "META_PAGE_ACCESS_TOKEN_REQUIRED",
+    ].includes(errorCode);
+    if (activeCommentId && knownNoCommentMutation) {
+      await resetUnmutatedComment(sql, row.publication_id, activeCommentId);
+      activeCommentId = null;
+      providerMutationUncheckpointed = false;
+    }
     const providerMutationMayHaveStarted = error instanceof Error
       && error.message === "META_API_PARTIAL_MUTATION_RECONCILIATION_REQUIRED";
-    const mapped = providerMutationMayHaveStarted
+    const reconciliationRequired = providerMutationMayHaveStarted || providerMutationUncheckpointed
+      || activeCommentId !== null;
+    const mapped = reconciliationRequired
       ? { code: "SOCIAL_EXECUTION_RECONCILIATION_REQUIRED", category: "unknown" as const }
       : failure(error);
     const failed = await failExecution(sql, {
@@ -548,7 +767,7 @@ export async function executeSocialPublication(input: {
       requestId: input.requestId,
     });
     if (!failed) throw new Error("SOCIAL_EXECUTION_RECONCILIATION_REQUIRED");
-    if (providerMutationMayHaveStarted) throw new Error("SOCIAL_EXECUTION_RECONCILIATION_REQUIRED");
+    if (reconciliationRequired) throw new Error("SOCIAL_EXECUTION_RECONCILIATION_REQUIRED");
     throw new Error(mapped.code);
   }
 }

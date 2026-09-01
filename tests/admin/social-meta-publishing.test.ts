@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   createInstagramReelContainer,
   discoverInstagramPublishingUser,
+  publishFacebookPageComment,
   publishFacebookPagePost,
   publishFacebookPageContent,
   publishInstagramMedia,
@@ -94,6 +95,32 @@ test("Facebook publishing uses bearer auth and native schedule fields without to
     published: "false",
     scheduled_publish_time: "1788310800",
   });
+});
+
+test("Facebook comments use the selected Page token in a bearer header and never in the URL", async () => {
+  const requests: Array<{ url: string; authorization: string; body: URLSearchParams }> = [];
+  const result = await publishFacebookPageComment({
+    pageId: "page-1",
+    parentObjectId: "main-post-1",
+    message: "รายละเอียดต่อจากโพสต์หลัก",
+    authorization: authorized,
+  }, env, async (input, init) => {
+    const url = String(input);
+    requests.push({
+      url,
+      authorization: new Headers(init?.headers).get("authorization") ?? "",
+      body: new URLSearchParams(typeof init?.body === "string" ? init.body : ""),
+    });
+    if (url.includes("/me/accounts")) {
+      return new Response(JSON.stringify({ data: [{ id: "page-1", access_token: "page-secret" }] }));
+    }
+    return new Response(JSON.stringify({ id: "comment-1" }));
+  });
+  assert.deepEqual(result, { platformCommentId: "comment-1" });
+  assert.equal(requests[1]!.url.endsWith("/main-post-1/comments"), true);
+  assert.equal(requests[1]!.authorization, "Bearer page-secret");
+  assert.equal(requests[1]!.body.get("message"), "รายละเอียดต่อจากโพสต์หลัก");
+  assert.equal(requests.every((request) => !request.url.includes("secret")), true);
 });
 
 test("Facebook native scheduling rejects times outside Meta's 10-minute to 75-day window", async () => {

@@ -65,6 +65,29 @@ test("link-post authoring carries the explicit field end to end without caption 
   assert.doesNotMatch(workspace, /new URL\(form\.caption|form\.caption\.match\(/);
 });
 
+test("Facebook Comment Series persists exact ordered text and rejects gaps or non-Facebook children", () => {
+  const comments = [1, 2, 3, 4].map((position) => ({ position, text: `รายละเอียด ${position}` }));
+  const request = {
+    action: "create" as const,
+    ...input,
+    channel: "facebook" as const,
+    format: "text-post" as const,
+    publishingMode: "direct" as const,
+    mediaReferences: [],
+    commentSeriesMode: "threaded" as const,
+    commentSeries: comments,
+  };
+  const document = buildSocialDraftCreateDocument(request, "comment-series-fixture");
+  assert.equal(document.commentSeriesMode, "threaded");
+  assert.deepEqual(document.commentSeries.map(({ position, text }) => ({ position, text })), comments);
+  assert.equal(new Set(document.commentSeries.map((comment) => comment._key)).size, 4);
+  assert.equal(socialDraftRequestSchema.safeParse({
+    ...request,
+    commentSeries: [{ position: 1, text: "หนึ่ง" }, { position: 3, text: "สาม" }],
+  }).success, false);
+  assert.equal(socialDraftRequestSchema.safeParse({ ...request, channel: "instagram" }).success, false);
+});
+
 test("editing an approved Draft is revision-bound, increments version and resets review", () => {
   const planned = planSocialDraftUpdate(
     { action: "update", variantId: "socialVariant-fixture-id", expectedRevision: "rev-2", ...input },
@@ -120,5 +143,6 @@ test("social Draft API stays owner-only, same-origin, UAT-only and has no publis
   assert.match(store, /\.ifRevisionId\(plan\.expectedRevision\)/);
   assert.match(store, /sanity\.create\(buildSocialDraftCreateDocument/);
   assert.match(store, /"linkUrl": coalesce\(linkUrl, null\)/);
+  assert.match(store, /"commentSeries": coalesce\(commentSeries\[\] \| order\(position asc\)/);
   assert.doesNotMatch(store, /\.publish\(|createOrReplace|createIfNotExists|\.delete\(/);
 });
