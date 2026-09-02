@@ -13,7 +13,7 @@ const authorization = {
   expiresAtMs: now.getTime() + 3_000_000,
 } as const;
 
-test("Sheets export separates Content, Publications and every platform-native metric", () => {
+test("Sheets export preserves raw tabs and adds clean marketing, coverage and QA tabs", () => {
   const sheets = buildSocialExportSheets({
     contents: [{ record_type: "current", content_id: "content:1", provider: "meta", platform: "facebook", provider_account_id: "page:1",
       provider_object_id: "post:1", linked_publication_id: "publication:1", published_at: now, captured_at: now,
@@ -29,10 +29,39 @@ test("Sheets export separates Content, Publications and every platform-native me
         { key: "facebook.reactions", label: "Reactions", value: 12, unit: "count", dimension: "engagement" },
         { key: "facebook.comments", label: "Comments", value: 4, unit: "count", dimension: "engagement" },
       ] }],
+    cleanPosts: [{
+      content_id: "content:1", publication_id: "publication:1", provider: "meta", platform: "facebook",
+      provider_object_id: "post:1", permalink: "https://www.facebook.com/post:1", thumbnail: null,
+      text_content: "=not-a-formula", provider_media_type: "text", format_standard: "text", published_at_utc: now,
+      published_at_bkk_text: "2026-09-01 12:00:00", publish_date_bkk: "2026-09-01", publish_day_of_week: 2,
+      publish_hour_bkk: 12, snapshot_at: now, metric_window: "latest", reactions_total: 12, likes: null,
+      comments_total: 4, shares: 2, saves: null, reach: null, impressions: null, views: 100, clicks: 10,
+      total_interactions: null, reel_total_watch_time_ms: null, reel_average_watch_time_ms: null,
+      known_engagement_rate_by_reach: null, known_deep_engagement_rate_by_reach: null,
+      audience_engagement_rate_by_reach: null, audience_deep_engagement_rate_by_reach: null,
+      known_engagement_total: 18, known_deep_engagement_total: 6, engagement_components_complete: true,
+      comment_attribution_status: "not_collected", clicks_per_view: 0.1,
+      expected_core_metric_count: 5, available_core_metric_count: 5, metric_coverage_rate: 1,
+      facebook_share_quality_status: "needs_review", facebook_share_quality_note: "Preserve provider value",
+      facebook_reaction_definition_status: "needs_review", instagram_interaction_definition_status: "not_applicable",
+      data_quality_status: "needs_review", analysis_status: "exposure_ready_without_reach",
+    }],
+    metricCoverage: [{
+      provider: "meta", platform: "facebook", metric_key: "views", native_metric_key: "facebook.views",
+      total_posts: 1, eligible_posts: 1, available_posts: 1, not_returned_posts: 0, not_fetched_posts: 0,
+      unsupported_posts: 0, not_requested_posts: 0, permission_denied_posts: 0, rate_limited_posts: 0,
+      fetch_error_posts: 0, availability_rate: 1,
+    }],
   });
-  assert.deepEqual(sheets.map((sheet) => sheet.title), ["Content", "Publications", "Facebook - Comments", "Facebook - Reactions"]);
+  assert.deepEqual(sheets.map((sheet) => sheet.title), [
+    "Content", "Publications", "Marketing - Posts", "Marketing - Coverage", "Marketing - QA",
+    "Facebook - Comments", "Facebook - Reactions",
+  ]);
   assert.equal(sheets[0]?.rows[1]?.[9], "=not-a-formula");
-  assert.equal(sheets[2]?.rows.length, 2);
+  assert.equal(sheets[2]?.rows[1]?.[12], "=not-a-formula");
+  assert.equal(sheets[3]?.rows[1]?.[14], 1);
+  assert.equal(sheets[4]?.rows.length, 2);
+  assert.equal(sheets[5]?.rows.length, 2);
 });
 
 test("Sheets REST uses one memory-only drive.file token, blocks redirects and never writes it into a request body", async () => {
@@ -78,6 +107,8 @@ test("Sheets route is an owner-only same-origin runtime mutation and the UI keep
   assert.match(route, /isSameOriginAdminMutation/);
   assert.match(service, /resolveSocialPublicationRuntime/);
   assert.match(service, /CCPUN_SOCIAL_ANALYTICS_INGESTION_ENABLED/);
+  assert.match(service, /post_performance_clean/);
+  assert.match(service, /post_metric_coverage_summary/);
   assert.match(component, /useRef<GoogleDriveMemorySession \| null>/);
   assert.doesNotMatch(component, /localStorage|sessionStorage|indexedDB|cookie/i);
   assert.doesNotMatch(route, /console\./);

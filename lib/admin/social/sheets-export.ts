@@ -25,6 +25,9 @@ export const socialSheetsExportRequestSchema = z.strictObject({
   authorization: googleDriveInteractiveAuthorizationSchema,
 });
 
+const SOCIAL_MARKETING_MART_P2_VERSION = "20260902_social_marketing_mart_p2_full_backfill_clean";
+const SOCIAL_MARKETING_MART_P2_CHECKSUM = "sha256:1dfbe426656ada42fa59f4b0d0727a39c293534abf964690bbbe0d8c6294727f";
+
 type Cell = string | number | boolean;
 export type SocialExportSheet = { title: string; rows: Cell[][] };
 
@@ -59,10 +62,41 @@ const metricRowsSchema = z.array(z.object({
   fetched_at: z.coerce.date(), native_metrics: z.array(metricSchema).min(1).max(20), limitations: z.array(z.string()).max(10),
 })).max(500_000);
 
+const nullableNumber = z.union([z.null(), z.coerce.number()]);
+const cleanPostRowsSchema = z.array(z.object({
+  content_id: z.string(), publication_id: z.string().nullable(), provider: z.string(), platform: z.string(),
+  provider_object_id: z.string(), permalink: z.string().nullable(), thumbnail: z.string().nullable(), text_content: z.string(),
+  provider_media_type: z.string(), format_standard: z.string(), published_at_utc: z.coerce.date(),
+  published_at_bkk_text: z.string(), publish_date_bkk: z.string(), publish_day_of_week: z.coerce.number().int(),
+  publish_hour_bkk: z.coerce.number().int(), snapshot_at: z.coerce.date(), metric_window: z.string(),
+  reactions_total: nullableNumber, likes: nullableNumber, comments_total: nullableNumber, shares: nullableNumber,
+  saves: nullableNumber, reach: nullableNumber, impressions: nullableNumber, views: nullableNumber, clicks: nullableNumber,
+  total_interactions: nullableNumber, reel_total_watch_time_ms: nullableNumber, reel_average_watch_time_ms: nullableNumber,
+  known_engagement_rate_by_reach: nullableNumber, known_deep_engagement_rate_by_reach: nullableNumber,
+  audience_engagement_rate_by_reach: nullableNumber, audience_deep_engagement_rate_by_reach: nullableNumber,
+  known_engagement_total: nullableNumber, known_deep_engagement_total: nullableNumber,
+  engagement_components_complete: z.boolean(), comment_attribution_status: z.string(), clicks_per_view: nullableNumber,
+  expected_core_metric_count: z.coerce.number().int(), available_core_metric_count: z.coerce.number().int(),
+  metric_coverage_rate: nullableNumber, facebook_share_quality_status: z.string().nullable(),
+  facebook_share_quality_note: z.string().nullable(), facebook_reaction_definition_status: z.string(),
+  instagram_interaction_definition_status: z.string(), data_quality_status: z.string(), analysis_status: z.string(),
+})).max(200_000);
+
+const metricCoverageRowsSchema = z.array(z.object({
+  provider: z.string(), platform: z.string(), metric_key: z.string(), native_metric_key: z.string().nullable(),
+  total_posts: z.coerce.number().int(), eligible_posts: z.coerce.number().int(),
+  available_posts: z.coerce.number().int(), not_returned_posts: z.coerce.number().int(),
+  not_fetched_posts: z.coerce.number().int(), unsupported_posts: z.coerce.number().int(), not_requested_posts: z.coerce.number().int(),
+  permission_denied_posts: z.coerce.number().int(), rate_limited_posts: z.coerce.number().int(),
+  fetch_error_posts: z.coerce.number().int(), availability_rate: nullableNumber,
+})).max(10_000);
+
 export type SocialSheetsExportData = {
   contents: z.infer<typeof contentRowsSchema>;
   publications: z.infer<typeof publicationRowsSchema>;
   metrics: z.infer<typeof metricRowsSchema>;
+  cleanPosts?: z.infer<typeof cleanPostRowsSchema>;
+  metricCoverage?: z.infer<typeof metricCoverageRowsSchema>;
 };
 
 const platformLabel: Record<string, string> = {
@@ -88,6 +122,8 @@ export function buildSocialExportSheets(data: SocialSheetsExportData): SocialExp
   const contents = contentRowsSchema.parse(data.contents);
   const publications = publicationRowsSchema.parse(data.publications);
   const metrics = metricRowsSchema.parse(data.metrics);
+  const cleanPosts = cleanPostRowsSchema.parse(data.cleanPosts ?? []);
+  const metricCoverage = metricCoverageRowsSchema.parse(data.metricCoverage ?? []);
   const sheets: SocialExportSheet[] = [{
     title: "Content",
     rows: [
@@ -106,6 +142,44 @@ export function buildSocialExportSheets(data: SocialSheetsExportData): SocialExp
         row.job_id ?? "", row.job_type ?? "", row.job_status ?? "", row.job_version ?? "", row.attempt_count ?? ""]),
     ],
   }];
+  sheets.push({
+    title: "Marketing - Posts",
+    rows: [
+      ["content_id", "publication_id", "provider", "platform", "provider_object_id", "published_at_utc", "published_at_bkk", "publish_date_bkk", "publish_day_of_week", "publish_hour_bkk", "format_standard", "provider_media_type", "text", "permalink", "thumbnail", "snapshot_at", "metric_window", "views", "reach", "clicks", "reactions_total", "likes", "comments_total", "shares", "saves", "total_interactions", "known_engagement_total", "known_deep_engagement_total", "engagement_components_complete", "comment_attribution_status", "known_engagement_rate_by_reach", "known_deep_engagement_rate_by_reach", "audience_engagement_rate_by_reach", "audience_deep_engagement_rate_by_reach", "clicks_per_view", "reel_total_watch_time_ms", "reel_average_watch_time_ms", "available_core_metric_count", "expected_core_metric_count", "metric_coverage_rate", "analysis_status", "data_quality_status", "facebook_share_quality_status", "facebook_reaction_definition_status", "instagram_interaction_definition_status"],
+      ...cleanPosts.map((row) => [
+        row.content_id, row.publication_id ?? "", row.provider, row.platform, row.provider_object_id, iso(row.published_at_utc),
+        row.published_at_bkk_text, row.publish_date_bkk, row.publish_day_of_week, row.publish_hour_bkk, row.format_standard,
+        row.provider_media_type, row.text_content, row.permalink ?? "", row.thumbnail ?? "", iso(row.snapshot_at), row.metric_window,
+        row.views ?? "", row.reach ?? "", row.clicks ?? "", row.reactions_total ?? "", row.likes ?? "", row.comments_total ?? "",
+        row.shares ?? "", row.saves ?? "", row.total_interactions ?? "", row.known_engagement_total ?? "",
+        row.known_deep_engagement_total ?? "", row.engagement_components_complete, row.comment_attribution_status,
+        row.known_engagement_rate_by_reach ?? "", row.known_deep_engagement_rate_by_reach ?? "",
+        row.audience_engagement_rate_by_reach ?? "", row.audience_deep_engagement_rate_by_reach ?? "",
+        row.clicks_per_view ?? "", row.reel_total_watch_time_ms ?? "",
+        row.reel_average_watch_time_ms ?? "", row.available_core_metric_count, row.expected_core_metric_count,
+        row.metric_coverage_rate ?? "", row.analysis_status, row.data_quality_status, row.facebook_share_quality_status ?? "",
+        row.facebook_reaction_definition_status, row.instagram_interaction_definition_status,
+      ]),
+    ],
+  }, {
+    title: "Marketing - Coverage",
+    rows: [
+      ["provider", "platform", "metric_key", "native_metric_key", "total_posts", "eligible_posts", "available_posts", "not_returned_posts", "not_fetched_posts", "unsupported_posts", "not_requested_posts", "permission_denied_posts", "rate_limited_posts", "fetch_error_posts", "availability_rate"],
+      ...metricCoverage.map((row) => [row.provider, row.platform, row.metric_key, row.native_metric_key ?? "", row.total_posts,
+        row.eligible_posts, row.available_posts, row.not_returned_posts, row.not_fetched_posts, row.unsupported_posts,
+        row.not_requested_posts, row.permission_denied_posts, row.rate_limited_posts, row.fetch_error_posts, row.availability_rate ?? ""]),
+    ],
+  }, {
+    title: "Marketing - QA",
+    rows: [
+      ["content_id", "platform", "provider_object_id", "published_at_bkk", "format_standard", "data_quality_status", "facebook_share_quality_status", "facebook_share_quality_note", "facebook_reaction_definition_status", "instagram_interaction_definition_status", "analysis_status", "permalink"],
+      ...cleanPosts.filter((row) => row.data_quality_status !== "usable_with_limitations").map((row) => [
+        row.content_id, row.platform, row.provider_object_id, row.published_at_bkk_text, row.format_standard, row.data_quality_status,
+        row.facebook_share_quality_status ?? "", row.facebook_share_quality_note ?? "", row.facebook_reaction_definition_status,
+        row.instagram_interaction_definition_status, row.analysis_status, row.permalink ?? "",
+      ]),
+    ],
+  });
   const families = new Map<string, { platform: string; label: string; rows: Cell[][] }>();
   for (const snapshot of metrics) for (const metric of snapshot.native_metrics) {
     const key = `${snapshot.platform}\u0000${metric.key}`;
@@ -141,16 +215,18 @@ async function verifiedSql(env: Record<string, string | undefined>) {
        EXISTS (SELECT 1 FROM ccpun_social.schema_migration WHERE version=$1 AND checksum=$2) AS analytics_current,
        EXISTS (SELECT 1 FROM ccpun_social.schema_migration WHERE version=$3 AND checksum=$4) AS history_current,
        EXISTS (SELECT 1 FROM ccpun_social.schema_migration WHERE version=$5 AND checksum=$6) AS publication_current,
-       EXISTS (SELECT 1 FROM ccpun_social.system_identity WHERE singleton=true AND project_id=$7 AND branch_id=$8
-         AND endpoint_id=$9 AND database_name=$10) AS identity_current`,
+       EXISTS (SELECT 1 FROM ccpun_social.schema_migration WHERE version=$7 AND checksum=$8) AS clean_mart_current,
+       EXISTS (SELECT 1 FROM ccpun_social.system_identity WHERE singleton=true AND project_id=$9 AND branch_id=$10
+         AND endpoint_id=$11 AND database_name=$12) AS identity_current`,
     [analyticsMigration.version, analyticsMigration.checksum,
       SOCIAL_PROVIDER_HISTORY_MIGRATION_VERSION, SOCIAL_PROVIDER_HISTORY_MIGRATION_CHECKSUM,
       SOCIAL_PUBLICATION_EXECUTION_MIGRATION_VERSION, SOCIAL_PUBLICATION_EXECUTION_MIGRATION_CHECKSUM,
+      SOCIAL_MARKETING_MART_P2_VERSION, SOCIAL_MARKETING_MART_P2_CHECKSUM,
       identity.projectId, identity.branchId, identity.endpointId, identity.database],
-  ) as Array<{ database_name: string; role_name: string; analytics_current: boolean; history_current: boolean; publication_current: boolean; identity_current: boolean }>;
+  ) as Array<{ database_name: string; role_name: string; analytics_current: boolean; history_current: boolean; publication_current: boolean; clean_mart_current: boolean; identity_current: boolean }>;
   const row = rows[0];
   if (!row || row.database_name !== identity.database || row.role_name !== identity.role
-    || !row.analytics_current || !row.history_current || !row.publication_current || !row.identity_current) {
+    || !row.analytics_current || !row.history_current || !row.publication_current || !row.clean_mart_current || !row.identity_current) {
     throw new Error("SOCIAL_SHEETS_EXPORT_IDENTITY_MISMATCH");
   }
   return sql;
@@ -158,7 +234,7 @@ async function verifiedSql(env: Record<string, string | undefined>) {
 
 export async function loadSocialSheetsExportData(env: Record<string, string | undefined> = process.env): Promise<SocialSheetsExportData> {
   const sql = await verifiedSql(env);
-  const [contents, publications, providerMetrics, publicationMetrics] = await Promise.all([
+  const [contents, publications, providerMetrics, publicationMetrics, cleanPosts, metricCoverage] = await Promise.all([
     sql.query(`SELECT 'current' AS record_type,content.id AS content_id,content.provider,content.platform,content.provider_account_id,
       content.provider_object_id,content.linked_publication_id,content.published_at,content.last_seen_at AS captured_at,
       content.text_content,content.media_type,content.permalink_url,content.thumbnail_url,content.first_seen_at,content.last_seen_at
@@ -186,11 +262,27 @@ export async function loadSocialSheetsExportData(env: Record<string, string | un
     sql.query(`SELECT 'publication' AS source,snapshot.id AS source_id,NULL::text AS content_id,snapshot.publication_id,
       snapshot.provider,snapshot.platform,snapshot.platform_object_id,snapshot.fetched_at,snapshot.native_metrics,snapshot.limitations
       FROM ccpun_social.social_metric_snapshot AS snapshot ORDER BY snapshot.fetched_at DESC`),
+    sql.query(`SELECT content_id,publication_id,provider,platform,provider_object_id,permalink,thumbnail,text_content,
+      provider_media_type,format_standard,published_at_utc,to_char(published_at_bkk,'YYYY-MM-DD HH24:MI:SS') AS published_at_bkk_text,
+      publish_date_bkk::text,publish_day_of_week,publish_hour_bkk,snapshot_at,metric_window,reactions_total,likes,comments_total,
+      shares,saves,reach,impressions,views,clicks,total_interactions,reel_total_watch_time_ms,reel_average_watch_time_ms,
+      known_engagement_rate_by_reach,known_deep_engagement_rate_by_reach,
+      audience_engagement_rate_by_reach,audience_deep_engagement_rate_by_reach,
+      known_engagement_total,known_deep_engagement_total,engagement_components_complete,comment_attribution_status,
+      clicks_per_view,expected_core_metric_count,available_core_metric_count,metric_coverage_rate,
+      facebook_share_quality_status,facebook_share_quality_note,facebook_reaction_definition_status,
+      instagram_interaction_definition_status,data_quality_status,analysis_status
+      FROM ccpun_social.post_performance_clean ORDER BY published_at_utc DESC`),
+    sql.query(`SELECT provider,platform,metric_key,native_metric_key,total_posts,eligible_posts,available_posts,not_returned_posts,
+      not_fetched_posts,unsupported_posts,not_requested_posts,permission_denied_posts,rate_limited_posts,fetch_error_posts,availability_rate
+      FROM ccpun_social.post_metric_coverage_summary ORDER BY platform,metric_key`),
   ]);
   return {
     contents: contentRowsSchema.parse(contents),
     publications: publicationRowsSchema.parse(publications),
     metrics: metricRowsSchema.parse([...providerMetrics, ...publicationMetrics]),
+    cleanPosts: cleanPostRowsSchema.parse(cleanPosts),
+    metricCoverage: metricCoverageRowsSchema.parse(metricCoverage),
   };
 }
 
