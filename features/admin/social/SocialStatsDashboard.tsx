@@ -109,10 +109,14 @@ export default function SocialStatsDashboard({ items }: { items: SocialAnalytics
 
   const formats = useMemo(() => [...new Set(items.map((item) => item.format))].sort(), [items]);
   const metrics = useMemo(() => {
-    const byKey = new Map<string, { key: string; label: string; unit: MetricUnit }>();
-    for (const item of items) for (const metric of item.metrics) byKey.set(metric.key, { key: metric.key, label: metric.label, unit: metric.unit });
-    return [...byKey.values()].sort((a, b) => a.label.localeCompare(b.label, "th"));
+    const byKey = new Map<string, { key: string; label: string; unit: MetricUnit; platform: AnalyticsPlatform }>();
+    for (const item of items) for (const metric of item.metrics) {
+      if (!byKey.has(metric.key)) byKey.set(metric.key, { key: metric.key, label: metric.label, unit: metric.unit, platform: item.platform });
+    }
+    return [...byKey.values()].sort((a, b) => `${a.platform}:${a.label}`.localeCompare(`${b.platform}:${b.label}`, "th"));
   }, [items]);
+
+  const visibleMetrics = useMemo(() => platform === "all" ? metrics : metrics.filter((metric) => metric.platform === platform), [metrics, platform]);
 
   const filteredItems = useMemo(() => {
     const keyword = search.trim().toLocaleLowerCase("th-TH");
@@ -191,7 +195,14 @@ export default function SocialStatsDashboard({ items }: { items: SocialAnalytics
         </div>
         <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
           <label className="text-xs text-white/70">แพลตฟอร์ม
-            <select value={platform} onChange={(event) => setPlatform(event.target.value)} className="mt-1 min-h-11 w-full rounded-xl border border-white/15 bg-[#151a20] px-3 text-sm text-white focus:border-[#e0c985] focus:outline-none">
+            <select value={platform} onChange={(event) => {
+              const nextPlatform = event.target.value;
+              setPlatform(nextPlatform);
+              if (metricKey !== "all") {
+                const selected = metrics.find((metric) => metric.key === metricKey);
+                if (selected && nextPlatform !== "all" && selected.platform !== nextPlatform) setMetricKey("all");
+              }
+            }} className="mt-1 min-h-11 w-full rounded-xl border border-white/15 bg-[#151a20] px-3 text-sm text-white focus:border-[#e0c985] focus:outline-none">
               <option value="all">ทั้งหมด</option>
               {(Object.keys(platformLabel) as AnalyticsPlatform[]).map((value) => <option key={value} value={value}>{platformLabel[value]}</option>)}
             </select>
@@ -211,7 +222,7 @@ export default function SocialStatsDashboard({ items }: { items: SocialAnalytics
           <label className="text-xs text-white/70">Metric
             <select value={metricKey} onChange={(event) => setMetricKey(event.target.value)} className="mt-1 min-h-11 w-full rounded-xl border border-white/15 bg-[#151a20] px-3 text-sm text-white focus:border-[#e0c985] focus:outline-none">
               <option value="all">ทั้งหมด</option>
-              {metrics.map((metric) => <option key={metric.key} value={metric.key}>{metric.label}</option>)}
+              {visibleMetrics.map((metric) => <option key={metric.key} value={metric.key}>{platform === "all" ? `${platformLabel[metric.platform]} · ${metric.label}` : metric.label}</option>)}
             </select>
           </label>
           <label className="text-xs text-white/70">ค้นหา
@@ -226,7 +237,7 @@ export default function SocialStatsDashboard({ items }: { items: SocialAnalytics
           <div className="mt-2 text-2xl font-semibold">{filteredItems.length.toLocaleString("th-TH")}</div>
         </article>
         <article className="rounded-2xl border border-white/10 bg-white/[0.035] p-4">
-          <div className="text-xs text-white/65">{selectedMetric ? selectedMetric.label : "Metrics ที่มีฐานเทียบ"}</div>
+          <div className="text-xs text-white/65">{selectedMetric ? platform === "all" ? `${platformLabel[selectedMetric.platform]} · ${selectedMetric.label}` : selectedMetric.label : "Metrics ที่มีฐานเทียบ"}</div>
           <div className="mt-2 text-2xl font-semibold">
             {selectedMetric ? selectedTotal !== null ? metricValue(selectedTotal, selectedMetric.unit) : "เลือก Platform" : comparable.toLocaleString("th-TH")}
           </div>
