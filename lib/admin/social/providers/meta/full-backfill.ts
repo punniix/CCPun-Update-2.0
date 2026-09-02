@@ -25,6 +25,8 @@ export const SOCIAL_MARKETING_MART_P1_VERSION = "20260902_social_marketing_mart_
 export const SOCIAL_MARKETING_MART_P1_CHECKSUM = "sha256:7bdc2c2b80b59d7364d92ec88dd66ccd5472390291bf0bc3ba82ec424718f671";
 export const SOCIAL_MARKETING_MART_P2_VERSION = "20260902_social_marketing_mart_p2_full_backfill_clean";
 export const SOCIAL_MARKETING_MART_P2_CHECKSUM = "sha256:1dfbe426656ada42fa59f4b0d0727a39c293534abf964690bbbe0d8c6294727f";
+export const SOCIAL_MARKETING_MART_P2_PROVENANCE_VERSION = "20260902_social_marketing_mart_p2_metric_provenance";
+export const SOCIAL_MARKETING_MART_P2_PROVENANCE_CHECKSUM = "sha256:5b421a7bb67798d6b45911c1b05e3f54bc9f50c0482b48857f6780e7379ef866";
 
 const metricSchema = z.object({
   key: z.string().trim().min(1).max(80),
@@ -270,17 +272,19 @@ async function verifiedSql(env: Record<string, string | undefined>) {
        EXISTS (SELECT 1 FROM ccpun_social.schema_migration WHERE version=$3 AND checksum=$4) AS history_current,
        EXISTS (SELECT 1 FROM ccpun_social.schema_migration WHERE version=$5 AND checksum=$6) AS p1_current,
        EXISTS (SELECT 1 FROM ccpun_social.schema_migration WHERE version=$7 AND checksum=$8) AS p2_current,
-       EXISTS (SELECT 1 FROM ccpun_social.system_identity WHERE singleton=true AND project_id=$9 AND branch_id=$10
-         AND endpoint_id=$11 AND database_name=$12 AND migration_version=$1 AND migration_checksum=$2) AS identity_current`,
+       EXISTS (SELECT 1 FROM ccpun_social.schema_migration WHERE version=$9 AND checksum=$10) AS provenance_current,
+       EXISTS (SELECT 1 FROM ccpun_social.system_identity WHERE singleton=true AND project_id=$11 AND branch_id=$12
+         AND endpoint_id=$13 AND database_name=$14 AND migration_version=$1 AND migration_checksum=$2) AS identity_current`,
     [analytics.version, analytics.checksum,
       SOCIAL_PROVIDER_HISTORY_MIGRATION_VERSION, SOCIAL_PROVIDER_HISTORY_MIGRATION_CHECKSUM,
       SOCIAL_MARKETING_MART_P1_VERSION, SOCIAL_MARKETING_MART_P1_CHECKSUM,
       SOCIAL_MARKETING_MART_P2_VERSION, SOCIAL_MARKETING_MART_P2_CHECKSUM,
+      SOCIAL_MARKETING_MART_P2_PROVENANCE_VERSION, SOCIAL_MARKETING_MART_P2_PROVENANCE_CHECKSUM,
       identity.projectId, identity.branchId, identity.endpointId, identity.database],
-  ) as Array<{ database_name: string; role_name: string; analytics_current: boolean; history_current: boolean; p1_current: boolean; p2_current: boolean; identity_current: boolean }>;
+  ) as Array<{ database_name: string; role_name: string; analytics_current: boolean; history_current: boolean; p1_current: boolean; p2_current: boolean; provenance_current: boolean; identity_current: boolean }>;
   const row = rows[0];
   if (!row || row.database_name !== identity.database || row.role_name !== identity.role
-    || !row.analytics_current || !row.history_current || !row.p1_current || !row.p2_current || !row.identity_current) {
+    || !row.analytics_current || !row.history_current || !row.p1_current || !row.p2_current || !row.provenance_current || !row.identity_current) {
     throw new Error("META_FULL_BACKFILL_IDENTITY_MISMATCH");
   }
   return sql;

@@ -42,13 +42,13 @@ test("P1 Meta Insights migration is additive, checksum locked, and does not alte
   assert.doesNotMatch(source, /access.?token|refresh.?token|client.?secret/i);
 });
 
-test("Production bootstrap includes P1 and requires nine Social migrations", () => {
+test("Production bootstrap includes P1 and requires the current eleven Social migrations", () => {
   const cwd = new URL("../..", import.meta.url);
   const bootstrap = execFileSync(process.execPath, ["scripts/build-social-production-bootstrap.mjs"], { cwd, encoding: "utf8" });
   const readback = execFileSync(process.execPath, ["scripts/build-social-production-bootstrap.mjs", "--readback"], { cwd, encoding: "utf8" });
   assert.match(bootstrap, new RegExp(version));
   assert.match(bootstrap, new RegExp(checksum.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
-  assert.match(readback, /count\(\*\) = 10/);
+  assert.match(readback, /count\(\*\) = 11/);
   assert.match(readback, new RegExp(version));
 });
 

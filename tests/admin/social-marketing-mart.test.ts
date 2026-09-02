@@ -87,13 +87,13 @@ test("Marketing mart remains read-only to the restricted runtime role", () => {
   assert.match(readback, /runtime_qa_write_denied/);
 });
 
-test("Production bootstrap includes the Marketing Mart migration and readback requires it", () => {
+test("Production bootstrap includes the Marketing Mart migration and readback requires the current migration ledger", () => {
   const cwd = new URL("../..", import.meta.url);
   const bootstrap = execFileSync(process.execPath, ["scripts/build-social-production-bootstrap.mjs"], { cwd, encoding: "utf8" });
   const readback = execFileSync(process.execPath, ["scripts/build-social-production-bootstrap.mjs", "--readback"], { cwd, encoding: "utf8" });
   assert.match(bootstrap, new RegExp(version));
   assert.match(bootstrap, new RegExp(checksum.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
-  assert.match(readback, /count\(\*\) = 10/);
+  assert.match(readback, /count\(\*\) = 11/);
   assert.match(readback, new RegExp(version));
   assert.match(readback, new RegExp(checksum.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
 });

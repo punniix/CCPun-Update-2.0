@@ -74,6 +74,7 @@ function bootstrap() {
     withoutTransaction(read("20260902_social_marketing_mart_p0.sql")),
     withoutTransaction(read("20260902_social_marketing_mart_p1_meta_insights.sql")),
     withoutTransaction(read("20260902_social_marketing_mart_p2_full_backfill_clean.sql")),
+    withoutTransaction(read("20260902_social_marketing_mart_p2_metric_provenance.sql")),
   );
   return [
     "-- CCPun social Production bootstrap",
@@ -100,7 +101,7 @@ function readback() {
       AND migration_version = '${analytics.productionVersion}'
       AND migration_checksum = '${checksum}'
   ) AS identity_ok,
-  (SELECT count(*) = 10 FROM ccpun_social.schema_migration WHERE (version, checksum) IN (
+  (SELECT count(*) = 11 FROM ccpun_social.schema_migration WHERE (version, checksum) IN (
     ('20260828_website_42_social_foundation_v2', 'sha256:b6ad0b823775df1dcfc06e0da896dfcc477cfbeae897b70e228c18a051712acb'),
     ('20260828_website_42_media_library_foundation', 'sha256:9c5a76125a6cecc90a1693aabd7925c04f8473de0fa0d3206b6188fb427bfb55'),
     ('20260829_website_42_social_post_formats', 'sha256:64d8471247fa28a08fcb99cda5b4df87e73f7ed1dc497250da26d01119ade977'),
@@ -110,7 +111,8 @@ function readback() {
     ('20260901_website_42_social_comment_execution_v1', 'sha256:c9a5512469d8894ccbdebf5c051d7471aef1f9d59973b6a71f5d0f2b7618155d'),
     ('20260902_social_marketing_mart_p0', 'sha256:ebd2a708c4dc6c524cf93147a3446c3c3cd92b76cb626291a6662c2b7ca878f0'),
     ('20260902_social_marketing_mart_p1_meta_insights', 'sha256:7bdc2c2b80b59d7364d92ec88dd66ccd5472390291bf0bc3ba82ec424718f671'),
-    ('20260902_social_marketing_mart_p2_full_backfill_clean', 'sha256:1dfbe426656ada42fa59f4b0d0727a39c293534abf964690bbbe0d8c6294727f')
+    ('20260902_social_marketing_mart_p2_full_backfill_clean', 'sha256:1dfbe426656ada42fa59f4b0d0727a39c293534abf964690bbbe0d8c6294727f'),
+    ('20260902_social_marketing_mart_p2_metric_provenance', 'sha256:5b421a7bb67798d6b45911c1b05e3f54bc9f50c0482b48857f6780e7379ef866')
   )) AS migrations_ok,
   EXISTS (
     SELECT 1

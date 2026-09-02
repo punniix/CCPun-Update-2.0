@@ -154,3 +154,14 @@ Platform-native metric sheets remain in the export for audit and reprocessing.
 6. Confirm raw content count remains unchanged and snapshot history only grows append-only.
 7. Review metric coverage, clean-row count, analysis status, and QA flags.
 8. Reload the existing Social Stats page and validate Google Sheets export contract.
+
+## Metric collection provenance
+
+The follow-up migration `20260902_social_marketing_mart_p2_metric_provenance` assigns each Meta capability to the collector that actually requested it:
+
+- `meta-base-content-v1` — Facebook reactions total, comments total and shares; Instagram likes and comments total.
+- `meta-p1-insights-v1` — Facebook Views, Clicks and reaction breakdown; Instagram Views, Reach, Saves, Shares, Total Interactions and Reel watch time.
+
+This distinction is required for correct missing-data semantics. For example, the base Facebook posts request includes the `shares` field. When Meta omits that field, the status is `not_returned`, not `not_fetched`. Conversely, a P1 Insights metric with no P1 collection attempt remains `not_fetched`.
+
+The correction changes only the derived capability/status layer. It does not rewrite provider content, metric snapshots, collection attempts, or any raw provider value.
