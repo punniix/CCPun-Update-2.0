@@ -116,6 +116,10 @@ const contracts: Record<string, RouteContract> = {
     methods: ["GET"], identity: /getAdminIdentity\(\)/, authorization: /"social:read"/,
     validation: { file: "app/api/snt-admin/social/foundation/route.ts", pattern: /isConfiguredAdminOrigin\(request\.url, process\.env\.AUTH_URL\)/, exception: "Sensitive GET adds an exact configured-origin check." },
   },
+  "app/api/snt-admin/social/analytics/backfill/meta-insights/route.ts": {
+    methods: ["POST"], identity: /getAdminIdentity\(\)/, authorization: /identity\.actorType !== "human" \|\| identity\.role !== "owner"/,
+    validation: { file: "app/api/snt-admin/social/analytics/backfill/meta-insights/route.ts", pattern: /isSameOriginAdminMutation\(request\.url, request\.headers\.get\(\"origin\"\)\)/, exception: "No request body; the next bounded unprocessed batch is server-owned." },
+  },
   "app/api/snt-admin/social/analytics/post-live/route.ts": {
     methods: ["GET"], identity: /getAdminIdentity\(\)/, authorization: /"social:read"/,
     validation: { file: "app/api/snt-admin/social/analytics/post-live/route.ts", pattern: /isConfiguredAdminOrigin\(request\.url, process\.env\.AUTH_URL\)/, exception: "Sensitive GET adds an exact configured-origin check." },

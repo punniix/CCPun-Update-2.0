@@ -93,7 +93,7 @@ test("Production bootstrap includes the Marketing Mart migration and readback re
   const readback = execFileSync(process.execPath, ["scripts/build-social-production-bootstrap.mjs", "--readback"], { cwd, encoding: "utf8" });
   assert.match(bootstrap, new RegExp(version));
   assert.match(bootstrap, new RegExp(checksum.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
-  assert.match(readback, /count\(\*\) = 9/);
+  assert.match(readback, /count\(\*\) = 10/);
   assert.match(readback, new RegExp(version));
   assert.match(readback, new RegExp(checksum.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
 });
