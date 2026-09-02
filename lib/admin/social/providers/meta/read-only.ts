@@ -5,15 +5,24 @@ import { META_MINIMUM_READ_SCOPES, normalizeMetaConnection } from "./connection"
 
 if (typeof window !== "undefined") throw new Error("META_READ_SERVER_ONLY");
 
+const optionalUrl = (max: number) => z.string().url().max(max).nullable().optional().transform((value) => value ?? undefined);
+const optionalText = (max: number) => z.string().max(max).nullable().optional().transform((value) => value ?? undefined);
+const optionalCount = z.number().int().nonnegative().safe().nullable().optional().transform((value) => value ?? undefined);
+const optionalSummary = z.object({ summary: z.object({ total_count: z.number().int().nonnegative().safe() }) })
+  .nullable().optional().transform((value) => value ?? undefined);
+const optionalShares = z.object({ count: z.number().int().nonnegative().safe() })
+  .nullable().optional().transform((value) => value ?? undefined);
+
 const pagingSchema = z.object({
-  next: z.string().url().max(4000).optional(),
-  cursors: z.object({ after: z.string().trim().min(1).max(1000).optional() }).optional(),
-}).optional();
+  next: z.string().url().max(4000).nullable().optional().transform((value) => value ?? undefined),
+  cursors: z.object({ after: z.string().trim().min(1).max(1000).nullable().optional().transform((value) => value ?? undefined) })
+    .nullable().optional().transform((value) => value ?? undefined),
+}).nullable().optional().transform((value) => value ?? undefined);
 const responseSchema = z.object({
   data: z.array(z.object({
     id: z.string().trim().min(1).max(120),
     name: z.string().trim().min(1).max(120),
-    access_token: z.string().trim().min(1).max(4096).optional(),
+    access_token: z.string().trim().min(1).max(4096).nullable().optional().transform((value) => value ?? undefined),
     instagram_business_account: z.object({
       id: z.string().trim().min(1).max(120),
       username: z.string().trim().min(1).max(120),
@@ -21,35 +30,44 @@ const responseSchema = z.object({
   })).max(100),
   paging: pagingSchema,
 });
-const summarySchema = z.object({ summary: z.object({ total_count: z.number().int().nonnegative().safe() }) });
 const metaDateTimeSchema = z.string()
   .transform((value) => value.replace(/([+-]\d{2})(\d{2})$/, "$1:$2"))
   .pipe(z.string().datetime({ offset: true }));
 const facebookPostsSchema = z.object({ data: z.array(z.object({
   id: z.string().trim().min(1).max(200),
-  message: z.string().max(5000).optional().default(""),
-  status_type: z.string().trim().min(1).max(80).optional(),
+  message: optionalText(5000).transform((value) => value ?? ""),
+  status_type: z.string().trim().min(1).max(80).nullable().optional().transform((value) => value ?? undefined),
   created_time: metaDateTimeSchema,
-  permalink_url: z.string().url().max(1000).optional(),
-  full_picture: z.string().url().max(2000).optional(),
-  shares: z.object({ count: z.number().int().nonnegative().safe() }).optional(),
-  comments: summarySchema.optional(),
-  reactions: summarySchema.optional(),
+  permalink_url: optionalUrl(1000),
+  full_picture: optionalUrl(2000),
+  shares: optionalShares,
+  comments: optionalSummary,
+  reactions: optionalSummary,
 })).max(100), paging: pagingSchema });
 const instagramMediaSchema = z.object({ data: z.array(z.object({
   id: z.string().trim().min(1).max(200),
-  caption: z.string().max(5000).optional().default(""),
+  caption: optionalText(5000).transform((value) => value ?? ""),
   media_type: z.string().trim().min(1).max(40),
   timestamp: metaDateTimeSchema,
-  permalink: z.string().url().max(1000).optional(),
-  thumbnail_url: z.string().url().max(2000).optional(),
-  media_url: z.string().url().max(2000).optional(),
-  like_count: z.number().int().nonnegative().safe().optional(),
-  comments_count: z.number().int().nonnegative().safe().optional(),
+  permalink: optionalUrl(1000),
+  thumbnail_url: optionalUrl(2000),
+  media_url: optionalUrl(2000),
+  like_count: optionalCount,
+  comments_count: optionalCount,
 })).max(100), paging: pagingSchema });
 
 type FetchLike = (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
 type Publication = { publicationId: string; platform: string; platformObjectId: string | null };
+
+function logInvalidResponse(stage: string, error: z.ZodError) {
+  console.error("[meta-read-invalid-response]", {
+    stage,
+    issues: error.issues.slice(0, 5).map((issue) => ({
+      code: issue.code,
+      path: issue.path.map(String).join("."),
+    })),
+  });
+}
 
 async function request(url: string, token: string, fetcher: FetchLike) {
   let response: Response;
@@ -87,12 +105,16 @@ async function readAllPages<T>(
   schema: z.ZodType<{ data: T[]; paging?: { next?: string; cursors?: { after?: string } } }>,
   fetcher: FetchLike,
   stopAfterPage?: (items: T[]) => boolean,
+  stage = "provider-page",
 ) {
   const items: T[] = [];
   let url = baseUrl;
   for (let page = 0; page < 100; page += 1) {
     const parsed = schema.safeParse(await request(url, token, fetcher));
-    if (!parsed.success) throw new Error("META_READ_INVALID_RESPONSE");
+    if (!parsed.success) {
+      logInvalidResponse(`${stage}:${page + 1}`, parsed.error);
+      throw new Error("META_READ_INVALID_RESPONSE");
+    }
     items.push(...parsed.data.data);
     if (stopAfterPage?.(parsed.data.data)) return items;
     if (!parsed.data.paging?.next) return items;
@@ -120,7 +142,10 @@ export async function fetchMetaReadOnlyDiscovery(
   const parsedPages = responseSchema.safeParse(await request(
     `https://graph.facebook.com/${version}/me/accounts?fields=${encodeURIComponent(fields)}&limit=20`, token, fetcher,
   ));
-  if (!parsedPages.success) throw new Error("META_READ_INVALID_RESPONSE");
+  if (!parsedPages.success) {
+    logInvalidResponse("accounts", parsedPages.error);
+    throw new Error("META_READ_INVALID_RESPONSE");
+  }
   const pages = parsedPages.data.data;
   const selectedPageId = env.CCPUN_META_PAGE_ID?.trim() || (pages.length === 1 ? pages[0]!.id : null);
   const selectedPage = pages.find((page) => page.id === selectedPageId);
@@ -133,7 +158,7 @@ export async function fetchMetaReadOnlyDiscovery(
     return url.toString();
   };
   const [facebookPosts, instagramMedia] = selectedPage ? await Promise.all([
-    readAllPages(withSince(`https://graph.facebook.com/${version}/${encodeURIComponent(selectedPage.id)}/published_posts?fields=${encodeURIComponent("id,message,status_type,created_time,permalink_url,full_picture,shares,comments.limit(0).summary(true),reactions.limit(0).summary(true)")}&limit=100`), selectedPageToken, facebookPostsSchema, fetcher),
+    readAllPages(withSince(`https://graph.facebook.com/${version}/${encodeURIComponent(selectedPage.id)}/published_posts?fields=${encodeURIComponent("id,message,status_type,created_time,permalink_url,full_picture,shares,comments.limit(0).summary(true),reactions.limit(0).summary(true)")}&limit=100`), selectedPageToken, facebookPostsSchema, fetcher, undefined, "facebook-posts"),
     selectedPage.instagram_business_account
       // ponytail: IG media has cursor-only pagination; stop after the first page wholly older than the overlap window.
       ? readAllPages(
@@ -142,6 +167,7 @@ export async function fetchMetaReadOnlyDiscovery(
         instagramMediaSchema,
         fetcher,
         since ? (items) => items.length > 0 && items.every((item) => Date.parse(item.timestamp) < Date.parse(since)) : undefined,
+        "instagram-media",
       )
       : Promise.resolve([]),
   ]) : [[], []];
