@@ -71,11 +71,12 @@ test("uses a lightweight published-only Sanity query for Google sitemap entries"
 
 test("sets the meaningful content timestamp through the protected article publish action", () => {
   const action = readSource("cms/sanity/policy/article-publish-action.tsx");
-  const policy = readSource("cms/sanity/policy/studio-policy.ts");
+  const config = readSource("sanity.config.ts");
   const schema = readSource("cms/sanity/schema/documents/article.ts");
 
   assert.match(action, /set:\s*\{\s*contentUpdatedAt:\s*new Date\(\)\.toISOString\(\)\s*\}/);
   assert.match(action, /patch\.execute[\s\S]*publish\.execute/);
-  assert.match(policy, /action\.action === "publish"[\s\S]*createGoogleSafeArticlePublishAction/);
+  assert.match(action, /schemaType !== "article"[\s\S]*action\.action === "publish"/);
+  assert.match(config, /wrapGoogleSafeArticlePublishActions[\s\S]*protectProductionContentLifecycleActions/);
   assert.match(schema, /name:\s*"contentUpdatedAt"[\s\S]*readOnly:\s*true/);
 });

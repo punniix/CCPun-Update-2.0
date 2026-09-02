@@ -5,6 +5,7 @@ import { schemaTypes } from "./cms/sanity/schema";
 import { createStudioPresentationPlugin } from "./cms/sanity/config/presentation";
 import { getStudioPublishingOptions } from "./cms/sanity/config/publishing";
 import { createStudioStructurePlugin } from "./cms/sanity/config/structure";
+import { wrapGoogleSafeArticlePublishActions } from "./cms/sanity/policy/article-publish-action";
 import {
   filterStudioAuthProviders,
   filterStudioDocumentActions,
@@ -44,8 +45,12 @@ export const sanityStudioConfig =
         schema: { types: schemaTypes },
         document: {
           actions: (previousActions, context) =>
-            protectProductionContentLifecycleActions(
-              filterStudioDocumentActions(previousActions, context.dataset, environment, context.schemaType, projectId),
+            wrapGoogleSafeArticlePublishActions(
+              protectProductionContentLifecycleActions(
+                filterStudioDocumentActions(previousActions, context.dataset, environment, context.schemaType, projectId),
+                environment,
+                context.schemaType,
+              ),
               environment,
               context.schemaType,
             ),
