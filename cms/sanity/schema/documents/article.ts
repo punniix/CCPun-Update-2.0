@@ -77,9 +77,10 @@ export const article = defineType({
     defineField({
       name: "contentUpdatedAt",
       title: "วันที่แก้เนื้อหาล่าสุด",
-      description: "ใช้กับ Google และผู้อ่าน แยกจากเวลาที่ระบบตรวจ SEO หรือบันทึกสถานะ",
+      description: "ระบบอัปเดตอัตโนมัติเมื่อเผยแพร่การแก้ไข เพื่อให้หน้าเว็บ Article Schema และ sitemap.xml ใช้วันเดียวกัน",
       type: "datetime",
       group: "publication",
+      readOnly: true,
     }),
     defineField({
       name: "publishedAt",
