@@ -24,7 +24,7 @@ const NAV_ITEMS: Array<{ href: string; label: string; permission: AdminPermissio
       { href: "/snt-admin/distribution/overview/", label: "Overview" },
       { href: "/snt-admin/distribution/operations/", label: "Posts" },
       { href: "/snt-admin/distribution/calendar/", label: "Calendar" },
-      { href: "/snt-admin/distribution/analytics/", label: "Stats" },
+      { href: "/snt-admin/distribution/analytics/", label: "Marketing" },
       { href: "/snt-admin/distribution/connections/", label: "Connections" },
   ] },
   { href: "/snt-admin/reviews/", label: "ข้อเสนอที่รอตรวจ", permission: "reviews:read" },
