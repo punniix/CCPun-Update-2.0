@@ -33,7 +33,8 @@ export async function GET() {
           hub.slug,
         ),
       );
-      return relevant.length ? [{ loc: `https://ccpun.com/blog/${hub.slug}/` }] : [];
+      if (!relevant.length) return [];
+      return [{ loc: `https://ccpun.com/blog/${hub.slug}/` }];
     });
 
     return xmlResponse(renderUrlSet(uniqueSortedSitemapEntries([blogEntry, ...hubEntries, ...articleEntries])));
