@@ -32,7 +32,7 @@ const metricSchema = z.object({
   key: z.string().trim().min(1).max(80),
   label: z.string().trim().min(1).max(120),
   value: z.number().nonnegative(),
-  unit: z.enum(["count", "seconds", "minutes"]),
+  unit: z.enum(["count", "seconds", "minutes", "milliseconds"]),
   dimension: z.enum(["discovery", "engagement", "deep-engagement", "retention", "business-intent"]),
 });
 

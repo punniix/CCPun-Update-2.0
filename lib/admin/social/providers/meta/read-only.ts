@@ -2,6 +2,7 @@ import { z } from "zod";
 import { normalizeMetaAnalytics } from "../../provider-adapters";
 import { getSocialProviderReadiness } from "../../provider-readonly";
 import { META_MINIMUM_READ_SCOPES, normalizeMetaConnection } from "./connection";
+import { fetchMetaInsights, mapWithConcurrency, numberInsight, reactionBreakdownInsight } from "./insights-read";
 
 if (typeof window !== "undefined") throw new Error("META_READ_SERVER_ONLY");
 
@@ -48,6 +49,7 @@ const instagramMediaSchema = z.object({ data: z.array(z.object({
   id: z.string().trim().min(1).max(200),
   caption: optionalText(5000).transform((value) => value ?? ""),
   media_type: z.string().trim().min(1).max(40),
+  media_product_type: z.string().trim().min(1).max(40).nullable().optional().transform((value) => value ?? undefined),
   timestamp: metaDateTimeSchema,
   permalink: optionalUrl(1000),
   thumbnail_url: optionalUrl(2000),
@@ -58,6 +60,12 @@ const instagramMediaSchema = z.object({ data: z.array(z.object({
 
 type FetchLike = (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
 type Publication = { publicationId: string; platform: string; platformObjectId: string | null };
+type MetaInsightMetricFields = {
+  views?: number; reach?: number; clicks?: number; saves?: number; shares?: number; totalInteractions?: number;
+  reelTotalWatchTimeMs?: number; reelAverageWatchTimeMs?: number;
+  reactionLike?: number; reactionLove?: number; reactionCare?: number; reactionWow?: number;
+  reactionHaha?: number; reactionSad?: number; reactionAngry?: number;
+};
 
 function logInvalidResponse(stage: string, error: z.ZodError) {
   console.error("[meta-read-invalid-response]", {
@@ -131,7 +139,7 @@ async function readAllPages<T>(
 export async function fetchMetaReadOnlyDiscovery(
   env: Record<string, string | undefined> = process.env,
   fetcher: FetchLike = fetch,
-  options: { since?: string | null } = {},
+  options: { since?: string | null; includeInsights?: boolean; insightsBackfillLimit?: number } = {},
 ) {
   if (getSocialProviderReadiness("meta", env).status !== "manual-sync-ready") {
     throw new Error("META_READ_NOT_CONFIGURED");
@@ -162,7 +170,7 @@ export async function fetchMetaReadOnlyDiscovery(
     selectedPage.instagram_business_account
       // ponytail: IG media has cursor-only pagination; stop after the first page wholly older than the overlap window.
       ? readAllPages(
-        `https://graph.facebook.com/${version}/${encodeURIComponent(selectedPage.instagram_business_account.id)}/media?fields=${encodeURIComponent("id,caption,media_type,timestamp,permalink,thumbnail_url,media_url,like_count,comments_count")}&limit=100`,
+        `https://graph.facebook.com/${version}/${encodeURIComponent(selectedPage.instagram_business_account.id)}/media?fields=${encodeURIComponent("id,caption,media_type,media_product_type,timestamp,permalink,thumbnail_url,media_url,like_count,comments_count")}&limit=100`,
         selectedPageToken,
         instagramMediaSchema,
         fetcher,
@@ -171,6 +179,59 @@ export async function fetchMetaReadOnlyDiscovery(
       )
       : Promise.resolve([]),
   ]) : [[], []];
+  const includeInsights = options.includeInsights === true;
+  const insightLimit = Math.max(1, Math.min(options.insightsBackfillLimit ?? 25, 50));
+  let latestFacebookForInsights = facebookPosts.slice(0, insightLimit);
+  if (includeInsights && since && selectedPage) {
+    latestFacebookForInsights = await readAllPages(
+      `https://graph.facebook.com/${version}/${encodeURIComponent(selectedPage.id)}/published_posts?fields=${encodeURIComponent("id,message,status_type,created_time,permalink_url,full_picture,shares,comments.limit(0).summary(true),reactions.limit(0).summary(true)")}&limit=${insightLimit}`,
+      selectedPageToken, facebookPostsSchema, fetcher, () => true, "facebook-insights-backfill",
+    );
+  }
+  const latestInstagramForInsights = instagramMedia.slice(0, insightLimit);
+
+  const facebookInsightMap = new Map<string, MetaInsightMetricFields>();
+  const instagramInsightMap = new Map<string, MetaInsightMetricFields>();
+  if (includeInsights && selectedPage) {
+    const facebookEnriched = await mapWithConcurrency(latestFacebookForInsights, 5, async (post) => {
+      const values = await fetchMetaInsights({
+        version, objectId: post.id, token: selectedPageToken,
+        metrics: ["post_media_view", "post_clicks", "post_reactions_by_type_total"],
+      }, fetcher);
+      const reactions = reactionBreakdownInsight(values, "post_reactions_by_type_total");
+      return [post.id, {
+        views: numberInsight(values, "post_media_view"),
+        clicks: numberInsight(values, "post_clicks"),
+        reactionLike: reactions.like, reactionLove: reactions.love, reactionCare: reactions.care, reactionWow: reactions.wow,
+        reactionHaha: reactions.haha, reactionSad: reactions.sad, reactionAngry: reactions.angry,
+      }] as const;
+    });
+    for (const [id, metrics] of facebookEnriched) facebookInsightMap.set(id, metrics);
+
+    if (selectedPage.instagram_business_account) {
+      const instagramEnriched = await mapWithConcurrency(latestInstagramForInsights, 5, async (media) => {
+        const metrics = ["views", "reach", "saved", "shares", "total_interactions"];
+        if (media.media_type === "VIDEO") metrics.push("ig_reels_video_view_total_time", "ig_reels_avg_watch_time");
+        const values = await fetchMetaInsights({ version, objectId: media.id, token: selectedPageToken, metrics }, fetcher);
+        return [media.id, {
+          views: numberInsight(values, "views"), reach: numberInsight(values, "reach"), saves: numberInsight(values, "saved"),
+          shares: numberInsight(values, "shares"), totalInteractions: numberInsight(values, "total_interactions"),
+          reelTotalWatchTimeMs: numberInsight(values, "ig_reels_video_view_total_time"),
+          reelAverageWatchTimeMs: numberInsight(values, "ig_reels_avg_watch_time"),
+        }] as const;
+      });
+      for (const [id, metrics] of instagramEnriched) instagramInsightMap.set(id, metrics);
+    }
+  }
+
+  const mergeById = <T extends { id: string }>(primary: T[], extra: T[]) => {
+    const seen = new Set(primary.map((item) => item.id));
+    return [...primary, ...extra.filter((item) => !seen.has(item.id))];
+  };
+  const facebookReturned = includeInsights ? mergeById(facebookPosts, latestFacebookForInsights) : facebookPosts;
+  const instagramWindow = instagramMedia.filter((media) => !since || Date.parse(media.timestamp) >= Date.parse(since));
+  const instagramReturned = includeInsights ? mergeById(instagramWindow, latestInstagramForInsights) : instagramWindow;
+
   const connection = normalizeMetaConnection({
     mode: "provider-read-only",
     authorizationState: "active",
@@ -189,15 +250,17 @@ export async function fetchMetaReadOnlyDiscovery(
     fetchedAt: new Date().toISOString(),
     syncWindowStart: since,
     selectedInstagramAccountId: selectedPage?.instagram_business_account?.id ?? null,
-    facebookPosts: facebookPosts.map((post) => ({
+    insightsCollected: includeInsights,
+    insightBackfillLimit: includeInsights ? insightLimit : 0,
+    facebookPosts: facebookReturned.map((post) => ({
       id: post.id, text: post.message, mediaType: post.status_type ?? "post", publishedAt: post.created_time,
       permalink: post.permalink_url ?? null, thumbnailUrl: post.full_picture ?? null,
-      metrics: { likes: post.reactions?.summary.total_count, comments: post.comments?.summary.total_count, shares: post.shares?.count },
+      metrics: { likes: post.reactions?.summary.total_count, comments: post.comments?.summary.total_count, shares: post.shares?.count, ...(facebookInsightMap.get(post.id) ?? {}) },
     })),
-    instagramMedia: instagramMedia.filter((media) => !since || Date.parse(media.timestamp) >= Date.parse(since)).map((media) => ({
+    instagramMedia: instagramReturned.map((media) => ({
       id: media.id, text: media.caption, mediaType: media.media_type, publishedAt: media.timestamp, permalink: media.permalink ?? null,
       thumbnailUrl: media.thumbnail_url ?? media.media_url ?? null,
-      metrics: { likes: media.like_count, comments: media.comments_count },
+      metrics: { likes: media.like_count, comments: media.comments_count, ...(instagramInsightMap.get(media.id) ?? {}) },
     })),
   };
 }

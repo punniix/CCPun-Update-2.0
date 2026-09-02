@@ -39,7 +39,7 @@ export const socialMetricSnapshotSchema = z.object({
     key: z.string().trim().min(1).max(80),
     label: z.string().trim().min(1).max(120),
     value: z.number().nonnegative(),
-    unit: z.enum(["count", "seconds", "minutes"]),
+    unit: z.enum(["count", "seconds", "minutes", "milliseconds"]),
     dimension: metricDimensionSchema,
   })).min(1).max(20),
   limitations: z.array(z.string().trim().min(1).max(240)).min(1).max(10),
