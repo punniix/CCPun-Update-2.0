@@ -211,3 +211,82 @@ test("Manual social routes and pages remain human-only, same-origin and provider
   assert.match(tiktokPage, /video\.upload และ video\.publish ถูกปฏิเสธ/);
   assert.doesNotMatch(client, /accessToken|refreshToken|clientSecret/);
 });
+
+
+test("Meta discovery tolerates null optional Graph fields without weakening required identity or timestamps", async () => {
+  const result = await fetchMetaReadOnlyDiscovery({
+    ...lane,
+    CCPUN_META_ACCESS_TOKEN: "meta-access",
+    CCPUN_META_GRAPH_VERSION: "v24.0",
+    CCPUN_META_GRANTED_SCOPES: "pages_show_list,pages_read_engagement,instagram_basic",
+  }, async (input) => {
+    const url = String(input);
+    if (url.includes("/me/accounts")) return new Response(JSON.stringify({ data: [
+      { id: "page-1", name: "CCPun", access_token: null, instagram_business_account: { id: "ig-1", username: "ccpun" } },
+    ], paging: null }));
+    if (url.includes("/published_posts")) return new Response(JSON.stringify({ data: [{
+      id: "facebook-post-1",
+      message: null,
+      status_type: null,
+      created_time: "2026-08-31T10:00:00+0000",
+      permalink_url: null,
+      full_picture: null,
+      shares: null,
+      comments: null,
+      reactions: null,
+    }], paging: null }));
+    return new Response(JSON.stringify({ data: [{
+      id: "ig-post-1",
+      caption: null,
+      media_type: "IMAGE",
+      timestamp: "2026-08-31T10:00:00+0000",
+      permalink: null,
+      thumbnail_url: null,
+      media_url: null,
+      like_count: null,
+      comments_count: null,
+    }], paging: null }));
+  });
+
+  assert.equal(result.facebookPosts[0]?.text, "");
+  assert.equal(result.facebookPosts[0]?.mediaType, "post");
+  assert.equal(result.facebookPosts[0]?.permalink, null);
+  assert.equal(result.facebookPosts[0]?.thumbnailUrl, null);
+  assert.deepEqual(result.facebookPosts[0]?.metrics, { likes: undefined, comments: undefined, shares: undefined });
+  assert.equal(result.instagramMedia[0]?.text, "");
+  assert.equal(result.instagramMedia[0]?.permalink, null);
+  assert.equal(result.instagramMedia[0]?.thumbnailUrl, null);
+  assert.deepEqual(result.instagramMedia[0]?.metrics, { likes: undefined, comments: undefined });
+});
+
+test("Meta invalid-response diagnostics expose schema paths only and never provider payload values", async () => {
+  const original = console.error;
+  const logs: unknown[][] = [];
+  console.error = (...values) => logs.push(values);
+  try {
+    await assert.rejects(fetchMetaReadOnlyDiscovery({
+      ...lane,
+      CCPUN_META_ACCESS_TOKEN: "meta-secret",
+      CCPUN_META_GRAPH_VERSION: "v24.0",
+      CCPUN_META_GRANTED_SCOPES: "pages_show_list,pages_read_engagement,instagram_basic",
+    }, async (input) => {
+      const url = String(input);
+      if (url.includes("/me/accounts")) return new Response(JSON.stringify({ data: [
+        { id: "page-1", name: "CCPun", instagram_business_account: { id: "ig-1", username: "ccpun" } },
+      ] }));
+      if (url.includes("/published_posts")) return new Response(JSON.stringify({ data: [{
+        id: "facebook-post-1", message: "secret post content", created_time: null,
+      }] }));
+      return new Response(JSON.stringify({ data: [] }));
+    }), /META_READ_INVALID_RESPONSE/);
+  } finally {
+    console.error = original;
+  }
+
+  const serialized = JSON.stringify(logs);
+  assert.match(serialized, /meta-read-invalid-response/);
+  assert.match(serialized, /facebook-posts:1/);
+  assert.match(serialized, /data\.0\.created_time/);
+  assert.equal(serialized.includes("meta-secret"), false);
+  assert.equal(serialized.includes("secret post content"), false);
+});
