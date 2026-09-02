@@ -1,52 +1,51 @@
-import { getContentProvider } from "@/lib/content/provider";
+import { listSitemapArticles } from "@/lib/content/sitemap";
 import { BLOG_TOPIC_HUBS, isArticleInSemanticTopic } from "@/lib/content/taxonomy";
-import { renderUrlSet, xmlResponse } from "@/lib/sitemap/xml";
 import { getArticleCanonical, isArticleCanonicalAligned } from "@/lib/content/url";
+import { uniqueSortedSitemapEntries } from "@/lib/sitemap/google";
+import { renderUrlSet, xmlResponse } from "@/lib/sitemap/xml";
 
-function latestUpdatedAt(values: string[]) {
-  return values.reduce((latest, value) => (value > latest ? value : latest), values[0] ?? "");
-}
-
-function uniqueSortedEntries(entries: Array<{ loc: string; lastmod: string }>) {
-  const byLocation = new Map<string, { loc: string; lastmod: string }>();
-  for (const entry of entries) {
-    const existing = byLocation.get(entry.loc);
-    if (!existing || entry.lastmod > existing.lastmod) byLocation.set(entry.loc, entry);
-  }
-  return [...byLocation.values()].sort((a, b) => a.loc.localeCompare(b.loc));
-}
+export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const articles = await getContentProvider().listArticles({ includeDrafts: false });
-  const canonicalArticles = articles.filter(isArticleCanonicalAligned);
-  const indexableArticles = canonicalArticles.filter(
-    (article) => article.status === "published" && article.noindex !== true,
-  );
-  const articleEntries = indexableArticles.map((article) => ({
-    loc: getArticleCanonical(article),
-    lastmod: article.updatedAt,
-  }));
-
-  const hubEntries = BLOG_TOPIC_HUBS.flatMap((hub) => {
-    if (!hub.indexable) return [];
-    const relevant = indexableArticles.filter((article) =>
-      isArticleInSemanticTopic(
-        {
-          articleSlug: article.slug,
-          semanticTopic: article.semanticTopic,
-          categoryTitle: article.category,
-          categorySlug: article.categorySlug,
-          tags: article.tags,
-        },
-        hub.slug,
-      ),
+  try {
+    const articles = await listSitemapArticles({ includeDrafts: false });
+    const canonicalArticles = articles.filter(isArticleCanonicalAligned);
+    const indexableArticles = canonicalArticles.filter(
+      (article) => article.status === "published" && article.noindex !== true,
     );
-    if (!relevant.length) return [];
-    return [{
-      loc: `https://ccpun.com/blog/${hub.slug}/`,
-      lastmod: latestUpdatedAt(relevant.map((article) => article.updatedAt)),
-    }];
-  });
+    const articleEntries = indexableArticles.map((article) => ({
+      loc: getArticleCanonical(article),
+      lastmod: article.updatedAt,
+    }));
+    const blogEntry = { loc: "https://ccpun.com/blog/" };
 
-  return xmlResponse(renderUrlSet(uniqueSortedEntries([...hubEntries, ...articleEntries])));
+    const hubEntries = BLOG_TOPIC_HUBS.flatMap((hub) => {
+      if (!hub.indexable) return [];
+      const relevant = indexableArticles.filter((article) =>
+        isArticleInSemanticTopic(
+          {
+            articleSlug: article.slug,
+            semanticTopic: article.semanticTopic,
+            categoryTitle: article.category,
+            categorySlug: article.categorySlug,
+            tags: article.tags,
+          },
+          hub.slug,
+        ),
+      );
+      return relevant.length ? [{ loc: `https://ccpun.com/blog/${hub.slug}/` }] : [];
+    });
+
+    return xmlResponse(renderUrlSet(uniqueSortedSitemapEntries([blogEntry, ...hubEntries, ...articleEntries])));
+  } catch (error) {
+    console.error("BLOG_SITEMAP_GENERATION_FAILED", error instanceof Error ? error.message : "unknown");
+    return new Response("Sitemap temporarily unavailable", {
+      status: 503,
+      headers: {
+        "Content-Type": "text/plain; charset=utf-8",
+        "Cache-Control": "no-store",
+        "Retry-After": "300",
+      },
+    });
+  }
 }

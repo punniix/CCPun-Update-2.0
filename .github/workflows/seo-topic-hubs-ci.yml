@@ -34,6 +34,9 @@ jobs:
       - name: Foundation code, SEO, analytics and admin contracts
         run: npm run check:foundation
 
+      - name: Google sitemap deterministic contract
+        run: node --import tsx --test tests/sitemap-google-regression.test.ts
+
       - name: Homepage LCP loading contract
         run: node tests/home-lcp-regression.mjs
 
@@ -75,6 +78,7 @@ jobs:
           fi
 
           node qa/seo-topic-hubs-http-regression.mjs
+          node qa/sitemap-google-http-regression.mjs
           node qa/home-lcp-http-regression.mjs
 
       - name: Production-parity build on non-production content lane

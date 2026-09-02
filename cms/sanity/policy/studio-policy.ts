@@ -1,5 +1,6 @@
 import type { DocumentActionComponent } from "sanity";
 import { isStudioDataPlaneAllowed, type AdminEnvironment } from "../../../lib/admin/environment";
+import { createGoogleSafeArticlePublishAction } from "./article-publish-action";
 
 const BLOCKED_NON_PRODUCTION_ACTIONS = new Set(["delete", "publish", "unpublish", "unpublishVersion"]);
 const BLOCKED_PRODUCTION_ADMIN_ACTIONS = new Set(["delete", "unpublish", "unpublishVersion"]);
@@ -123,6 +124,7 @@ export function protectProductionContentLifecycleActions(
   }
 
   return actions.map((action) => {
+    if (action.action === "publish") return createGoogleSafeArticlePublishAction(action);
     if (action.action === "delete") return createDraftOnlyDeleteAction(action);
     if (action.action === "unpublish") return createSeoSafeUnpublishAction(action);
     return action;
