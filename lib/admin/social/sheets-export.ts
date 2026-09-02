@@ -27,6 +27,8 @@ export const socialSheetsExportRequestSchema = z.strictObject({
 
 const SOCIAL_MARKETING_MART_P2_VERSION = "20260902_social_marketing_mart_p2_full_backfill_clean";
 const SOCIAL_MARKETING_MART_P2_CHECKSUM = "sha256:1dfbe426656ada42fa59f4b0d0727a39c293534abf964690bbbe0d8c6294727f";
+const SOCIAL_MARKETING_MART_P2_PROVENANCE_VERSION = "20260902_social_marketing_mart_p2_metric_provenance";
+const SOCIAL_MARKETING_MART_P2_PROVENANCE_CHECKSUM = "sha256:5b421a7bb67798d6b45911c1b05e3f54bc9f50c0482b48857f6780e7379ef866";
 
 type Cell = string | number | boolean;
 export type SocialExportSheet = { title: string; rows: Cell[][] };
@@ -216,17 +218,19 @@ async function verifiedSql(env: Record<string, string | undefined>) {
        EXISTS (SELECT 1 FROM ccpun_social.schema_migration WHERE version=$3 AND checksum=$4) AS history_current,
        EXISTS (SELECT 1 FROM ccpun_social.schema_migration WHERE version=$5 AND checksum=$6) AS publication_current,
        EXISTS (SELECT 1 FROM ccpun_social.schema_migration WHERE version=$7 AND checksum=$8) AS clean_mart_current,
-       EXISTS (SELECT 1 FROM ccpun_social.system_identity WHERE singleton=true AND project_id=$9 AND branch_id=$10
-         AND endpoint_id=$11 AND database_name=$12) AS identity_current`,
+       EXISTS (SELECT 1 FROM ccpun_social.schema_migration WHERE version=$9 AND checksum=$10) AS provenance_current,
+       EXISTS (SELECT 1 FROM ccpun_social.system_identity WHERE singleton=true AND project_id=$11 AND branch_id=$12
+         AND endpoint_id=$13 AND database_name=$14) AS identity_current`,
     [analyticsMigration.version, analyticsMigration.checksum,
       SOCIAL_PROVIDER_HISTORY_MIGRATION_VERSION, SOCIAL_PROVIDER_HISTORY_MIGRATION_CHECKSUM,
       SOCIAL_PUBLICATION_EXECUTION_MIGRATION_VERSION, SOCIAL_PUBLICATION_EXECUTION_MIGRATION_CHECKSUM,
       SOCIAL_MARKETING_MART_P2_VERSION, SOCIAL_MARKETING_MART_P2_CHECKSUM,
+      SOCIAL_MARKETING_MART_P2_PROVENANCE_VERSION, SOCIAL_MARKETING_MART_P2_PROVENANCE_CHECKSUM,
       identity.projectId, identity.branchId, identity.endpointId, identity.database],
-  ) as Array<{ database_name: string; role_name: string; analytics_current: boolean; history_current: boolean; publication_current: boolean; clean_mart_current: boolean; identity_current: boolean }>;
+  ) as Array<{ database_name: string; role_name: string; analytics_current: boolean; history_current: boolean; publication_current: boolean; clean_mart_current: boolean; provenance_current: boolean; identity_current: boolean }>;
   const row = rows[0];
   if (!row || row.database_name !== identity.database || row.role_name !== identity.role
-    || !row.analytics_current || !row.history_current || !row.publication_current || !row.clean_mart_current || !row.identity_current) {
+    || !row.analytics_current || !row.history_current || !row.publication_current || !row.clean_mart_current || !row.provenance_current || !row.identity_current) {
     throw new Error("SOCIAL_SHEETS_EXPORT_IDENTITY_MISMATCH");
   }
   return sql;

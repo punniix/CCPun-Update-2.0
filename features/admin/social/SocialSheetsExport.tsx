@@ -59,7 +59,7 @@ export default function SocialSheetsExport() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 id="social-sheets-export-title" className="text-lg font-semibold">Google Sheets Export</h2>
-          <p className="mt-1 text-sm text-white/65">สร้างไฟล์ใหม่ใน Google Drive แยก Content, Publications และแต่ละ native stat คนละชีต</p>
+          <p className="mt-1 text-sm text-white/65">สร้างไฟล์ใหม่ใน Google Drive โดยคง Raw tabs และเพิ่ม Marketing - Posts, Coverage และ QA สำหรับวิเคราะห์ต่อได้ง่าย</p>
         </div>
         <button type="button" onClick={exportSheets} disabled={state === "running" || !googleClientId}
           className="min-h-11 rounded-xl bg-[#9eebce] px-4 py-2.5 text-sm font-semibold text-[#101820] hover:bg-[#b6f3dc] focus:outline-none focus:ring-2 focus:ring-[#e0c985] disabled:cursor-not-allowed disabled:opacity-50">

@@ -73,13 +73,13 @@ test("Restricted runtime can append collection evidence and read clean views but
   assert.match(readback, /runtime_clean_performance_read_ok/);
 });
 
-test("Production bootstrap includes P2 and requires ten Social migrations", () => {
+test("Production bootstrap includes P2 and requires the current eleven Social migrations", () => {
   const cwd = new URL("../..", import.meta.url);
   const bootstrap = execFileSync(process.execPath, ["scripts/build-social-production-bootstrap.mjs"], { cwd, encoding: "utf8" });
   const readback = execFileSync(process.execPath, ["scripts/build-social-production-bootstrap.mjs", "--readback"], { cwd, encoding: "utf8" });
   assert.match(bootstrap, new RegExp(version));
   assert.match(bootstrap, new RegExp(checksum.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
-  assert.match(readback, /count\(\*\) = 10/);
+  assert.match(readback, /count\(\*\) = 11/);
   assert.match(readback, new RegExp(version));
 });
 
