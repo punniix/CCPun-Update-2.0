@@ -33,7 +33,7 @@ const publicationsSchema = z.array(z.object({
 })).max(10_000);
 const metricSchema = z.object({
   key: z.string().trim().min(1).max(80), label: z.string().trim().min(1).max(120), value: z.number().nonnegative(),
-  unit: z.enum(["count", "seconds", "minutes"]), dimension: z.enum(["discovery", "engagement", "deep-engagement", "retention", "business-intent"]),
+  unit: z.enum(["count", "seconds", "minutes", "milliseconds"]), dimension: z.enum(["discovery", "engagement", "deep-engagement", "retention", "business-intent"]),
 });
 const latestMetricsSchema = z.array(z.object({
   publication_id: z.string().trim().min(1).max(120),
@@ -132,7 +132,7 @@ async function verifiedSql(env: Record<string, string | undefined>) {
 async function fetchProvider(provider: z.infer<typeof socialAnalyticsProviderSchema>, publications: z.infer<typeof publicationsSchema>, env: Record<string, string | undefined>, fetcher: typeof fetch, since: string | null) {
   const refs = publications.map((item) => ({ publicationId: item.publication_id, platform: item.platform, platformObjectId: item.platform_object_id }));
   if (provider === "meta") {
-    const discovery = await fetchMetaReadOnlyDiscovery(env, fetcher, { since });
+    const discovery = await fetchMetaReadOnlyDiscovery(env, fetcher, { since, includeInsights: true, insightsBackfillLimit: 25 });
     if (!discovery.selectedPageId) throw new Error("META_PAGE_SELECTION_REQUIRED");
     const linked = new Map(refs.map((item) => [`${item.platform}:${item.platformObjectId}`, item.publicationId]));
     const providerContents = [

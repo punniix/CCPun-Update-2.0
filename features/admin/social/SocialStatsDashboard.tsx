@@ -6,7 +6,7 @@ import { useMemo, useState } from "react";
 import SocialSheetsExport from "@/features/admin/social/SocialSheetsExport";
 
 type AnalyticsPlatform = "facebook" | "instagram" | "youtube" | "tiktok";
-type MetricUnit = "count" | "seconds" | "minutes";
+type MetricUnit = "count" | "seconds" | "minutes" | "milliseconds";
 
 type SocialMetric = {
   key: string;
@@ -59,7 +59,7 @@ const formatLabel: Record<string, string> = {
 };
 
 function metricValue(value: number, unit: MetricUnit) {
-  return `${value.toLocaleString("th-TH")}${unit === "seconds" ? " วินาที" : unit === "minutes" ? " นาที" : ""}`;
+  return `${value.toLocaleString("th-TH")}${unit === "seconds" ? " วินาที" : unit === "minutes" ? " นาที" : unit === "milliseconds" ? " มิลลิวินาที" : ""}`;
 }
 
 function deltaText(delta: number | null, unit: MetricUnit) {
