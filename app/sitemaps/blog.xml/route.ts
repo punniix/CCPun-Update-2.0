@@ -1,7 +1,7 @@
 import { listSitemapArticles } from "@/lib/content/sitemap";
 import { BLOG_TOPIC_HUBS, isArticleInSemanticTopic } from "@/lib/content/taxonomy";
 import { getArticleCanonical, isArticleCanonicalAligned } from "@/lib/content/url";
-import { uniqueSortedSitemapEntries } from "@/lib/sitemap/google";
+import { uniqueSortedSitemapEntries as uniqueSortedEntries } from "@/lib/sitemap/google";
 import { renderUrlSet, xmlResponse } from "@/lib/sitemap/xml";
 
 export const dynamic = "force-dynamic";
@@ -37,7 +37,7 @@ export async function GET() {
       return [{ loc: `https://ccpun.com/blog/${hub.slug}/` }];
     });
 
-    return xmlResponse(renderUrlSet(uniqueSortedSitemapEntries([blogEntry, ...hubEntries, ...articleEntries])));
+    return xmlResponse(renderUrlSet(uniqueSortedEntries([blogEntry, ...hubEntries, ...articleEntries])));
   } catch (error) {
     console.error("BLOG_SITEMAP_GENERATION_FAILED", error instanceof Error ? error.message : "unknown");
     return new Response("Sitemap temporarily unavailable", {
