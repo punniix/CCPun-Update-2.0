@@ -248,3 +248,34 @@ test("Marketing Dashboard keeps Raw Stats, non-dev export paths and explicit dat
   assert.doesNotMatch(dashboard + visuals, /recharts|chart\.js|echarts|highcharts|localStorage|sessionStorage/);
   assert.match(layout, /label: "Marketing"/);
 });
+
+
+test("Raw metric selector disambiguates duplicate labels by platform and filters metrics with the selected platform", () => {
+  const raw = read("features/admin/social/SocialStatsDashboard.tsx");
+  assert.equal(raw.includes("platform: AnalyticsPlatform"), true);
+  assert.equal(raw.includes("visibleMetrics = useMemo(() => platform === \"all\" ? metrics : metrics.filter"), true);
+  assert.equal(raw.includes("platformLabel[metric.platform]"), true);
+  assert.equal(raw.includes("selected.platform !== nextPlatform"), true);
+});
+
+test("Content explorer is one continuous mobile list and sortable by content, date, values, and coverage", () => {
+  const dashboard = read("features/admin/social/SocialMarketingDashboard.tsx");
+  for (const value of [
+    'type ContentSort = "content" | "published" | "awareness" | "intent" | "deep" | "coverage"',
+    "ตัวอักษร / เนื้อหา",
+    "A → Z",
+    "Z → A",
+    "ใหม่ → เก่า",
+    "เก่า → ใหม่",
+    "มาก → น้อย",
+    "น้อย → มาก",
+    'SortHeader field="content"',
+    'SortHeader field="published"',
+    'SortHeader field="awareness"',
+    'SortHeader field="intent"',
+    'SortHeader field="deep"',
+    'SortHeader field="coverage"',
+    "รายการคอนเทนต์สำหรับวิเคราะห์บนมือถือ",
+  ]) assert.equal(dashboard.includes(value), true, value);
+  assert.equal(dashboard.includes("space-y-3 lg:hidden"), false);
+});

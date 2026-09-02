@@ -72,7 +72,16 @@ import {
 } from "./MarketingDashboardVisuals";
 
 type DashboardTab = "overview" | "content" | "benchmarks" | "quality";
-type ContentSort = "published" | "awareness" | "intent" | "deep" | "coverage";
+type ContentSort = "content" | "published" | "awareness" | "intent" | "deep" | "coverage";
+
+function ContentSortHeader({ field, activeField, direction, onSort, children, align = "left" }: {
+  field: ContentSort; activeField: ContentSort; direction: "desc" | "asc"; onSort: (field: ContentSort) => void; children: ReactNode; align?: "left" | "right";
+}) {
+  const active = activeField === field;
+  return <button type="button" onClick={() => onSort(field)} aria-pressed={active} className={`inline-flex min-h-10 w-full items-center gap-1.5 font-medium hover:text-white focus:outline-none focus:ring-2 focus:ring-[#e0c985] ${align === "right" ? "justify-end text-right" : "justify-start text-left"}`}>
+    <span>{children}</span>{active ? direction === "desc" ? <ArrowDownAZ className="h-3.5 w-3.5" /> : <ArrowUpAZ className="h-3.5 w-3.5" /> : null}
+  </button>;
+}
 
 const DASHBOARD_TABS: Array<{ id: DashboardTab; label: string; description: string; icon: typeof BarChart3 }> = [
   { id: "overview", label: "ภาพรวม", description: "ดูว่าอะไรเวิร์กและควรทำอะไรต่อ", icon: BarChart3 },
@@ -394,12 +403,21 @@ function ContentTab({ posts, goal, periodLabel }: { posts: MarketingPost[]; goal
   const [notice, setNotice] = useState("");
 
   const sorted = useMemo(() => {
-    const value = (post: MarketingPost) => {
+    const textValue = (post: MarketingPost) => compactText(post.text, 500).toLocaleLowerCase("th-TH");
+    const numericValue = (post: MarketingPost) => {
       if (sort === "published") return Date.parse(post.publishedAtUtc);
       if (sort === "coverage") return post.metricCoverageRate ?? -1;
+      if (sort === "content") return 0;
       return goalMetric(post, sort).value ?? -1;
     };
-    return [...posts].sort((a, b) => (value(a) - value(b)) * (direction === "asc" ? 1 : -1));
+    return [...posts].sort((a, b) => {
+      if (sort === "content") {
+        const compared = textValue(a).localeCompare(textValue(b), "th");
+        return direction === "asc" ? compared : -compared;
+      }
+      const compared = numericValue(a) - numericValue(b);
+      return compared * (direction === "asc" ? 1 : -1);
+    });
   }, [direction, posts, sort]);
   const visible = sorted.slice(0, visibleCount);
   const selected = selectedIds.map((id) => posts.find((post) => post.contentId === id)).filter((post): post is MarketingPost => Boolean(post));
@@ -411,6 +429,25 @@ function ContentTab({ posts, goal, periodLabel }: { posts: MarketingPost[]; goal
       if (current.length >= 4) { setNotice("เลือกเปรียบเทียบได้สูงสุด 4 โพสต์"); return current; }
       return [...current, post.contentId];
     });
+  }
+
+  function setSortField(next: ContentSort) {
+    if (sort === next) {
+      setDirection((value) => value === "desc" ? "asc" : "desc");
+      return;
+    }
+    setSort(next);
+    setDirection(next === "content" ? "asc" : "desc");
+  }
+
+  function directionLabel() {
+    if (sort === "content") return direction === "asc" ? "A → Z" : "Z → A";
+    if (sort === "published") return direction === "desc" ? "ใหม่ → เก่า" : "เก่า → ใหม่";
+    return direction === "desc" ? "มาก → น้อย" : "น้อย → มาก";
+  }
+
+  function sortLabel() {
+    return sort === "content" ? "ตัวอักษร" : sort === "published" ? "วันที่เผยแพร่" : sort === "coverage" ? "Data Coverage" : sort === "awareness" ? "การมองเห็น" : sort === "intent" ? "ความสนใจต่อ" : "การมีส่วนร่วมเชิงลึก";
   }
 
   function downloadCsv() {
@@ -439,39 +476,45 @@ function ContentTab({ posts, goal, periodLabel }: { posts: MarketingPost[]; goal
     <div className="space-y-5">
       <section className="rounded-3xl border border-white/10 bg-white/[0.03] p-4 sm:p-5">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-          <div><p className="text-xs font-semibold tracking-[0.12em] text-[#e0c985]">CONTENT EXPLORER</p><h2 className="mt-2 text-2xl font-semibold">ดูทีละโพสต์แบบไม่ต้อง join ตารางเอง</h2><p className="mt-1 text-sm text-white/55">เลือก 2–4 โพสต์เพื่อเปรียบเทียบ หรือดาวน์โหลดชุดที่กรองแล้วเป็น CSV</p></div>
+          <div><p className="text-xs font-semibold tracking-[0.12em] text-[#e0c985]">CONTENT EXPLORER</p><h2 className="mt-2 text-2xl font-semibold">เรียงดูทุกโพสต์ในรายการเดียว</h2><p className="mt-1 text-sm text-white/55">กดหัวคอลัมน์บน Desktop หรือเลือกการเรียงบนมือถือได้ทันที โดยไม่ต้องเปิดทีละกล่อง</p></div>
           <div className="flex flex-wrap gap-2">
             <button type="button" onClick={copySummary} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-white/15 px-4 text-sm text-white/75 hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-[#e0c985]"><Copy className="h-4 w-4" />คัดลอกสรุป</button>
             <button type="button" onClick={downloadCsv} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#9eebce] px-4 text-sm font-semibold text-[#101820] hover:bg-[#b6f3dc] focus:outline-none focus:ring-2 focus:ring-[#e0c985]"><Download className="h-4 w-4" />ดาวน์โหลด CSV</button>
           </div>
         </div>
-        <div className="mt-4 flex flex-wrap items-end gap-3">
-          <label className="min-w-[200px] text-xs text-white/60">เรียงตาม
-            <select value={sort} onChange={(event) => setSort(event.target.value as ContentSort)} className="mt-1 min-h-11 w-full rounded-xl border border-white/15 bg-[#151a20] px-3 text-sm text-white focus:border-[#e0c985] focus:outline-none">
-              <option value="awareness">การมองเห็น</option><option value="intent">ความสนใจต่อ</option><option value="deep">การมีส่วนร่วมเชิงลึก</option><option value="coverage">Data Coverage</option><option value="published">วันที่เผยแพร่</option>
+        <div className="mt-4 grid gap-3 sm:grid-cols-[minmax(220px,320px)_auto_1fr] sm:items-end">
+          <label className="text-xs text-white/60">เรียงตาม
+            <select value={sort} onChange={(event) => { const next = event.target.value as ContentSort; setSort(next); setDirection(next === "content" ? "asc" : "desc"); }} className="mt-1 min-h-11 w-full rounded-xl border border-white/15 bg-[#151a20] px-3 text-sm text-white focus:border-[#e0c985] focus:outline-none">
+              <option value="awareness">การมองเห็น</option><option value="intent">ความสนใจต่อ</option><option value="deep">การมีส่วนร่วมเชิงลึก</option><option value="coverage">Data Coverage</option><option value="published">วันที่เผยแพร่</option><option value="content">ตัวอักษร / เนื้อหา</option>
             </select>
           </label>
-          <button type="button" onClick={() => setDirection((value) => value === "desc" ? "asc" : "desc")} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-white/15 px-4 text-sm text-white/70 hover:bg-white/5">
-            {direction === "desc" ? <ArrowDownAZ className="h-4 w-4" /> : <ArrowUpAZ className="h-4 w-4" />}{direction === "desc" ? "มาก → น้อย" : "น้อย → มาก"}
+          <button type="button" onClick={() => setDirection((value) => value === "desc" ? "asc" : "desc")} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-white/15 px-4 text-sm text-white/70 hover:bg-white/5">
+            {direction === "desc" ? <ArrowDownAZ className="h-4 w-4" /> : <ArrowUpAZ className="h-4 w-4" />}{directionLabel()}
           </button>
-          <span className="pb-3 text-xs text-white/40">ทั้งหมด {posts.length.toLocaleString("th-TH")} โพสต์</span>
+          <div className="pb-3 text-xs text-white/40 sm:text-right">เรียง: {sortLabel()} · ทั้งหมด {posts.length.toLocaleString("th-TH")} โพสต์</div>
         </div>
         {notice ? <p role="status" className="mt-3 text-sm text-[#f4df9b]">{notice}</p> : null}
       </section>
 
       <ComparisonPanel posts={selected} onRemove={(id) => setSelectedIds((current) => current.filter((value) => value !== id))} />
 
-      <div className="space-y-3 lg:hidden">
+      <section className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.02] lg:hidden" aria-label="รายการคอนเทนต์สำหรับวิเคราะห์บนมือถือ">
+        <div className="grid grid-cols-[36px_minmax(0,1fr)_auto] gap-2 border-b border-white/10 bg-white/[0.035] px-3 py-2 text-[11px] text-white/45"><span /><span>Content</span><span className="text-right">ค่าหลัก</span></div>
         {visible.map((post) => {
           const awareness = goalMetric(post, "awareness"); const intent = goalMetric(post, "intent"); const deep = goalMetric(post, "deep");
           const checked = selectedIds.includes(post.contentId);
-          return <article key={post.contentId} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4"><div className="flex gap-3"><button type="button" onClick={() => toggleSelection(post)} aria-pressed={checked} aria-label="เลือกโพสต์เพื่อเปรียบเทียบ" className={`mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border ${checked ? "border-[#9eebce] bg-[#9eebce] text-[#101820]" : "border-white/15 text-transparent"}`}>{checked ? <Check className="h-4 w-4" /> : null}</button><div className="min-w-0 flex-1"><PostIdentity post={post} compact /><div className="mt-3 grid grid-cols-3 gap-2">{[{ label: "Awareness", metric: awareness }, { label: "Intent", metric: intent }, { label: "Deep", metric: deep }].map((item) => <div key={item.label} className="rounded-xl bg-black/15 p-2"><div className="text-[10px] text-white/35">{item.label}</div><div className="mt-1 text-sm font-semibold">{formatMarketingValue(item.metric.value, item.metric.unit, true)}</div></div>)}</div><div className="mt-3 flex flex-wrap gap-2"><QualityBadge post={post} /><CoverageBadge rate={post.metricCoverageRate} /></div></div></div></article>;
+          const primary = sort === "intent" ? intent : sort === "deep" ? deep : awareness;
+          return <div key={post.contentId} className="grid grid-cols-[36px_minmax(0,1fr)_auto] gap-2 border-b border-white/8 px-3 py-3 last:border-b-0">
+            <button type="button" onClick={() => toggleSelection(post)} aria-pressed={checked} aria-label="เลือกโพสต์เพื่อเปรียบเทียบ" className={`mt-0.5 flex h-8 w-8 items-center justify-center rounded-lg border ${checked ? "border-[#9eebce] bg-[#9eebce] text-[#101820]" : "border-white/15 text-transparent"}`}>{checked ? <Check className="h-4 w-4" /> : null}</button>
+            <div className="min-w-0"><PostIdentity post={post} compact /><div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-white/45"><span>Awareness <strong className="text-white/75">{formatMarketingValue(awareness.value, awareness.unit, true)}</strong></span><span>Intent <strong className="text-white/75">{formatMarketingValue(intent.value, intent.unit, true)}</strong></span><span>Deep <strong className="text-white/75">{formatMarketingValue(deep.value, deep.unit, true)}</strong></span></div><div className="mt-2 flex flex-wrap gap-2"><QualityBadge post={post} /><CoverageBadge rate={post.metricCoverageRate} /></div></div>
+            <div className="min-w-[78px] text-right"><div className="text-sm font-semibold text-white/90">{sort === "content" ? "A–Z" : sort === "published" ? new Date(post.publishedAtUtc).toLocaleDateString("th-TH", { day: "2-digit", month: "short", timeZone: "Asia/Bangkok" }) : sort === "coverage" ? formatMarketingValue(post.metricCoverageRate, "percent") : formatMarketingValue(primary.value, primary.unit, true)}</div><div className="mt-1 text-[10px] text-white/35">{sortLabel()}</div></div>
+          </div>;
         })}
-      </div>
+      </section>
 
       <div role="region" aria-label="ตารางคอนเทนต์สำหรับวิเคราะห์" tabIndex={0} className="hidden overflow-x-auto rounded-2xl border border-white/10 lg:block">
         <table className="min-w-[1240px] w-full border-collapse text-left text-sm">
-          <thead className="sticky top-0 bg-[#181d23] text-[11px] text-white/55"><tr><th className="w-14 px-3 py-3"><span className="sr-only">เลือก</span></th><th className="min-w-[360px] px-4 py-3 font-medium">Content</th><th className="px-4 py-3 font-medium">เผยแพร่</th><th className="px-4 py-3 text-right font-medium">Awareness</th><th className="px-4 py-3 text-right font-medium">Intent</th><th className="px-4 py-3 text-right font-medium">Deep</th><th className="px-4 py-3 font-medium">Coverage</th><th className="px-4 py-3 font-medium">Quality</th></tr></thead>
+          <thead className="sticky top-0 bg-[#181d23] text-[11px] text-white/55"><tr><th className="w-14 px-3 py-2"><span className="sr-only">เลือก</span></th><th className="min-w-[360px] px-4 py-1"><ContentSortHeader field="content" activeField={sort} direction={direction} onSort={setSortField}>Content</ContentSortHeader></th><th className="px-4 py-1"><ContentSortHeader field="published" activeField={sort} direction={direction} onSort={setSortField}>เผยแพร่</ContentSortHeader></th><th className="px-4 py-1"><ContentSortHeader field="awareness" activeField={sort} direction={direction} onSort={setSortField} align="right">Awareness</ContentSortHeader></th><th className="px-4 py-1"><ContentSortHeader field="intent" activeField={sort} direction={direction} onSort={setSortField} align="right">Intent</ContentSortHeader></th><th className="px-4 py-1"><ContentSortHeader field="deep" activeField={sort} direction={direction} onSort={setSortField} align="right">Deep</ContentSortHeader></th><th className="px-4 py-1"><ContentSortHeader field="coverage" activeField={sort} direction={direction} onSort={setSortField}>Coverage</ContentSortHeader></th><th className="px-4 py-3 font-medium">Quality</th></tr></thead>
           <tbody>{visible.map((post) => {
             const awareness = goalMetric(post, "awareness"); const intent = goalMetric(post, "intent"); const deep = goalMetric(post, "deep"); const checked = selectedIds.includes(post.contentId);
             return <tr key={post.contentId} className="border-t border-white/10 text-white/75 hover:bg-white/[0.025]"><td className="px-3 py-3"><button type="button" onClick={() => toggleSelection(post)} aria-pressed={checked} aria-label="เลือกโพสต์เพื่อเปรียบเทียบ" className={`flex h-8 w-8 items-center justify-center rounded-lg border ${checked ? "border-[#9eebce] bg-[#9eebce] text-[#101820]" : "border-white/15 text-transparent hover:border-white/30"}`}>{checked ? <Check className="h-4 w-4" /> : null}</button></td><td className="px-4 py-3"><div className="flex gap-3"><PostThumbnail post={post} size="sm" /><PostIdentity post={post} compact /></div></td><td className="whitespace-nowrap px-4 py-3 text-xs text-white/55">{new Date(post.publishedAtUtc).toLocaleDateString("th-TH", { dateStyle: "medium", timeZone: "Asia/Bangkok" })}</td><td className="whitespace-nowrap px-4 py-3 text-right"><div className="font-semibold text-white/90">{formatMarketingValue(awareness.value, awareness.unit, true)}</div><div className="text-[10px] text-white/35">{awareness.shortLabel}</div></td><td className="whitespace-nowrap px-4 py-3 text-right"><div className="font-semibold text-white/90">{formatMarketingValue(intent.value, intent.unit, true)}</div><div className="text-[10px] text-white/35">{intent.shortLabel}</div></td><td className="whitespace-nowrap px-4 py-3 text-right"><div className="font-semibold text-white/90">{formatMarketingValue(deep.value, deep.unit, true)}</div><div className="text-[10px] text-white/35">{deep.shortLabel}</div></td><td className="px-4 py-3"><CoverageBadge rate={post.metricCoverageRate} /></td><td className="px-4 py-3"><QualityBadge post={post} /></td></tr>;
@@ -482,7 +525,6 @@ function ContentTab({ posts, goal, periodLabel }: { posts: MarketingPost[]; goal
     </div>
   );
 }
-
 function BenchmarksTab({ posts }: { posts: MarketingPost[] }) {
   const [metricId, setMetricId] = useState<MarketingMetricId>("views");
   const definition = METRIC_DEFINITIONS.find((metric) => metric.id === metricId)!;
