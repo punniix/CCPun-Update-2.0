@@ -211,6 +211,20 @@ test("server loader is pinned to the clean mart, exact migrations and read-only 
   assert.doesNotMatch(service, /sanity|access.?token|client.?secret|refresh.?token/i);
 });
 
+test("Marketing Dashboard Preview is branch-gated, read-only, and falls back to UAT raw rows without requiring the Production mart", () => {
+  const service = read("lib/admin/social/marketing-dashboard.ts");
+  const page = read("features/admin/social/analytics-page.tsx");
+  assert.match(service, /SOCIAL_MARKETING_DASHBOARD_PREVIEW_BRANCH = "feat\/marketing-dashboard-full-win-20260902"/);
+  assert.match(service, /uatBranches: \[WEBSITE_42_SOCIAL_ANALYTICS_BRANCH, SOCIAL_MARKETING_DASHBOARD_PREVIEW_BRANCH\]/);
+  assert.match(service, /cleanMartRequired = runtime\.lane === "production"/);
+  assert.match(service, /if \(runtime\.lane === "uat"\)/);
+  assert.match(service, /fallbackPostsFromRaw/);
+  assert.match(service, /sourceMode: "raw-fallback"/);
+  assert.match(service, /safeProviderUrl/);
+  assert.doesNotMatch(service, /providerWriteAllowed:\s*true|backgroundSyncAllowed:\s*true/);
+  assert.match(page, /getSocialMarketingDashboardRuntimeStatus\(\)\.enabled/);
+});
+
 test("Marketing Dashboard keeps Raw Stats, non-dev export paths and explicit data-quality guidance", () => {
   const page = read("features/admin/social/analytics-page.tsx");
   const dashboard = read("features/admin/social/SocialMarketingDashboard.tsx");

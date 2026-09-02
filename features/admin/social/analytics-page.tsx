@@ -9,8 +9,8 @@ import {
   type MarketingDashboardData,
 } from "@/lib/admin/social/marketing-dashboard-model";
 import { requireAdminPermission } from "@/lib/admin/require-permission";
-import { getSocialAnalyticsDashboard, getSocialAnalyticsIngestionRuntimeStatus } from "@/lib/admin/social/analytics-ingestion";
-import { getSocialMarketingDashboard } from "@/lib/admin/social/marketing-dashboard";
+import { getSocialAnalyticsDashboard } from "@/lib/admin/social/analytics-ingestion";
+import { getSocialMarketingDashboard, getSocialMarketingDashboardRuntimeStatus } from "@/lib/admin/social/marketing-dashboard";
 
 export const metadata: Metadata = { title: "Marketing Dashboard" };
 
@@ -31,7 +31,7 @@ function viewValue(value: string | string[] | undefined) {
 
 export default async function SocialAnalyticsPage({ searchParams }: AnalyticsPageProps) {
   await requireAdminPermission("social:read");
-  if (!getSocialAnalyticsIngestionRuntimeStatus().enabled) notFound();
+  if (!getSocialMarketingDashboardRuntimeStatus().enabled) notFound();
   const view = viewValue((await searchParams).view);
 
   if (view === "raw") {
