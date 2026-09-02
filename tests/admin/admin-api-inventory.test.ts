@@ -144,6 +144,10 @@ const contracts: Record<string, RouteContract> = {
     methods: ["POST"], identity: /getAdminIdentity\(\)/, authorization: /identity\.actorType !== "human" \|\| identity\.role !== "owner"/,
     validation: { file: "app/api/snt-admin/social/publications/execute/route.ts", pattern: /socialPublicationExecuteRequestSchema\.safeParse\(await request\.json\(\)\.catch/, },
   },
+  "app/api/snt-admin/social/providers/meta/capabilities/route.ts": {
+    methods: ["POST"], identity: /getAdminIdentity\(\)/, authorization: /"social:read"/,
+    validation: { file: "app/api/snt-admin/social/providers/meta/capabilities/route.ts", pattern: /isSameOriginAdminMutation\(request\.url, request\.headers\.get\(\"origin\"\)\)/, exception: "No request body; capability targets and provider credentials are server-owned." },
+  },
   "app/api/snt-admin/social/providers/meta/connection/route.ts": {
     methods: ["GET"], identity: /getAdminIdentity\(\)/, authorization: /"social:read"/,
     validation: { file: "app/api/snt-admin/social/providers/meta/connection/route.ts", pattern: /isConfiguredAdminOrigin\(request\.url, process\.env\.AUTH_URL\)/, exception: "Sensitive GET adds an exact configured-origin check." },
