@@ -10,9 +10,19 @@ import {
   isAdminSurfaceAllowed,
   isProductionEnvironment,
 } from "@/lib/admin/environment";
+import { observeAiCrawlerRequest } from "@/lib/ai-crawler-observability";
 
 export default auth((request) => {
   const { pathname } = request.nextUrl;
+
+  observeAiCrawlerRequest({
+    userAgent: request.headers.get("user-agent"),
+    pathname,
+    method: request.method,
+    vercelRequestId: request.headers.get("x-vercel-id"),
+    cloudflareRay: request.headers.get("cf-ray"),
+  });
+
   const environment = getAdminEnvironment();
   const adminSurfaceAllowed = isAdminSurfaceAllowed(environment);
   const isProductionAdmin = environment === "production-admin";
@@ -99,5 +109,15 @@ export const config = {
     { source: "/:path*", has: [{ type: "host", value: "ccpun-admin-prod.vercel.app" }] },
     { source: "/:path*", has: [{ type: "host", value: "ccpun-admin.vercel.app" }] },
     { source: "/:path*", has: [{ type: "host", value: "admin.ccpun.com" }] },
+    {
+      source: "/:path*",
+      has: [
+        {
+          type: "header",
+          key: "user-agent",
+          value: "(GPTBot|ChatGPT-User|OAI-SearchBot|ClaudeBot|Claude-SearchBot|Claude-User|PerplexityBot|Perplexity-User|Google-CloudVertexBot|Bytespider|CCBot|meta-externalagent|meta-externalfetcher|FacebookBot|Applebot|Amazonbot|DuckAssistBot|MistralAI-User)",
+        },
+      ],
+    },
   ],
 };
