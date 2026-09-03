@@ -25,18 +25,17 @@ export default function ArticleCard({ article, showDraft = false }: { article: A
       <Link
         href={href}
         data-article-link
-        className="group block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-2xl"
+        className="group block rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       >
         <div className="blog-card overflow-hidden">
-          <div className="blog-card__media relative overflow-hidden">
+          <div className="blog-card__media relative overflow-hidden" style={{ aspectRatio: "1200 / 630" }}>
             {article.featuredImage ? (
               <Image
                 src={article.featuredImage.src}
                 alt={article.featuredImage.alt}
-                width={article.featuredImage.width}
-                height={article.featuredImage.height}
-                sizes="(max-width: 768px) 100vw, 480px"
-                className="blog-card__image"
+                fill
+                sizes="(max-width: 767px) 100vw, (max-width: 1279px) 50vw, 33vw"
+                className="blog-card__image object-cover"
               />
             ) : (
               <div className="flex h-full w-full items-center justify-center bg-secondary">
