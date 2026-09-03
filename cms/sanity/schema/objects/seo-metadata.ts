@@ -80,8 +80,8 @@ export const seoMetadata = defineType({
     }),
     defineField({
       name: "ogImage",
-      title: "ภาพเมื่อแชร์ Social (OG Image)",
-      description: "เว้นว่างเพื่อใช้รูปหน้าปกบทความ",
+      title: "ภาพเมื่อแชร์ Social (OG Image — 1200×630 px)",
+      description: "เว้นว่างเพื่อใช้รูปหน้าปกบทความอัตโนมัติ หากต้องการ override ให้ใช้ 1200×630 px (ประมาณ 1.91:1) เช่นเดียวกับ Master featured image",
       type: "imageWithAlt",
     }),
     defineField({
