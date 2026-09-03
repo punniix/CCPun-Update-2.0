@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import styles from './Website43.module.css';
 import { WEBSITE43_BASE as BASE } from './constants';
 
@@ -15,6 +15,17 @@ export function Website43Brand() {
 
 export function Website43Navbar({ overlay = false }: { overlay?: boolean }) {
   const [open, setOpen] = useState(false);
+  const [toolsOpen, setToolsOpen] = useState(false);
+  const [mobileToolsOpen, setMobileToolsOpen] = useState(false);
+  const toolsRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const onPointerDown = (event: MouseEvent) => {
+      if (toolsRef.current && !toolsRef.current.contains(event.target as Node)) setToolsOpen(false);
+    };
+    document.addEventListener('mousedown', onPointerDown);
+    return () => document.removeEventListener('mousedown', onPointerDown);
+  }, []);
   const nav = (
     <div className={styles.nav}>
       <Link href={BASE} aria-label="CCPUN หน้าแรก"><Website43Brand /></Link>
@@ -22,18 +33,38 @@ export function Website43Navbar({ overlay = false }: { overlay?: boolean }) {
       <nav className={styles.navLinks} aria-label="เมนูหลัก">
         <Link href={BASE}>หน้าแรก</Link>
         <Link href={`${BASE}/blog`}>บทความ</Link>
-        <Link href={`${BASE}/tools/financial-health-check`}>เครื่องมือ</Link>
+        <div className={styles.navTools} ref={toolsRef}>
+          <button className={styles.navToolsButton} type="button" aria-haspopup="menu" aria-expanded={toolsOpen} onClick={() => setToolsOpen((v) => !v)}>
+            เครื่องมือ <span className={`${styles.navChevron} ${toolsOpen ? styles.navChevronOpen : ''}`} aria-hidden="true">⌄</span>
+          </button>
+          {toolsOpen ? (
+            <div className={styles.navDropdown} role="menu">
+              <Link href={`${BASE}/tools/financial-health-check`} role="menuitem" onClick={() => setToolsOpen(false)}><span aria-hidden="true" />ตรวจสุขภาพการเงิน (Beta)</Link>
+              <Link href={`${BASE}/ci-planning`} role="menuitem" onClick={() => setToolsOpen(false)}><span aria-hidden="true" />วางแผนเงินก้อนโรคร้ายแรง</Link>
+            </div>
+          ) : null}
+        </div>
       </nav>
       <a className={styles.navCta} href="https://lin.ee/tqLCs4f" target="_blank" rel="noopener noreferrer">ติดต่อเรา</a>
-      <button className={styles.hamburger} type="button" aria-label="เปิดเมนู" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
+      <button className={styles.hamburger} type="button" aria-label={open ? 'ปิดเมนู' : 'เปิดเมนู'} aria-expanded={open} onClick={() => { setOpen((v) => !v); setToolsOpen(false); }}>
         <span /><span /><span />
       </button>
       {open ? (
         <nav className={styles.mobileMenu} aria-label="เมนูมือถือ">
           <Link href={BASE} onClick={() => setOpen(false)}>หน้าแรก</Link>
           <Link href={`${BASE}/blog`} onClick={() => setOpen(false)}>บทความ</Link>
-          <Link href={`${BASE}/tools/financial-health-check`} onClick={() => setOpen(false)}>เครื่องมือ</Link>
-          <a href="https://lin.ee/tqLCs4f" target="_blank" rel="noopener noreferrer" onClick={() => setOpen(false)}>ติดต่อเรา</a>
+          <div className={styles.mobileTools}>
+            <button type="button" aria-expanded={mobileToolsOpen} onClick={() => setMobileToolsOpen((v) => !v)}>
+              <span>เครื่องมือ</span><span className={`${styles.navChevron} ${mobileToolsOpen ? styles.navChevronOpen : ''}`} aria-hidden="true">⌄</span>
+            </button>
+            {mobileToolsOpen ? (
+              <div className={styles.mobileSubmenu}>
+                <Link href={`${BASE}/tools/financial-health-check`} onClick={() => { setOpen(false); setMobileToolsOpen(false); }}>ตรวจสุขภาพการเงิน (Beta)</Link>
+                <Link href={`${BASE}/ci-planning`} onClick={() => { setOpen(false); setMobileToolsOpen(false); }}>วางแผนเงินก้อนโรคร้ายแรง</Link>
+              </div>
+            ) : null}
+          </div>
+          <a href="https://lin.ee/tqLCs4f" target="_blank" rel="noopener noreferrer" onClick={() => { setOpen(false); setMobileToolsOpen(false); }}>ติดต่อเรา</a>
         </nav>
       ) : null}
     </div>

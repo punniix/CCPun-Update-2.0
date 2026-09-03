@@ -91,7 +91,10 @@ async function inspect(client, routeKey, viewport) {
     const footerRect = footer?.getBoundingClientRect();
     const hamburger = document.querySelector('button[aria-label="เปิดเมนู"]');
     const hamburgerRect = hamburger?.getBoundingClientRect();
-    const desktopNavLinks = [...document.querySelectorAll('nav[aria-label="เมนูหลัก"] a')].map(a => ({text:a.textContent?.trim(), rect:a.getBoundingClientRect().toJSON()}));
+    const desktopNav = document.querySelector('nav[aria-label="เมนูหลัก"]');
+    const desktopNavLinks = [...(desktopNav?.querySelectorAll('a') ?? [])].map(a => ({text:a.textContent?.trim(), rect:a.getBoundingClientRect().toJSON()}));
+    const desktopToolsButton = [...(desktopNav?.querySelectorAll('button') ?? [])].find(b => b.textContent?.includes('เครื่องมือ'));
+    const desktopToolsRect = desktopToolsButton?.getBoundingClientRect();
     return {
       innerWidth,
       clientWidth: doc.clientWidth,
@@ -101,6 +104,7 @@ async function inspect(client, routeKey, viewport) {
       footer: footerRect ? { top: footerRect.top + scrollY, bottom: footerRect.bottom + scrollY, height: footerRect.height } : null,
       hamburgerVisible: Boolean(hamburgerRect && hamburgerRect.width > 0 && getComputedStyle(hamburger).display !== 'none'),
       desktopNavLinks,
+      desktopToolsVisible: Boolean(desktopToolsRect && desktopToolsRect.width > 0 && getComputedStyle(desktopToolsButton).display !== 'none'),
       bodyText: document.body.innerText,
     };
   })()`);
@@ -111,7 +115,7 @@ async function inspect(client, routeKey, viewport) {
   expect('footer rendered', Boolean(base.footer), JSON.stringify(base.footer));
   if (base.footer) expect('footer ends inside document', base.footer.bottom <= base.scrollHeight + 1, `${base.footer.bottom} vs ${base.scrollHeight}`);
   if (viewport.width < 1024) expect('responsive hamburger visible', base.hamburgerVisible);
-  else expect('desktop nav visible', base.desktopNavLinks.length >= 3, JSON.stringify(base.desktopNavLinks));
+  else expect('desktop nav visible', base.desktopNavLinks.length >= 2 && base.desktopToolsVisible, JSON.stringify({links:base.desktopNavLinks,tools:base.desktopToolsVisible}));
 
   if (routeKey === 'home') {
     const home = await evaluate(client, `(() => {
@@ -125,6 +129,24 @@ async function inspect(client, routeKey, viewport) {
       return { stage: sr && {w:sr.width,h:sr.height}, portrait: pr && {top:pr.top-(sr?.top||0),w:pr.width,h:pr.height}, heroHeight:heroRect?.height||0, trustStripGone };
     })()`);
     const expectedPortrait = viewport.width <= 639 ? 318 : viewport.width < 1024 ? 260 : 400;
+    if (viewport.width >= 1024) {
+      await evaluate(client, `(() => { const b=[...document.querySelectorAll('nav[aria-label="เมนูหลัก"] button')].find(x=>x.textContent?.includes('เครื่องมือ')); b?.click(); return !!b; })()`);
+      await sleep(80);
+      const submenu = await evaluate(client, `(() => { const menu=document.querySelector('[role="menu"]'); return { visible:Boolean(menu && getComputedStyle(menu).visibility !== 'hidden' && getComputedStyle(menu).display !== 'none'), links:menu?[...menu.querySelectorAll('a')].map(a=>a.getAttribute('href')):[] }; })()`);
+      expect('Desktop tools submenu opens', submenu.visible, JSON.stringify(submenu));
+      expect('Desktop tools submenu has both UAT links', submenu.links.length === 2 && submenu.links.every(href => href?.startsWith('/preview/website-4-3/')), JSON.stringify(submenu.links));
+      await evaluate(client, `(() => { const b=[...document.querySelectorAll('nav[aria-label="เมนูหลัก"] button')].find(x=>x.textContent?.includes('เครื่องมือ')); if (b?.getAttribute('aria-expanded')==='true') b.click(); return true; })()`);
+    } else {
+      await evaluate(client, `(() => { const b=document.querySelector('button[aria-label="เปิดเมนู"]'); b?.click(); return !!b; })()`);
+      await sleep(80);
+      await evaluate(client, `(() => { const b=[...document.querySelectorAll('nav[aria-label="เมนูมือถือ"] button')].find(x=>x.textContent?.includes('เครื่องมือ')); b?.click(); return !!b; })()`);
+      await sleep(80);
+      const submenu = await evaluate(client, `(() => { const nav=document.querySelector('nav[aria-label="เมนูมือถือ"]'); const b=nav?[...nav.querySelectorAll('button')].find(x=>x.textContent?.includes('เครื่องมือ')):null; const links=nav?[...nav.querySelectorAll('a')].filter(a=>a.textContent?.includes('ตรวจสุขภาพ')||a.textContent?.includes('โรคร้ายแรง')).map(a=>a.getAttribute('href')):[]; return { expanded:b?.getAttribute('aria-expanded')==='true', links }; })()`);
+      expect('Mobile tools submenu expands', submenu.expanded, JSON.stringify(submenu));
+      expect('Mobile tools submenu has both UAT links', submenu.links.length === 2 && submenu.links.every(href => href?.startsWith('/preview/website-4-3/')), JSON.stringify(submenu.links));
+      await evaluate(client, `(() => { document.querySelector('button[aria-label="ปิดเมนู"]')?.click(); return true; })()`);
+      await sleep(40);
+    }
     expect('Home removed Trust Strip', home.trustStripGone);
     expect('About portrait stage is square', home.stage && Math.abs(home.stage.w - home.stage.h) < 1, JSON.stringify(home.stage));
     if ([390,820,1440].includes(viewport.width)) expect('About portrait stage matches Figma target', home.stage && Math.abs(home.stage.w - expectedPortrait) < 1.5, JSON.stringify(home.stage));

@@ -59,6 +59,32 @@
 .navSpacer { flex: 1 1 auto; }
 .navLinks { display: flex; align-items: center; gap: 24px; font-size: 14px; font-weight: 600; }
 .navLinks a { min-height: 44px; display: inline-flex; align-items: center; }
+
+.navTools { position: relative; display: flex; align-items: center; }
+.navToolsButton {
+  min-height: 44px; display: inline-flex; align-items: center; gap: 6px; padding: 0; border: 0;
+  background: transparent; color: var(--w43-ink); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer;
+}
+.navChevron { display: inline-block; font-size: 15px; line-height: 1; transform: translateY(-1px); transition: transform .18s ease; }
+.navChevronOpen { transform: translateY(1px) rotate(180deg); }
+.navDropdown {
+  position: absolute; z-index: 80; top: calc(100% + 8px); left: 50%; width: 288px; padding: 8px;
+  transform: translateX(-50%);
+  border: 1px solid rgba(255,255,255,.12); border-radius: 16px; background: rgba(50,42,42,.96);
+  box-shadow: 0 18px 42px rgba(0,0,0,.34); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+}
+.navDropdown::before {
+  content: ''; position: absolute; top: -6px; left: 50%; width: 12px; height: 12px;
+  transform: translateX(-50%) rotate(45deg); background: rgba(50,42,42,.96);
+  border-left: 1px solid rgba(255,255,255,.12); border-top: 1px solid rgba(255,255,255,.12);
+}
+.navDropdown a {
+  position: relative; z-index: 1; min-height: 48px; display: flex; align-items: center; gap: 10px; padding: 0 12px;
+  border-radius: 11px; color: var(--w43-muted); font-size: 14px; font-weight: 500; transition: background .15s ease, color .15s ease;
+}
+.navDropdown a:hover, .navDropdown a:focus-visible { background: rgba(255,255,255,.06); color: var(--w43-gold-bright); outline: none; }
+.navDropdown a > span { width: 6px; height: 6px; flex: 0 0 6px; border-radius: 999px; background: var(--w43-gold); opacity: .7; }
+
 .navCta {
   display: inline-flex;
   min-height: 45px;
@@ -96,7 +122,16 @@
   box-shadow: 0 18px 40px rgba(0,0,0,.35);
 }
 .mobileMenu a { display: flex; min-height: 44px; align-items: center; padding: 0 12px; border-radius: 10px; font-size: 14px; font-weight: 600; }
-.mobileMenu a:last-child { margin-top: 6px; background: var(--w43-gold); color: var(--w43-deep); }
+.mobileTools { display: block; }
+.mobileTools > button {
+  width: 100%; min-height: 44px; display: flex; align-items: center; justify-content: space-between; padding: 0 12px;
+  border: 0; border-radius: 10px; background: transparent; color: var(--w43-ink); font-size: 14px; font-weight: 600; cursor: pointer;
+}
+.mobileSubmenu { display: flex; flex-direction: column; gap: 2px; padding: 2px 0 6px 12px; }
+.mobileSubmenu a { min-height: 42px; padding-left: 16px; color: var(--w43-muted); font-weight: 500; position: relative; }
+.mobileSubmenu a::before { content: ''; width: 5px; height: 5px; margin-right: 9px; border-radius: 999px; background: var(--w43-gold); opacity: .7; }
+
+.mobileMenu > a:last-child { margin-top: 6px; background: var(--w43-gold); color: var(--w43-deep); }
 
 .section, .sectionDeep {
   padding: 40px 80px;
