@@ -130,7 +130,7 @@ export default function BlogArchive({ articles, showDraft }: { articles: Article
       <section className="pb-24 pt-4" aria-live="polite">
         <div className="blog-archive-content mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           {filteredArticles.length > 0 ? (
-            <div className="blog-archive-grid grid grid-cols-1 gap-6 md:grid-cols-2">
+            <div className="blog-archive-grid grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
               {filteredArticles.map((article) => (
                 <ArticleCard key={article.id} article={article} showDraft={showDraft} />
               ))}
