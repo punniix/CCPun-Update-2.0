@@ -37,6 +37,8 @@ export async function generateMetadata({ params }: { params: Promise<{ category:
   const canonical = getArticleCanonical(article);
   const isDraft = article.status !== "published";
   const noindex = isDraft || article.noindex === true || !isArticleCanonicalAligned(article);
+  const socialImage = article.ogImage?.src ?? article.featuredImage?.src ?? DEFAULT_SOCIAL_IMAGE;
+  const socialImageAlt = article.ogImage?.alt ?? article.featuredImage?.alt ?? "CCPun บทความวางแผนการเงิน";
 
   return {
     title: article.seoTitle,
@@ -50,13 +52,13 @@ export async function generateMetadata({ params }: { params: Promise<{ category:
       title: article.ogTitle || article.seoTitle,
       description: article.ogDescription || article.seoDescription,
       siteName: "CCPun Financial Advisor",
-      images: [{ url: article.ogImage?.src ?? article.featuredImage?.src ?? DEFAULT_SOCIAL_IMAGE, alt: article.ogImage?.alt ?? article.featuredImage?.alt ?? "CCPun บทความวางแผนการเงิน" }],
+      images: [{ url: socialImage, width: 1200, height: 630, alt: socialImageAlt }],
     },
     twitter: {
       card: "summary_large_image",
       title: article.ogTitle || article.seoTitle,
       description: article.ogDescription || article.seoDescription,
-      images: [article.ogImage?.src ?? article.featuredImage?.src ?? DEFAULT_SOCIAL_IMAGE],
+      images: [socialImage],
     },
   };
 }
@@ -160,7 +162,8 @@ export default async function ArticlePage({ params }: { params: Promise<{ catego
           <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
             {article.featuredImage && (
               <figure
-                className="blog-article-featured-image relative aspect-[7/3] overflow-hidden rounded-2xl"
+                className="blog-article-featured-image relative overflow-hidden rounded-2xl"
+                style={{ aspectRatio: "1200 / 630" }}
                 data-uat-role="article-featured-image"
               >
                 <Image
