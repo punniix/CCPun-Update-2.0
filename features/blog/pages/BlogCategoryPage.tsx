@@ -150,7 +150,7 @@ export default async function BlogCategoryHub({ params }: { params: Promise<{ ca
             </div>
 
             {relevantArticles.length ? (
-              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
                 {relevantArticles.map((article) => (
                   <ArticleCard key={article.id} article={article} showDraft={isEnabled} />
                 ))}
