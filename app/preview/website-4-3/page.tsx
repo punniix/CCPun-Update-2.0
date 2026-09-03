@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
-import Website43Preview from "@/features/website-43-preview/Website43Preview";
+import Website43FigmaAudit from "@/features/website-43-preview/Website43FigmaAudit";
 
 export const metadata: Metadata = {
-  title: "Website 4.3 Preview | CCPUN",
-  description: "Private review surface for the CCPUN Website 4.3 Full Win UX iteration.",
+  title: "Website 4.3 UAT | CCPUN",
+  description: "Latest audited Website 4.3 UAT for CCPUN.",
   robots: {
     index: false,
     follow: false,
@@ -11,6 +11,6 @@ export const metadata: Metadata = {
   },
 };
 
-export default function Website43PreviewPage() {
-  return <Website43Preview />;
+export default function Website43UATPage() {
+  return <Website43FigmaAudit />;
 }
