@@ -1,0 +1,110 @@
+'use client';
+
+import Link from 'next/link';
+import { useState } from 'react';
+import styles from './Website43.module.css';
+import { WEBSITE43_BASE as BASE } from './constants';
+
+export function Website43Brand() {
+  return (
+    <span className={styles.brand} aria-label="CCPUN">
+      <span className={styles.brandCc}>CC</span><span className={styles.brandPun}>PUN</span>
+    </span>
+  );
+}
+
+export function Website43Navbar({ overlay = false }: { overlay?: boolean }) {
+  const [open, setOpen] = useState(false);
+  const nav = (
+    <div className={styles.nav}>
+      <Link href={BASE} aria-label="CCPUN หน้าแรก"><Website43Brand /></Link>
+      <div className={styles.navSpacer} />
+      <nav className={styles.navLinks} aria-label="เมนูหลัก">
+        <Link href={BASE}>หน้าแรก</Link>
+        <Link href={`${BASE}/blog`}>บทความ</Link>
+        <Link href={`${BASE}/tools/financial-health-check`}>เครื่องมือ</Link>
+      </nav>
+      <a className={styles.navCta} href="https://lin.ee/tqLCs4f" target="_blank" rel="noopener noreferrer">ติดต่อเรา</a>
+      <button className={styles.hamburger} type="button" aria-label="เปิดเมนู" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
+        <span /><span /><span />
+      </button>
+      {open ? (
+        <nav className={styles.mobileMenu} aria-label="เมนูมือถือ">
+          <Link href={BASE} onClick={() => setOpen(false)}>หน้าแรก</Link>
+          <Link href={`${BASE}/blog`} onClick={() => setOpen(false)}>บทความ</Link>
+          <Link href={`${BASE}/tools/financial-health-check`} onClick={() => setOpen(false)}>เครื่องมือ</Link>
+          <a href="https://lin.ee/tqLCs4f" target="_blank" rel="noopener noreferrer" onClick={() => setOpen(false)}>ติดต่อเรา</a>
+        </nav>
+      ) : null}
+    </div>
+  );
+
+  if (overlay) return <div className={styles.navOverlay}>{nav}</div>;
+  return <div className={styles.navBand}><div className={styles.inner}>{nav}</div></div>;
+}
+
+export function Website43Footer({ warnings = false }: { warnings?: boolean }) {
+  return (
+    <footer className={styles.footerWrap}>
+      <div className={styles.inner}>
+        {warnings ? (
+          <div className={styles.footerWarnings}>
+            <p>คำเตือน: การลงทุนมีความเสี่ยง ผู้ลงทุนควรทำความเข้าใจลักษณะสินค้า เงื่อนไขผลตอบแทน และความเสี่ยงก่อนตัดสินใจลงทุน</p>
+            <p>ผลการดำเนินงานในอดีต มิได้เป็นสิ่งยืนยันถึงผลการดำเนินงานในอนาคต</p>
+            <p>ผลิตภัณฑ์ประกันไม่ใช่เงินฝาก ควรศึกษาความคุ้มครอง เงื่อนไข และข้อยกเว้นก่อนตัดสินใจ</p>
+          </div>
+        ) : null}
+
+        <div className={styles.footerFull}>
+          <div className={styles.footerTop}>
+            <div>
+              <Website43Brand />
+              <div className={styles.footerBrandText}>วางแผนการเงินจากชีวิตจริง<br />เพื่อให้คุณตัดสินใจได้อย่างมั่นใจ</div>
+            </div>
+            <div className={styles.footerColumn}>
+              <strong>สำรวจ</strong>
+              <Link href={BASE}>หน้าแรก</Link>
+              <Link href={`${BASE}/blog`}>บทความ</Link>
+              <Link href={`${BASE}/tools/financial-health-check`}>เครื่องมือ</Link>
+            </div>
+            <div className={styles.footerColumn}>
+              <strong>เครื่องมือ</strong>
+              <Link href={`${BASE}/tools/financial-health-check`}>Financial Health Check</Link>
+              <Link href={`${BASE}/ci-planning`}>CI Planning</Link>
+            </div>
+            <div className={styles.footerColumn}>
+              <strong>ข้อมูล</strong>
+              <Link href={`${BASE}#about-ccpun`}>เกี่ยวกับ Pun</Link>
+              <Link href={`${BASE}/privacy`}>Privacy</Link>
+              <Link href={`${BASE}/cookie-policy`}>Cookie</Link>
+            </div>
+          </div>
+          <div className={styles.footerRule} />
+          <p className={styles.footerDisclaimer}>ข้อมูลบนเว็บไซต์มีวัตถุประสงค์เพื่อให้ความรู้ทั่วไป ไม่ใช่คำแนะนำเฉพาะบุคคล</p>
+          <p className={styles.footerCopyright}>© 2026 CCPUN · ที่ปรึกษาการเงินส่วนบุคคล</p>
+        </div>
+
+        <div className={styles.footerCompact}>
+          {warnings ? null : <Website43Brand />}
+          {warnings ? <Website43Brand /> : null}
+          <p>วางแผนการเงินจากชีวิตจริง เพื่อให้คุณตัดสินใจได้อย่างมั่นใจ</p>
+          <nav aria-label="เมนูส่วนท้าย">
+            <Link href={BASE}>หน้าแรก</Link> · <Link href={`${BASE}/blog`}>บทความ</Link> · <Link href={`${BASE}/tools/financial-health-check`}>FHC</Link> · <Link href={`${BASE}/ci-planning`}>CI Planning</Link>
+          </nav>
+          <nav aria-label="นโยบาย">
+            <Link href={`${BASE}/privacy`}>นโยบายความเป็นส่วนตัว</Link> · <Link href={`${BASE}/cookie-policy`}>นโยบายคุกกี้</Link>
+          </nav>
+          <p>ข้อมูลเพื่อความรู้ทั่วไป ไม่ใช่คำแนะนำเฉพาะบุคคล</p>
+        </div>
+      </div>
+    </footer>
+  );
+}
+
+export function SectionHeading({ eyebrow, title, description }: { eyebrow: string; title: string; description?: string }) {
+  return <>
+    <p className={styles.eyebrow}>{eyebrow}</p>
+    <h2 className={styles.h2}>{title}</h2>
+    {description ? <p className={styles.lead}>{description}</p> : null}
+  </>;
+}
