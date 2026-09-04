@@ -2,7 +2,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import styles from './Website43.module.css';
-import { Website43Footer, Website43Navbar } from './Website43Shared';
+import { SectionHeading, Website43Footer, Website43Navbar } from './Website43Shared';
 import { WEBSITE43_BASE as BASE } from './constants';
 import { getArticleSemanticTopic } from '@/lib/content/taxonomy';
 import { getArticlePath } from '@/lib/content/url';
@@ -228,9 +228,9 @@ export default function Website43Article({ article }: { article: Website43Mirror
         )}
 
         {faqItems.length > 0 && (
-          <section id="faq" className={styles.section}>
+          <section id="faq" className={`${styles.section} ${styles.sectionBottomLarge}`}>
             <div className={styles.inner}>
-              <h2 className={styles.h2}>คำถามที่พบบ่อย</h2>
+              <SectionHeading eyebrow="คำถามที่พบบ่อย" title="คำถามเกี่ยวกับบทความนี้" />
               <div className={styles.faqList}>
                 {faqItems.map(({ question, answer }) => (
                   <details className={styles.faqItem} key={question}>
