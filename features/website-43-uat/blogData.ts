@@ -12,13 +12,13 @@ export type Website43ArticleItem = {
 
 export const website43Articles: Website43ArticleItem[] = [
   {
-    category: 'ประกันสุขภาพ',
+    category: 'ประกันชีวิต',
     title: 'รู้จัก AIA Vitality สุขภาพดี มีเงินคืนและส่วนลดสุดคุ้ม',
     excerpt: 'ทำความเข้าใจสิทธิประโยชน์และเงื่อนไขก่อนตัดสินใจเลือกแผน',
     meta: 'อ่าน 7 นาที · เผยแพร่ 4 ส.ค. 2569',
     publishedAt: '2026-08-04T14:39:00+07:00',
     image: '/assets/blog-migration/aia-vitality/featured-01-financial-basewealth-by-ccpun-template-vitality-1.webp',
-    href: `${BASE}/blog/health-insurance/aia-vitality`,
+    href: `${BASE}/blog/life-insurance/aia-vitality`,
   },
   {
     category: 'ประกันสุขภาพ',

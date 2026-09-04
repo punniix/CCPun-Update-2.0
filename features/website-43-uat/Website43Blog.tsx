@@ -1,10 +1,12 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import styles from './Website43.module.css';
 import { Website43Footer, Website43Navbar } from './Website43Shared';
 import { website43ArticlesByPublished, type Website43ArticleItem } from './blogData';
+
+const FEATURED_REPEAT_COUNT = 3;
 
 function ArticleCard({ article }: { article: Website43ArticleItem }) {
   return (
@@ -23,9 +25,16 @@ function ArticleCard({ article }: { article: Website43ArticleItem }) {
 export default function Website43Blog() {
   const featuredScrollerRef = useRef<HTMLDivElement>(null);
   const featuredRailRef = useRef<HTMLDivElement>(null);
+  const featuredScrollEndTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [activeFeatured, setActiveFeatured] = useState(0);
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState('ทั้งหมด');
+
+  const featuredCount = website43ArticlesByPublished.length;
+  const loopedFeaturedArticles = useMemo(
+    () => Array.from({ length: FEATURED_REPEAT_COUNT }, () => website43ArticlesByPublished).flat(),
+    [],
+  );
 
   const categories = useMemo(
     () => ['ทั้งหมด', ...Array.from(new Set(website43ArticlesByPublished.map((article) => article.category)))],
@@ -41,27 +50,45 @@ export default function Website43Blog() {
     });
   }, [category, query]);
 
-  const scrollFeaturedTo = (index: number) => {
+  const centerFeaturedCard = (cardIndex: number, behavior: ScrollBehavior = 'smooth') => {
     const scroller = featuredScrollerRef.current;
     const rail = featuredRailRef.current;
-    const card = rail?.children[index] as HTMLElement | undefined;
+    const card = rail?.children[cardIndex] as HTMLElement | undefined;
     if (!scroller || !card) return;
+
     const scrollerRect = scroller.getBoundingClientRect();
     const cardRect = card.getBoundingClientRect();
     const left = scroller.scrollLeft + (cardRect.left - scrollerRect.left) - (scroller.clientWidth - cardRect.width) / 2;
-    scroller.scrollTo({ left, behavior: 'smooth' });
+    scroller.scrollTo({ left, behavior });
+  };
+
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      centerFeaturedCard(featuredCount, 'auto');
+    });
+
+    return () => {
+      cancelAnimationFrame(frame);
+      if (featuredScrollEndTimerRef.current) clearTimeout(featuredScrollEndTimerRef.current);
+    };
+  }, [featuredCount]);
+
+  const scrollFeaturedTo = (index: number) => {
+    centerFeaturedCard(featuredCount + index, 'smooth');
     setActiveFeatured(index);
   };
 
   const syncFeaturedDot = () => {
     const scroller = featuredScrollerRef.current;
     const rail = featuredRailRef.current;
-    if (!scroller || !rail) return;
+    if (!scroller || !rail || featuredCount === 0) return;
+
     const scrollerRect = scroller.getBoundingClientRect();
     const center = scrollerRect.left + scrollerRect.width / 2;
     const cards = Array.from(rail.children) as HTMLElement[];
     let nearestIndex = 0;
     let nearestDistance = Number.POSITIVE_INFINITY;
+
     cards.forEach((card, index) => {
       const rect = card.getBoundingClientRect();
       const distance = Math.abs(rect.left + rect.width / 2 - center);
@@ -70,7 +97,16 @@ export default function Website43Blog() {
         nearestIndex = index;
       }
     });
-    setActiveFeatured(nearestIndex);
+
+    const logicalIndex = nearestIndex % featuredCount;
+    setActiveFeatured(logicalIndex);
+
+    if (featuredScrollEndTimerRef.current) clearTimeout(featuredScrollEndTimerRef.current);
+    featuredScrollEndTimerRef.current = setTimeout(() => {
+      if (nearestIndex < featuredCount || nearestIndex >= featuredCount * 2) {
+        centerFeaturedCard(featuredCount + logicalIndex, 'auto');
+      }
+    }, 120);
   };
 
   return (
@@ -93,11 +129,22 @@ export default function Website43Blog() {
           <div className={styles.featuredViewport} aria-label="บทความแนะนำ">
             <div className={styles.featuredScroller} ref={featuredScrollerRef} onScroll={syncFeaturedDot}>
               <div className={styles.featuredRail} ref={featuredRailRef}>
-                {website43ArticlesByPublished.map((article) => (
-                  <Link className={styles.featuredCard} href={article.href} key={article.title} aria-label={article.title}>
-                    <img src={article.image} alt="" />
-                  </Link>
-                ))}
+                {loopedFeaturedArticles.map((article, index) => {
+                  const repeatIndex = Math.floor(index / featuredCount);
+                  const isPrimarySet = repeatIndex === 1;
+                  return (
+                    <Link
+                      className={styles.featuredCard}
+                      href={article.href}
+                      key={`${repeatIndex}-${article.href}`}
+                      aria-label={isPrimarySet ? article.title : undefined}
+                      aria-hidden={isPrimarySet ? undefined : true}
+                      tabIndex={isPrimarySet ? undefined : -1}
+                    >
+                      <img src={article.image} alt="" />
+                    </Link>
+                  );
+                })}
               </div>
             </div>
             <div className={styles.carouselControls} aria-label="เลือกบทความแนะนำ">
