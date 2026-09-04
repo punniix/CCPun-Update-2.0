@@ -495,7 +495,7 @@
 
   .homeHero { height: 740px; }
   .homeHeroPicture { inset: auto 0 auto 0; top: 244px; height: 496px; }
-  .homeHeroPicture img { content: url('/assets/website-43/home-hero-mobile.png'); object-fit: cover; }
+  .homeHeroPicture img { content: url('/assets/website-43/home-hero-mobile.png'); object-fit: cover; object-position: 60% center; }
   .homeHeroGradient { inset: 0; width: 100%; background: linear-gradient(180deg,rgb(4,6,5) 0%,rgb(4,6,5) 34%,rgba(4,6,5,.88) 37%,rgba(4,6,5,.55) 40%,rgba(4,6,5,.25) 42%,rgba(4,6,5,0) 44%,rgba(4,6,5,0) 100%); }
   .homeHeroBottomGradient { display: block; position: absolute; z-index: 2; left: 0; right: 0; top: 505px; height: 235px; background: linear-gradient(180deg,rgba(4,5,4,.1) 0%,rgba(4,5,4,.34) 22%,rgba(4,5,4,.58) 52%,rgba(4,5,4,.7) 78%,rgba(4,5,4,.74) 100%); }
   .homeHeroCopy { top: 104px; left: 24px; width: min(342px, calc(100% - 48px)); }
