@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import Link from 'next/link';
 import styles from './Website43.module.css';
 import { Website43Footer, Website43Navbar } from './Website43Shared';
@@ -8,6 +9,21 @@ const toc = [
   ['seven-topics', '7 เรื่องเงินใน 3 กลุ่ม'],
   ['how-to-use', 'วิธีนำไปใช้กับแผนของคุณ'],
   ['faq', 'คำถามที่พบบ่อย'],
+] as const;
+
+const articleFaqs = [
+  {
+    question: 'ควรมีเงินสำรองฉุกเฉินเท่าไร?',
+    answer: 'จำนวนที่เหมาะสมขึ้นอยู่กับค่าใช้จ่ายจำเป็น ความมั่นคงของรายได้ ภาระ และคนที่ต้องดูแล จึงควรเริ่มจากมองค่าใช้จ่ายจริงของตัวเองก่อน แล้วกำหนดเงินสำรองที่ช่วยให้รับมือเหตุไม่คาดฝันได้โดยไม่ต้องรีบขายเงินลงทุน',
+  },
+  {
+    question: 'มีประกันแล้ว ยังต้องทบทวนความคุ้มครองไหม?',
+    answer: 'ควรทบทวนเมื่อชีวิต รายได้ ภาระ สวัสดิการ หรือคนที่ต้องดูแลเปลี่ยนไป เพื่อดูว่าความคุ้มครองเดิมยังสัมพันธ์กับสถานการณ์ปัจจุบันหรือไม่',
+  },
+  {
+    question: 'ควรเริ่มลงทุนเมื่อไร?',
+    answer: 'ก่อนเริ่มลงทุนควรมองภาพรวมของเงินสำรอง หนี้ดอกเบี้ยสูง ความคุ้มครอง เป้าหมาย ระยะเวลา และความเสี่ยงที่รับได้ แล้วค่อยเลือกแนวทางลงทุนที่สอดคล้องกับแผนของตัวเอง',
+  },
 ] as const;
 
 export default function Website43Article() {
@@ -63,9 +79,15 @@ export default function Website43Article() {
           <div className={styles.inner}>
             <h2 className={styles.h2}>คำถามที่พบบ่อย</h2>
             <div className={styles.faqList}>
-              <div className={styles.faqItem}>ควรมีเงินสำรองฉุกเฉินเท่าไร?&nbsp;&nbsp;+</div>
-              <div className={styles.faqItem}>มีประกันแล้ว ยังต้องทบทวนความคุ้มครองไหม?&nbsp;&nbsp;+</div>
-              <div className={styles.faqItem}>ควรเริ่มลงทุนเมื่อไร?&nbsp;&nbsp;+</div>
+              {articleFaqs.map(({ question, answer }) => (
+                <details className={styles.faqItem} key={question}>
+                  <summary className={styles.faqSummary}>
+                    <span>{question}</span>
+                    <span className={styles.faqIcon} aria-hidden="true">+</span>
+                  </summary>
+                  <p className={styles.faqAnswer}>{answer}</p>
+                </details>
+              ))}
             </div>
           </div>
         </section>
@@ -81,8 +103,13 @@ export default function Website43Article() {
         <section className={styles.section}>
           <div className={styles.inner}>
             <div className={styles.authorCard}>
-              <strong>ชนาธิป ชิตประเสริฐ · ที่ปรึกษาการเงินส่วนบุคคล</strong>
-              <p className={styles.articleMeta}>ที่ปรึกษาการเงิน ผู้แนะนำการลงทุน และตัวแทนประกันชีวิต เน้นอธิบายจากเป้าหมายและสถานการณ์จริง</p>
+              <Image className={styles.authorAvatar} src="/assets/pun.jpg" alt="ชนาธิป ชิตประเสริฐ" width={96} height={96} sizes="(max-width: 639px) 72px, 96px" />
+              <div className={styles.authorIdentity}>
+                <strong className={styles.authorName}>ชนาธิป ชิตประเสริฐ</strong>
+                <span className={styles.authorRole}>ที่ปรึกษาการเงินส่วนบุคคล</span>
+              </div>
+              <p className={styles.authorBio}>ผู้แนะนำการลงทุนและตัวแทนประกันชีวิต เน้นอธิบายจากเป้าหมายและสถานการณ์จริง เพื่อช่วยให้เห็นภาพรวมก่อนตัดสินใจ</p>
+              <Link className={styles.authorLink} href={`${BASE}#about-ccpun`}>รู้จัก CCPun เพิ่มเติม →</Link>
             </div>
             <p className={styles.articleMeta} style={{ marginTop: 16 }}>บทความนี้มีวัตถุประสงค์เพื่อให้ความรู้ทั่วไป ไม่ใช่คำแนะนำทางการเงิน การลงทุน ภาษี หรือประกันภัยเฉพาะบุคคล</p>
           </div>
