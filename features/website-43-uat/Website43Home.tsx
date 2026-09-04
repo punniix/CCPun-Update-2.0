@@ -23,11 +23,23 @@ const steps = [
   ['04', 'เลือกทางที่เหมาะ', 'ค่อยเลือกว่าจะปรับ เพิ่ม ลด หรือยังไม่ต้องทำอะไร'],
 ] as const;
 
-const faqLabels = [
-  'CCPun คือใคร?',
-  'CCPun ช่วยวางแผนเรื่องอะไรได้บ้าง?',
-  'คุยแล้วต้องซื้ออะไรไหม?',
-  'ถ้ายังไม่รู้ว่าควรเริ่มจากอะไรทำอย่างไร?',
+const faqs = [
+  {
+    question: 'CCPun คือใคร?',
+    answer: 'CCPun คือผู้ให้คำแนะนำด้านประกันและการลงทุน โดยมีใบอนุญาตตัวแทนประกันชีวิตและผู้แนะนำการลงทุน และใช้แนวทางวางแผนจากชีวิตจริงก่อนเลือกผลิตภัณฑ์',
+  },
+  {
+    question: 'CCPun ช่วยวางแผนเรื่องอะไรได้บ้าง?',
+    answer: 'ช่วยวางแผนประกัน การลงทุน และการเงิน โดยดูความคุ้มครอง เงินสำรองและกระแสเงินสด การลงทุนตามเป้าหมาย ภาษี และเกษียณให้ทำงานร่วมกัน',
+  },
+  {
+    question: 'คุยแล้วต้องซื้ออะไรไหม?',
+    answer: 'ไม่ต้อง การเริ่มคุยไม่ได้แปลว่าต้องซื้อผลิตภัณฑ์ทันที เราเริ่มจากการทำความเข้าใจสิ่งที่คุณมี เป้าหมาย และสิ่งที่กำลังกังวลก่อน แล้วค่อยตัดสินใจว่าจะปรับ เพิ่ม ลด หรือยังไม่ต้องทำอะไร',
+  },
+  {
+    question: 'ถ้ายังไม่รู้ว่าควรเริ่มจากอะไรทำอย่างไร?',
+    answer: 'เริ่มจากเข้าใจสถานการณ์และสิ่งที่มีอยู่ก่อน จากนั้นหา Gap แล้วค่อยเลือกว่าจะปรับ เพิ่ม ลด หรือยังไม่ต้องทำอะไร',
+  },
 ] as const;
 
 export default function Website43Home() {
@@ -184,7 +196,15 @@ export default function Website43Home() {
           <div className={styles.inner}>
             <SectionHeading eyebrow="คำถามที่พบบ่อย" title="ก่อนเริ่มวางแผนกับ CCPun" />
             <div className={styles.faqList}>
-              {faqLabels.map((label) => <div className={styles.faqItem} key={label}>{label}<span aria-hidden="true">&nbsp;&nbsp;+</span></div>)}
+              {faqs.map(({ question, answer }) => (
+                <details className={styles.faqItem} key={question}>
+                  <summary className={styles.faqSummary}>
+                    <span>{question}</span>
+                    <span className={styles.faqIcon} aria-hidden="true">+</span>
+                  </summary>
+                  <p className={styles.faqAnswer}>{answer}</p>
+                </details>
+              ))}
             </div>
           </div>
         </section>
