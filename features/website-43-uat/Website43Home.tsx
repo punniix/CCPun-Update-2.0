@@ -1,6 +1,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import styles from './Website43.module.css';
+import latestStyles from './Website43HomeLatest.module.css';
 import { SectionHeading, Website43Footer, Website43Navbar } from './Website43Shared';
 import { WEBSITE43_BASE as BASE } from './constants';
 
@@ -40,23 +41,18 @@ export default function Website43Home() {
             <source media="(max-width: 1023px)" srcSet="/assets/website-43/home-hero-tablet.png" />
             <img src="/assets/website-43/home-hero-desktop.png" alt="CCPun กำลังนั่งทำงานพร้อมคอมพิวเตอร์โน้ตบุ๊ก" />
           </picture>
-          <div className={styles.homeHeroGradient} aria-hidden="true" />
-          <div className={styles.homeHeroBottomGradient} aria-hidden="true" />
+          <div className={`${styles.homeHeroGradient} ${latestStyles.heroGradientLatest}`} aria-hidden="true" />
+          <div className={`${styles.homeHeroBottomGradient} ${latestStyles.heroBottomGradientLatest}`} aria-hidden="true" />
           <Website43Navbar overlay />
           <div className={styles.homeHeroCopy}>
             <p className={styles.eyebrow}>วางแผนจากชีวิตจริง ไม่ใช่ผลิตภัณฑ์</p>
             <h1 id="home-hero-title" className={styles.homeHeroTitle}>วางแผนประกัน การลงทุน และความเสี่ยงในชีวิต<br />ให้เหมาะกับคุณจริง ๆ</h1>
             <p className={styles.homeHeroBody}>เริ่มจากสิ่งที่คุณมี สิ่งที่กังวล และเป้าหมายของคุณ ก่อนค่อยเลือกเครื่องมือหรือผลิตภัณฑ์ที่เหมาะสม</p>
             <div className={styles.heroActions}>
-              <a className={styles.primaryButton} href="https://lin.ee/tqLCs4f" target="_blank" rel="noopener noreferrer">เช็กสุขภาพการเงิน</a>
+              <Link className={styles.primaryButton} href={`${BASE}/tools/financial-health-check`}>เช็กสุขภาพการเงิน</Link>
               <a className={styles.outlineButton} href="https://lin.ee/tqLCs4f" target="_blank" rel="noopener noreferrer">คุยกับปั้น</a>
             </div>
-            <div className={styles.heroTrust} aria-label="ข้อมูลความน่าเชื่อถือ">
-              <div className={styles.heroTrustItem}><img src="/assets/website-43/icon-protection.svg" alt="" aria-hidden="true" /><span><strong>5+ ปี</strong><small>ประสบการณ์ด้านการเงิน</small></span></div>
-              <div className={styles.heroTrustItem}><img src="/assets/website-43/icon-financial-health.svg" alt="" aria-hidden="true" /><span><strong>2 ใบอนุญาต</strong><small>คปภ. และ ก.ล.ต.</small></span></div>
-              <div className={styles.heroTrustItem}><img src="/assets/website-43/icon-goal.svg" alt="" aria-hidden="true" /><span><strong>4 พาร์ทเนอร์</strong><small>องค์กรชั้นนำ</small></span></div>
-              <div className={styles.heroTrustItem}><img src="/assets/website-43/icon-risk-foundation.svg" alt="" aria-hidden="true" /><span><strong>วางแผนด้วยใจ</strong><small>เข้าใจชีวิตคุณ</small></span></div>
-            </div>
+            <p className={latestStyles.heroProof}>5+ ปี · 2 ใบอนุญาต · 4 พาร์ทเนอร์</p>
           </div>
         </section>
 
@@ -199,7 +195,7 @@ export default function Website43Home() {
             <SectionHeading eyebrow="เลือกวิธีเริ่มต้นที่สบายใจกับคุณ" title="ยังไม่แน่ใจว่าควรเริ่มตรงไหน?" description="คุยกับปั้นได้เลย หรือถ้ายังไม่พร้อม ลองเช็กสุขภาพการเงินของตัวเองก่อน" />
             <div className={styles.finalActions}>
               <a className={styles.primaryButton} href="https://lin.ee/tqLCs4f" target="_blank" rel="noopener noreferrer">คุยกับปั้น</a>
-              <a className={styles.outlineButton} href="https://lin.ee/tqLCs4f" target="_blank" rel="noopener noreferrer">ลองเช็กตัวเองก่อน</a>
+              <Link className={styles.outlineButton} href={`${BASE}/tools/financial-health-check`}>ลองเช็กตัวเองก่อน</Link>
             </div>
           </div>
         </section>
