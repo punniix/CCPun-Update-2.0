@@ -140,9 +140,17 @@ export default function Website43Article({ article }: { article: Website43Mirror
   const headings = article.body.flatMap((item, index) => {
     if (item._type !== 'block' || (item.style !== 'h2' && item.style !== 'h3')) return [];
     const label = textOfBlock(item);
-    return label ? [{ index, id: `section-${index}`, label }] : [];
+    return label ? [{ index, id: `section-${index}`, label, level: item.style === 'h2' ? 2 : 3 }] : [];
   });
   const headingIds = new Map(headings.map((heading) => [heading.index, heading.id]));
+  const tocGroups = headings.reduce<Array<{ primary: (typeof headings)[number]; children: Array<(typeof headings)[number]> }>>((groups, heading) => {
+    if (heading.level === 2 || groups.length === 0) {
+      groups.push({ primary: heading, children: [] });
+      return groups;
+    }
+    groups[groups.length - 1].children.push(heading);
+    return groups;
+  }, []);
   const related = website43MirrorArticles.filter((candidate) => candidate.slug !== article.slug).slice(0, 2);
 
   return (
@@ -169,13 +177,35 @@ export default function Website43Article({ article }: { article: Website43Mirror
             {headings.length > 0 && (
               <aside className={styles.toc} aria-label="สารบัญบทความ">
                 <strong>สารบัญบทความ</strong>
-                {headings.map((heading) => <a href={`#${heading.id}`} key={heading.id}>{heading.label}</a>)}
+                <div className={styles.tocList}>
+                  {tocGroups.map((group) => (
+                    <div className={styles.tocGroup} key={group.primary.id}>
+                      <a className={styles.tocPrimary} href={`#${group.primary.id}`}><span aria-hidden="true" />{group.primary.label}</a>
+                      {group.children.length > 0 && (
+                        <div className={styles.tocSublist}>
+                          {group.children.map((heading) => <a className={styles.tocSecondary} href={`#${heading.id}`} key={heading.id}>{heading.label}</a>)}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </aside>
             )}
             {headings.length > 0 && (
               <details className={styles.tocMobile}>
                 <summary>สารบัญบทความ</summary>
-                {headings.map((heading) => <a href={`#${heading.id}`} key={heading.id}>{heading.label}</a>)}
+                <div className={styles.tocMobileList}>
+                  {tocGroups.map((group) => (
+                    <div className={styles.tocGroup} key={group.primary.id}>
+                      <a className={styles.tocPrimary} href={`#${group.primary.id}`}><span aria-hidden="true" />{group.primary.label}</a>
+                      {group.children.length > 0 && (
+                        <div className={styles.tocSublist}>
+                          {group.children.map((heading) => <a className={styles.tocSecondary} href={`#${heading.id}`} key={heading.id}>{heading.label}</a>)}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </details>
             )}
             <article className={styles.prose}>{renderBody(article.body, headingIds)}</article>
