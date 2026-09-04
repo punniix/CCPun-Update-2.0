@@ -6,13 +6,13 @@ import { WEBSITE43_BASE as BASE } from './constants';
 export default function Website43NotFound() {
   return (
     <div className={styles.root}>
-      <Website43Navbar />
+      <Website43Navbar notFound />
       <main id="main-content">
         <section className={styles.notFound}>
           <div className={styles.inner}>
             <p className={styles.notFoundCode}>404</p>
             <h1>ไม่พบหน้าที่คุณกำลังหา</h1>
-            <p>ลิงก์อาจเปลี่ยนหรือถูกย้าย ลองกลับหน้าแรกหรือเลือกอ่านบทความเพื่อไปต่อ</p>
+            <p className={styles.notFoundDescription}>ลิงก์อาจเปลี่ยนหรือถูกย้าย ลองกลับหน้าแรกหรือเลือกอ่านบทความเพื่อไปต่อ</p>
             <div className={styles.notFoundActions}>
               <Link className={styles.primaryButton} href={BASE}>กลับหน้าแรก</Link>
               <Link className={styles.blogRecovery} href={`${BASE}/blog`}>ดูบทความ</Link>
@@ -20,7 +20,7 @@ export default function Website43NotFound() {
           </div>
         </section>
       </main>
-      <Website43Footer />
+      <Website43Footer notFound />
     </div>
   );
 }

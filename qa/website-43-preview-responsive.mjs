@@ -3,6 +3,7 @@ import path from 'node:path';
 
 const CDP_HTTP = 'http://127.0.0.1:9222';
 const BASE_URL = process.env.WEBSITE43_BASE_URL || 'http://127.0.0.1:3100';
+const ROUTE_FILTER = process.env.WEBSITE43_ROUTE;
 const OUTPUT_DIR = path.resolve('qa/website-43-preview-2026-09-03');
 const VIEWPORTS = [
   { name: 'mobile-390', width: 390, height: 844, mobile: true },
@@ -119,14 +120,31 @@ async function inspect(client, routeKey, viewport) {
 
   if (routeKey === 'home') {
     const home = await evaluate(client, `(() => {
+      const detail = (node) => {
+        const rect = node?.getBoundingClientRect();
+        const style = node ? getComputedStyle(node) : null;
+        return rect && style ? { x:rect.x, y:rect.y, w:rect.width, h:rect.height, fontSize:parseFloat(style.fontSize), lineHeight:parseFloat(style.lineHeight) } : null;
+      };
       const portrait = document.querySelector('img[alt="CCPun"]');
       const stage = portrait?.parentElement;
       const sr = stage?.getBoundingClientRect();
       const pr = portrait?.getBoundingClientRect();
-      const hero = document.querySelector('main section');
+      const hero = document.querySelector('section[aria-labelledby="home-hero-title"]');
       const heroRect = hero?.getBoundingClientRect();
+      const title = document.querySelector('#home-hero-title');
+      const body = title?.nextElementSibling;
+      const actions = body?.nextElementSibling;
+      const proof = actions?.nextElementSibling;
+      const buttons = actions ? [...actions.children].map(detail) : [];
       const trustStripGone = !document.body.innerText.includes('วางแผนประกัน\\nวางแผนการลงทุน\\nวางแผนการเงิน');
-      return { stage: sr && {w:sr.width,h:sr.height}, portrait: pr && {top:pr.top-(sr?.top||0),w:pr.width,h:pr.height}, heroHeight:heroRect?.height||0, trustStripGone };
+      return {
+        stage: sr && {w:sr.width,h:sr.height},
+        portrait: pr && {top:pr.top-(sr?.top||0),w:pr.width,h:pr.height},
+        heroHeight:heroRect?.height||0,
+        heroContent: { eyebrow:detail(title?.previousElementSibling), title:detail(title), body:detail(body), actions:detail(actions), proof:detail(proof), buttons },
+        heroFitsViewport: [title?.previousElementSibling,title,body,actions,proof].every((node) => { const rect=node?.getBoundingClientRect(); return rect && rect.left >= 0 && rect.right <= innerWidth && rect.bottom <= (heroRect?.bottom ?? 0); }),
+        trustStripGone,
+      };
     })()`);
     const expectedPortrait = viewport.width <= 639 ? 318 : viewport.width < 1024 ? 260 : 400;
     if (viewport.width >= 1024) {
@@ -153,6 +171,22 @@ async function inspect(client, routeKey, viewport) {
     expect('Portrait subject is shifted down inside square', home.portrait && home.portrait.top >= 14, JSON.stringify(home.portrait));
     const targetHero = viewport.width <= 639 ? 740 : viewport.width < 1024 ? 820 : 800;
     if ([390,820,1440].includes(viewport.width)) expect('Home hero height matches Figma target', Math.abs(home.heroHeight-targetHero)<1.5, `${home.heroHeight} vs ${targetHero}`);
+    expect('Home hero content stays inside its frame', home.heroFitsViewport, JSON.stringify(home.heroContent));
+    const targets = {
+      390: { eyebrow:[24,104,undefined,14], title:[24,140,326,30,39], body:[24,583,342,14], actions:[24,639], proof:[24,703,undefined,12], buttons:[[164,48],[104,48]] },
+      820: { eyebrow:[40,390,undefined,14], title:[40,426,490,38,48], body:[40,594,440,16], actions:[40,663], proof:[40,731,undefined,12], buttons:[[176,48],[116,48]] },
+      1440: { eyebrow:[80,196,undefined,15], title:[80,240,760,44,60], body:[80,440,610,18], actions:[80,512], proof:[80,584,undefined,14], buttons:[[220,52],[160,52]] },
+    }[viewport.width];
+    if (targets) {
+      const close = (actual, expected, tolerance=2) => Math.abs(actual-expected) <= tolerance;
+      const rect = home.heroContent;
+      for (const [key, values] of Object.entries(targets)) {
+        if (key === 'buttons') continue;
+        const [x,y,w,fontSize,lineHeight] = values;
+        expect(`Home hero ${key} matches Figma`, rect[key] && close(rect[key].x,x) && close(rect[key].y,y) && (w === undefined || close(rect[key].w,w)) && (fontSize === undefined || close(rect[key].fontSize,fontSize,.1)) && (lineHeight === undefined || close(rect[key].lineHeight,lineHeight,.1)), JSON.stringify({actual:rect[key],target:values}));
+      }
+      expect('Home hero buttons match Figma', targets.buttons.every(([w,h],index) => rect.buttons[index] && close(rect.buttons[index].w,w) && close(rect.buttons[index].h,h)), JSON.stringify({actual:rect.buttons,target:targets.buttons}));
+    }
   }
   if (routeKey === 'blog') {
     const cards = await evaluate(client, `(() => {
@@ -179,7 +213,50 @@ async function inspect(client, routeKey, viewport) {
     expect('Cookie policy has four public categories', ['คุกกี้ที่จำเป็น','คุกกี้วิเคราะห์','คุกกี้ฟังก์ชัน','คุกกี้การตลาด'].every(v=>base.bodyText.includes(v)));
     expect('Non-public cookie design specs are not rendered', !base.bodyText.includes('ตัวอย่างหน้าต่างการตั้งค่าคุกกี้'));
   }
-  if (routeKey === 'not-found') expect('404 recovery copy matches Figma', base.bodyText.includes('ไม่พบหน้าที่คุณกำลังหา') && base.bodyText.includes('ดูบทความ'));
+  if (routeKey === 'not-found') {
+    expect('404 recovery copy matches Figma', base.bodyText.includes('ไม่พบหน้าที่คุณกำลังหา') && base.bodyText.includes('ดูบทความ'));
+    const notFound = await evaluate(client, `(() => {
+      const main = document.querySelector('main');
+      const nav = main?.previousElementSibling;
+      const recovery = main?.querySelector('section');
+      const code = recovery?.querySelector('p');
+      const heading = recovery?.querySelector('h1');
+      const description = heading?.nextElementSibling;
+      const actions = description?.nextElementSibling;
+      const footer = main?.nextElementSibling;
+      const compactNav = footer?.querySelector('nav[aria-label="เมนูส่วนท้าย"]');
+      const compact = compactNav?.parentElement;
+      const full = compact?.previousElementSibling;
+      const box = (node) => { const rect=node?.getBoundingClientRect(); const style=node?getComputedStyle(node):null; return rect&&style?{x:rect.x,y:rect.y,w:rect.width,h:rect.height,padding:[parseFloat(style.paddingTop),parseFloat(style.paddingRight),parseFloat(style.paddingBottom),parseFloat(style.paddingLeft)],fontSize:parseFloat(style.fontSize),lineHeight:parseFloat(style.lineHeight),display:style.display}:null; };
+      return {
+        nav:box(nav), recovery:box(recovery), code:box(code), heading:box(heading), description:box(description), actions:box(actions), footer:box(footer),
+        buttons:actions?[...actions.children].map(box):[],
+        compact:box(compact), full:box(full),
+        compactRows:compact&&getComputedStyle(compact).display!=='none'?[...compact.children].length:0,
+        compactText:compactNav?.innerText.replace(/\\s+/g,' ').trim()||'',
+      };
+    })()`);
+    const targets = {
+      390: { nav:104, recovery:[426,48,24,40], code:[48,86,72,86.4], heading:[154,36,28,35.84], description:[210,48,15,24], actions:[278,108], footer:[530,137,24,24,24], buttons:[[160,48],[342,48]], compact:true },
+      820: { nav:112, recovery:[405,72,40,48], code:[72,115,96,115.2], heading:[207,36,28,35.84], description:[263,26,16,25.6], actions:[309,48], footer:[517,169,40,40,40], buttons:[[160,48],[244,48]], compact:true },
+      1440: { nav:144, recovery:[446,88,80,40], code:[88,144,120,144], heading:[252,40,32,40], description:[312,26,16,25.6], actions:[358,48], footer:[590,490,40,80,40], buttons:[[160,48],[244,48]], compact:false },
+    }[viewport.width];
+    if (targets) {
+      const close = (actual, expected, tolerance=2) => Math.abs(actual-expected) <= tolerance;
+      const [height,top,right,bottom] = targets.recovery;
+      expect('404 nav wrapper matches Figma', notFound.nav && close(notFound.nav.h,targets.nav), JSON.stringify(notFound.nav));
+      expect('404 recovery frame matches Figma', notFound.recovery && close(notFound.recovery.h,height) && close(notFound.recovery.padding[0],top) && close(notFound.recovery.padding[1],right) && close(notFound.recovery.padding[2],bottom), JSON.stringify(notFound.recovery));
+      for (const key of ['code','heading','description','actions']) {
+        const [y,h,fontSize,lineHeight] = targets[key];
+        const actual = notFound[key];
+        expect(`404 ${key} matches Figma`, actual && close(actual.y-notFound.recovery.y,y) && close(actual.h,h) && (fontSize===undefined || close(actual.fontSize,fontSize,.1)) && (lineHeight===undefined || close(actual.lineHeight,lineHeight,.1)), JSON.stringify({actual,target:targets[key],recoveryY:notFound.recovery?.y}));
+      }
+      expect('404 action buttons match Figma', targets.buttons.every(([width,height],index)=>notFound.buttons[index]&&close(notFound.buttons[index].w,width)&&close(notFound.buttons[index].h,height)), JSON.stringify(notFound.buttons));
+      const [footerY,footerHeight,...footerPadding] = targets.footer;
+      expect('404 footer frame matches Figma', notFound.footer && close(notFound.footer.y,footerY) && close(notFound.footer.h,footerHeight) && footerPadding.every((value,index)=>close(notFound.footer.padding[index],value)), JSON.stringify(notFound.footer));
+      expect('404 footer variant matches Figma', targets.compact ? notFound.compact?.display==='flex' && notFound.compactRows===2 && notFound.compactText==='หน้าแรก · บทความ · Privacy · Cookie' : notFound.full?.display!=='none' && notFound.compact?.display==='none', JSON.stringify(notFound));
+    }
+  }
   return { checks, metrics: base };
 }
 
@@ -191,7 +268,7 @@ async function main() {
     await client.connect(); await client.send('Page.enable'); await client.send('Runtime.enable'); await client.send('Network.enable');
     for (const viewport of VIEWPORTS) {
       await setViewport(client, viewport); const vr={routes:{}}; report.viewports[viewport.name]=vr;
-      for (const [routeKey, routePath] of ROUTES) {
+      for (const [routeKey, routePath] of ROUTES.filter(([routeKey]) => !ROUTE_FILTER || routeKey === ROUTE_FILTER)) {
         await navigate(client, `${BASE_URL}${routePath}`);
         const inspected=await inspect(client,routeKey,viewport);
         const file=path.join(OUTPUT_DIR,`${routeKey}-${viewport.name}.png`); const image=await screenshot(client,file);

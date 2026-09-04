@@ -1,7 +1,6 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import styles from './Website43.module.css';
-import latestStyles from './Website43HomeLatest.module.css';
 import { SectionHeading, Website43Footer, Website43Navbar } from './Website43Shared';
 import { WEBSITE43_BASE as BASE } from './constants';
 
@@ -41,8 +40,8 @@ export default function Website43Home() {
             <source media="(max-width: 1023px)" srcSet="/assets/website-43/home-hero-tablet.png" />
             <img src="/assets/website-43/home-hero-desktop.png" alt="CCPun กำลังนั่งทำงานพร้อมคอมพิวเตอร์โน้ตบุ๊ก" />
           </picture>
-          <div className={`${styles.homeHeroGradient} ${latestStyles.heroGradientLatest}`} aria-hidden="true" />
-          <div className={`${styles.homeHeroBottomGradient} ${latestStyles.heroBottomGradientLatest}`} aria-hidden="true" />
+          <div className={styles.homeHeroGradient} aria-hidden="true" />
+          <div className={styles.homeHeroBottomGradient} aria-hidden="true" />
           <Website43Navbar overlay />
           <div className={styles.homeHeroCopy}>
             <p className={styles.eyebrow}>วางแผนจากชีวิตจริง ไม่ใช่ผลิตภัณฑ์</p>
@@ -52,7 +51,7 @@ export default function Website43Home() {
               <Link className={styles.primaryButton} href={`${BASE}/tools/financial-health-check`}>เช็กสุขภาพการเงิน</Link>
               <a className={styles.outlineButton} href="https://lin.ee/tqLCs4f" target="_blank" rel="noopener noreferrer">คุยกับปั้น</a>
             </div>
-            <p className={latestStyles.heroProof}>5+ ปี · 2 ใบอนุญาต · 4 พาร์ทเนอร์</p>
+            <p className={styles.heroProof}>5+ ปี · 2 ใบอนุญาต · 4 พาร์ทเนอร์</p>
           </div>
         </section>
 

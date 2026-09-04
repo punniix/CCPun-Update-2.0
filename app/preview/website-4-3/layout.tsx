@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import './desktop-hero-fix.css';
 
 export const metadata: Metadata = {
   title: 'Website 4.3 UAT · CCPun',

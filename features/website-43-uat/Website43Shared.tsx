@@ -13,7 +13,7 @@ export function Website43Brand() {
   );
 }
 
-export function Website43Navbar({ overlay = false }: { overlay?: boolean }) {
+export function Website43Navbar({ overlay = false, notFound = false }: { overlay?: boolean; notFound?: boolean }) {
   const [open, setOpen] = useState(false);
   const [toolsOpen, setToolsOpen] = useState(false);
   const [mobileToolsOpen, setMobileToolsOpen] = useState(false);
@@ -71,12 +71,12 @@ export function Website43Navbar({ overlay = false }: { overlay?: boolean }) {
   );
 
   if (overlay) return <div className={styles.navOverlay}>{nav}</div>;
-  return <div className={styles.navBand}><div className={styles.inner}>{nav}</div></div>;
+  return <div className={`${styles.navBand} ${notFound ? styles.notFoundNavBand : ''}`}><div className={styles.inner}>{nav}</div></div>;
 }
 
-export function Website43Footer({ warnings = false }: { warnings?: boolean }) {
+export function Website43Footer({ warnings = false, notFound = false }: { warnings?: boolean; notFound?: boolean }) {
   return (
-    <footer className={styles.footerWrap}>
+    <footer className={`${styles.footerWrap} ${notFound ? styles.notFoundFooterWrap : ''}`}>
       <div className={styles.inner}>
         {warnings ? (
           <div className={styles.footerWarnings}>
@@ -115,17 +115,24 @@ export function Website43Footer({ warnings = false }: { warnings?: boolean }) {
           <p className={styles.footerCopyright}>© 2026 CCPUN · ที่ปรึกษาการเงินส่วนบุคคล</p>
         </div>
 
-        <div className={styles.footerCompact}>
-          {warnings ? null : <Website43Brand />}
-          {warnings ? <Website43Brand /> : null}
-          <p>วางแผนการเงินจากชีวิตจริง เพื่อให้คุณตัดสินใจได้อย่างมั่นใจ</p>
-          <nav aria-label="เมนูส่วนท้าย">
-            <Link href={BASE}>หน้าแรก</Link> · <Link href={`${BASE}/blog`}>บทความ</Link> · <Link href={`${BASE}/tools/financial-health-check`}>FHC</Link> · <Link href={`${BASE}/ci-planning`}>CI Planning</Link>
-          </nav>
-          <nav aria-label="นโยบาย">
-            <Link href={`${BASE}/privacy`}>นโยบายความเป็นส่วนตัว</Link> · <Link href={`${BASE}/cookie-policy`}>นโยบายคุกกี้</Link>
-          </nav>
-          <p>ข้อมูลเพื่อความรู้ทั่วไป ไม่ใช่คำแนะนำเฉพาะบุคคล</p>
+        <div className={`${styles.footerCompact} ${notFound ? styles.notFoundFooterCompact : ''}`}>
+          {notFound ? <>
+            <Website43Brand />
+            <nav aria-label="เมนูส่วนท้าย">
+              <Link href={BASE}>หน้าแรก</Link> · <Link href={`${BASE}/blog`}>บทความ</Link> · <Link href={`${BASE}/privacy`}>Privacy</Link> · <Link href={`${BASE}/cookie-policy`}>Cookie</Link>
+            </nav>
+          </> : <>
+            {warnings ? null : <Website43Brand />}
+            {warnings ? <Website43Brand /> : null}
+            <p>วางแผนการเงินจากชีวิตจริง เพื่อให้คุณตัดสินใจได้อย่างมั่นใจ</p>
+            <nav aria-label="เมนูส่วนท้าย">
+              <Link href={BASE}>หน้าแรก</Link> · <Link href={`${BASE}/blog`}>บทความ</Link> · <Link href={`${BASE}/tools/financial-health-check`}>FHC</Link> · <Link href={`${BASE}/ci-planning`}>CI Planning</Link>
+            </nav>
+            <nav aria-label="นโยบาย">
+              <Link href={`${BASE}/privacy`}>นโยบายความเป็นส่วนตัว</Link> · <Link href={`${BASE}/cookie-policy`}>นโยบายคุกกี้</Link>
+            </nav>
+            <p>ข้อมูลเพื่อความรู้ทั่วไป ไม่ใช่คำแนะนำเฉพาะบุคคล</p>
+          </>}
         </div>
       </div>
     </footer>
