@@ -1034,11 +1034,11 @@
 
 @media (max-width: 639px) {
   .blogHeroImage {
-    top: 202px;
+    top: 244px;
     right: auto;
     left: 0;
     width: 100%;
-    height: 188px;
+    height: 244px;
     object-position: center center;
   }
   .blogHeroGradient {
@@ -1047,12 +1047,12 @@
     height: 100%;
     background: linear-gradient(
       180deg,
-      rgba(14,10,10,1) 0%,
-      rgba(14,10,10,1) 42%,
-      rgba(14,10,10,.92) 56%,
-      rgba(14,10,10,.68) 70%,
-      rgba(14,10,10,.30) 84%,
-      rgba(14,10,10,0) 100%
+      rgba(14,10,10,1) 0px,
+      rgba(14,10,10,1) 244px,
+      rgba(14,10,10,.88) 268px,
+      rgba(14,10,10,.55) 294px,
+      rgba(14,10,10,.22) 320px,
+      rgba(14,10,10,0) 348px
     );
   }
 }
