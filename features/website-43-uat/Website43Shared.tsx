@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import styles from './Website43.module.css';
+import { Website43TransitionStyles } from './Website43TransitionStyles';
 import { WEBSITE43_BASE as BASE } from './constants';
 
 export function Website43Brand() {
@@ -28,6 +29,7 @@ export function Website43Navbar({ overlay = false, notFound = false, responsiveO
   }, []);
   const nav = (
     <div className={styles.nav}>
+      <Website43TransitionStyles />
       <Link href={BASE} aria-label="CCPUN หน้าแรก"><Website43Brand /></Link>
       <div className={styles.navSpacer} />
       <nav className={styles.navLinks} aria-label="เมนูหลัก">
