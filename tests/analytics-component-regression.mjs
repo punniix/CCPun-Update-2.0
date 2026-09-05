@@ -23,7 +23,10 @@ const mount = async () => {
   root = createRoot(document.getElementById('root'));
   await act(() => root.render(createElement(GoogleAnalytics, { gaId })));
 };
-const commands = (name) => (window.dataLayer ?? []).filter((entry) => Array.isArray(entry) && entry[0] === name);
+const commands = (name) => (window.dataLayer ?? []).filter((entry) => entry[0] === name).map((entry) => {
+  assert.equal(Object.prototype.toString.call(entry), '[object Arguments]', 'Google commands must retain the provider Arguments protocol');
+  return Array.from(entry);
+});
 
 try {
   process.env.NEXT_PUBLIC_SEMANTIC_EVENT_LAYER_ENABLED = 'true';
@@ -33,6 +36,10 @@ try {
   const gtmRoot = createRoot(document.createElement('div'));
   await act(() => gtmRoot.render(createElement(GoogleTagManager, { gtmId: 'GTM-TEST' })));
   assert.equal(document.querySelectorAll('#gtm-script').length, 1);
+  assert.deepEqual(commands('consent')[0], ['consent', 'default', {
+    ad_storage: 'denied', analytics_storage: 'denied', ad_user_data: 'denied', ad_personalization: 'denied', wait_for_update: 500,
+  }], 'consent defaults must deny all storage before GTM starts');
+  assert.ok(window.dataLayer.findIndex((entry) => entry[0] === 'consent' && entry[1] === 'default') < window.dataLayer.findIndex((entry) => entry.event === 'gtm.js'), 'consent default must precede gtm.js');
   assert.ok(commands('set').some((entry) => entry[1]?.site_version === '4.0'), 'site version survives GTM ownership');
   const gtag = window.gtag;
   await act(() => root.unmount());

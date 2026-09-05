@@ -85,14 +85,16 @@ async function navigate(client, path) {
 
 async function inspect(client) {
   return evaluate(client, `(() => {
-    const normalize = (row) => Array.isArray(row) ? Array.from(row) : row;
+    const normalize = (row) => Array.isArray(row) || Object.prototype.toString.call(row) === '[object Arguments]' ? Array.from(row) : row;
     const dataLayer = (window.dataLayer ?? []).map(normalize);
+    const googleCommandTypes = (window.dataLayer ?? []).filter((row) => ['consent', 'set', 'js', 'config', 'event'].includes(row?.[0])).map((row) => Object.prototype.toString.call(row));
     const fbq = (window.fbq?.queue ?? []).map(normalize);
     return {
       gaScripts: [...document.querySelectorAll('#ga-script')].map((item) => item.src),
       gtmScripts: [...document.querySelectorAll('#gtm-script')].map((item) => item.src),
       metaScripts: [...document.querySelectorAll('#meta-pixel-script')].map((item) => item.src),
       dataLayer,
+      googleCommandTypes,
       fbq,
       consent: localStorage.getItem('ccpun_cookie_consent'),
       trackingResources: performance.getEntriesByType('resource').map((entry) => entry.name)
@@ -135,6 +137,10 @@ try {
   expect('pre-consent loads no Meta script', state.metaScripts.length === 0);
   expect('pre-consent creates no tracking cookie', state.trackingCookies.length === 0);
   const defaultConsent = state.dataLayer.find((row) => row[0] === 'consent' && row[1] === 'default')?.[2];
+  expect('Google commands use the provider Arguments protocol', state.googleCommandTypes.length > 0 && state.googleCommandTypes.every((type) => type === '[object Arguments]'));
+  const defaultConsentIndex = state.dataLayer.findIndex((row) => row[0] === 'consent' && row[1] === 'default');
+  const gtmStartIndex = state.dataLayer.findIndex((row) => row.event === 'gtm.js');
+  expect('consent default precedes GTM startup', defaultConsentIndex >= 0 && gtmStartIndex > defaultConsentIndex);
   expect('pre-consent defaults analytics storage to denied', defaultConsent?.analytics_storage === 'denied');
   expect('pre-consent defaults all advertising consent signals to denied',
     defaultConsent?.ad_storage === 'denied' && defaultConsent?.ad_user_data === 'denied' && defaultConsent?.ad_personalization === 'denied');

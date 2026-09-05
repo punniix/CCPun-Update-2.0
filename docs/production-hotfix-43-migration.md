@@ -14,6 +14,7 @@ Prepared 2026-09-05. Local implementation only; no merge, push, deployment, GTM 
 | Change | Owner | Preserved behavior |
 |---|---|---|
 | Semantic mode skips the app's second GA initialization and loader; GTM owns GA initialization | `features/analytics/components/GoogleAnalytics.tsx` | Consent updates, safe site version, LINE listener; native fallback remains available |
+| Google consent commands use the canonical Arguments queue, not arrays | GA/GTM queue constructors | Default denied before GTM startup; grant/revoke behavior reaches the provider |
 | A duplicate event no longer clears earlier queued events or the dedupe set | `lib/analytics.ts` | Revocation still discards pending events; event names and parameter allowlist remain unchanged |
 | Move crawler infrastructure into `lib/observability/ai-crawler.ts` | Proxy imports shared infrastructure; tests/docs follow the move | Crawler implementation byte-identical; existing Admin routing unchanged |
 | Load CI/FHC image generators only after download click | Existing calculator download buttons | Same local-only renderer, formulas, image content, loading/error messages and layout |
@@ -69,3 +70,9 @@ One conflict occurred in `tests/analytics-regression.ts`: 4.3 already had the CT
 The resolved rehearsal source commits are `822fd58` and `51d736d`. Analytics/component tests and the full foundation gate passed after resolution. This is an inspected resolution for `fb915c4`, not a universal conflict recipe for later versions.
 
 See the accompanying task report for actual build, regression and migration-rehearsal results. Authenticated GTM delivery, Vercel Preview and final 4.3 visual UAT remain release checks.
+
+## Release validation addendum: consent command protocol
+
+Real GTM execution revealed that the inherited array-based `gtag` shim was ignored for consent: fresh and persisted-denied sessions created GA cookies. With the canonical Arguments command queue used in Google's [official consent integration](https://developers.google.com/tag-platform/security/guides/consent), the same container created no GA cookies while denied and received the correct consent transitions. This correction must travel with the release and with the 4.3 migration; the earlier 46-check provider-blocked test alone did not catch it.
+
+Both queue constructors now preserve the Google Arguments protocol. The component regression asserts the raw command type and default-consent order before normalization. Browser QA adds these two contracts (48 checks). Actual GTM validation permits only its script downloads and blocks all collection endpoints before navigation; it verifies cookie state and attempted dispatch, not GA server-side collection. Existing advanced consent-mode cookieless pings are not disabled by this correction.

@@ -12,7 +12,10 @@ function loadGA(gaId: string) {
     return flushPendingAnalyticsEvents('analytics');
   }
   window.dataLayer = window.dataLayer || [];
-  window.gtag = (...args: unknown[]) => window.dataLayer?.push(args);
+  window.gtag = function () {
+    // eslint-disable-next-line prefer-rest-params -- Google command protocol requires Arguments, not an Array.
+    window.dataLayer?.push(arguments);
+  };
   window.gtag('js', new Date());
   window.gtag('config', gaId);
   const script = document.createElement('script');
