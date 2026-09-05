@@ -203,6 +203,9 @@ export function Website43FinalPolishStyles() {
     height: 440px;
     object-fit: cover;
     object-position: center center;
+    /* Fade the portrait in from the dark hero surface rather than exposing a hard top edge. */
+    -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 20%, #000 100%);
+    mask-image: linear-gradient(180deg, transparent 0, #000 20%, #000 100%);
   }
   .${styles.toolHeroGradient} {
     inset: 0;
