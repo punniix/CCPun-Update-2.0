@@ -180,17 +180,6 @@ export function Website43FinalPolishStyles() {
     padding-inline: var(--w43-hero-gutter);
   }
 
-  /* Current Figma places the lower Home copy beneath the portrait, not at the stale earlier offsets. */
-  .${styles.homeHeroBody} {
-    top: 583px;
-  }
-  .${styles.heroActions} {
-    top: 639px;
-  }
-  .${styles.heroProof} {
-    top: 703px;
-  }
-
   /* Cards fill the Figma reading shell: 342px at 390 and 504px at 600. */
   .${styles.threeCols} > *,
   .${styles.stats} > * {
