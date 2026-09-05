@@ -244,6 +244,15 @@
 .learnCard h3 { margin: 0; font-size: 20px; font-weight: 600; }
 .learnCard p { margin: 0; color: var(--w43-muted); font-size: 14px; line-height: 1.45; }
 .learnCard a { margin-top: auto; color: var(--w43-gold); font-size: 14px; font-weight: 600; }
+.toolCtaGrid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; }
+.toolCtaCard { position: relative; min-height: 220px; overflow: hidden; display: flex; border: 1px solid var(--w43-border); border-radius: 12px; color: var(--w43-ink); text-decoration: none; }
+.toolCtaImage { object-fit: cover; }
+.toolCtaOverlay { position: absolute; inset: 0; background: linear-gradient(180deg,rgba(37,24,24,.2) 0%,rgba(37,24,24,.84) 72%,rgba(37,24,24,.96) 100%); }
+.toolCtaContent { position: relative; z-index: 1; display: flex; width: 100%; flex-direction: column; gap: 8px; padding: 20px; }
+.toolCtaContent h3 { margin: 0; font-size: 20px; font-weight: 600; line-height: 1.35; }
+.toolCtaContent p { margin: 0; color: rgba(247,245,242,.88); font-size: 14px; line-height: 1.45; }
+.toolCtaAction { margin-top: auto; color: var(--w43-gold); font-size: 14px; font-weight: 600; }
+.toolCtaCard:focus-visible { outline: 2px solid var(--w43-gold-bright); outline-offset: 3px; }
 .faqList { display: flex; flex-direction: column; gap: 20px; margin-top: 20px; }
 .faqItem { min-height: 64px; overflow: hidden; border: 1px solid var(--w43-border); border-radius: 16px; background: var(--w43-surface); }
 .faqSummary { min-height: 64px; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 20px; cursor: pointer; list-style: none; font-size: 16px; font-weight: 600; }
@@ -461,6 +470,7 @@
   .step h3 { font-size: 16px; }
   .learnGrid { grid-template-columns: 1fr; }
   .learnCard { min-height: 200px; }
+  .toolCtaCard { min-height: 200px; }
   .faqList { gap: 20px; }
   .primaryButton, .outlineButton { min-height: 48px; }
 
@@ -577,6 +587,8 @@
   .chip { width: 100%; padding: 0 8px; text-align: center; }
   .learnGrid { margin-top: 16px; }
   .learnCard { min-height: 0; padding: 16px; }
+  .toolCtaGrid { grid-template-columns: 1fr; }
+  .toolCtaCard { min-height: 184px; }
   .faqList { margin-top: 16px; gap: 16px; }
   .faqItem { min-height: 64px; }
   .finalActions { flex-direction: column; margin-top: 16px; }
