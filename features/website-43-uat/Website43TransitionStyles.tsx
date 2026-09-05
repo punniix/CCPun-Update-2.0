@@ -5,16 +5,17 @@ import styles from './Website43.module.css';
  *
  * Figma remains canonical at 390 / 820 / 1440. The 600 and 1100 layouts are
  * transition references only; they do not introduce new responsive modes.
- * This stylesheet therefore interpolates inside the existing <=639,
- * 640-1023, and >=1024 mode boundaries instead of adding 600/1100 media
+ * This stylesheet interpolates inside the existing <=639, 640-1023, and
+ * >=1024 mode boundaries. There are deliberately no 600px / 1100px media
  * queries.
  */
 export function Website43TransitionStyles() {
   const css = String.raw`
 .${styles.root} {
   --w43-nav-gutter: clamp(56px, calc(7.05882vw - 21.6471px), 80px);
-  --w43-content-gutter: clamp(61.111px, 5.55556vw, 80px);
-  --w43-hero-gutter: var(--w43-content-gutter);
+  --w43-content-gutter: 80px;
+  --w43-hero-gutter: clamp(61.111px, 5.55556vw, 80px);
+  --w43-shell-width: min(calc(100vw - 112px), clamp(988px, calc(85.8824vw + 43.0588px), 1280px));
 }
 
 .${styles.navBand} {
@@ -24,9 +25,9 @@ export function Website43TransitionStyles() {
 .${styles.navOverlay} {
   width: calc(100% - var(--w43-nav-gutter) - var(--w43-nav-gutter));
 }
+
 .${styles.section},
 .${styles.sectionDeep},
-.${styles.about},
 .${styles.blogContent},
 .${styles.articleHeader},
 .${styles.articleReadingWrap},
@@ -40,8 +41,26 @@ export function Website43TransitionStyles() {
   padding-right: var(--w43-content-gutter);
 }
 
+.${styles.section} > .${styles.inner},
+.${styles.sectionDeep} > .${styles.inner},
+.${styles.blogContent} > .${styles.inner},
+.${styles.articleHeader} > .${styles.inner},
+.${styles.legalHeader} > .${styles.inner},
+.${styles.legalBody} > .${styles.inner},
+.${styles.footerWrap} > .${styles.inner} {
+  width: var(--w43-shell-width);
+  max-width: none;
+  margin-left: 0;
+  margin-right: 0;
+}
+
+.${styles.about} {
+  padding-left: var(--w43-hero-gutter);
+  padding-right: var(--w43-hero-gutter);
+}
+
 .${styles.homeHeroCopy} {
-  left: max(var(--w43-content-gutter), calc((100vw - 1280px) / 2));
+  left: var(--w43-hero-gutter);
 }
 
 .${styles.blogHeroImage} {
@@ -58,7 +77,7 @@ export function Website43TransitionStyles() {
 }
 .${styles.blogHeroCopy} {
   top: 174px;
-  left: var(--w43-content-gutter);
+  left: var(--w43-hero-gutter);
 }
 
 .${styles.toolHeroImage} {
@@ -97,24 +116,39 @@ export function Website43TransitionStyles() {
   grid-template-columns: clamp(236px, calc(18.8235vw + 28.9412px), 300px) minmax(0, 720px);
   gap: clamp(32px, calc(2.35294vw + 6.11765px), 40px);
 }
+.${styles.legalGrid} {
+  width: min(988px, calc(100vw - 112px));
+  max-width: none;
+  margin-left: 0;
+  margin-right: 0;
+}
 
 @media (max-width: 1023px) {
   .${styles.root} {
     --w43-nav-gutter: 40px;
     --w43-content-gutter: 40px;
     --w43-hero-gutter: 40px;
+    --w43-shell-width: 100%;
   }
 
-  .${styles.navBand} {
-    padding-left: var(--w43-nav-gutter);
-    padding-right: var(--w43-nav-gutter);
-  }
+  .${styles.navBand},
   .${styles.responsiveOverlayBand} {
     padding-left: var(--w43-nav-gutter);
     padding-right: var(--w43-nav-gutter);
   }
   .${styles.navOverlay} {
     width: calc(100% - var(--w43-nav-gutter) - var(--w43-nav-gutter));
+  }
+
+  .${styles.section} > .${styles.inner},
+  .${styles.sectionDeep} > .${styles.inner},
+  .${styles.blogContent} > .${styles.inner},
+  .${styles.articleHeader} > .${styles.inner},
+  .${styles.legalHeader} > .${styles.inner},
+  .${styles.legalBody} > .${styles.inner},
+  .${styles.footerWrap} > .${styles.inner} {
+    width: 100%;
+    max-width: none;
   }
 
   .${styles.homeHeroCopy} {
@@ -177,6 +211,10 @@ export function Website43TransitionStyles() {
     grid-template-columns: 200px minmax(0, 1fr);
     gap: 32px;
   }
+  .${styles.legalGrid} {
+    width: 100%;
+    max-width: none;
+  }
 }
 
 @media (max-width: 639px) {
@@ -184,12 +222,11 @@ export function Website43TransitionStyles() {
     --w43-nav-gutter: clamp(24px, calc(3.80952vw + 9.14286px), 32px);
     --w43-content-gutter: 24px;
     --w43-hero-gutter: clamp(24px, calc(11.4286vw - 20.5714px), 48px);
+    --w43-mobile-reading-width: min(calc(100vw - 48px), clamp(342px, calc(77.1429vw + 41.1429px), 504px));
+    --w43-shell-width: var(--w43-mobile-reading-width);
   }
 
-  .${styles.navBand} {
-    padding-left: var(--w43-nav-gutter);
-    padding-right: var(--w43-nav-gutter);
-  }
+  .${styles.navBand},
   .${styles.responsiveOverlayBand} {
     padding-left: var(--w43-nav-gutter);
     padding-right: var(--w43-nav-gutter);
@@ -201,7 +238,6 @@ export function Website43TransitionStyles() {
 
   .${styles.section},
   .${styles.sectionDeep},
-  .${styles.about},
   .${styles.blogContent},
   .${styles.articleHeader},
   .${styles.articleReadingWrap},
@@ -215,12 +251,47 @@ export function Website43TransitionStyles() {
     padding-right: var(--w43-content-gutter);
   }
 
+  .${styles.section} > .${styles.inner},
+  .${styles.sectionDeep} > .${styles.inner},
+  .${styles.blogContent} > .${styles.inner},
+  .${styles.articleHeader} > .${styles.inner},
+  .${styles.legalHeader} > .${styles.inner},
+  .${styles.legalBody} > .${styles.inner},
+  .${styles.footerWrap} > .${styles.inner},
+  .${styles.aboutInner} {
+    width: var(--w43-mobile-reading-width);
+    max-width: 100%;
+    margin-left: 0;
+    margin-right: auto;
+  }
+
+  .${styles.about} {
+    padding-left: 24px;
+    padding-right: 24px;
+  }
+
   .${styles.homeHeroCopy} {
     left: var(--w43-hero-gutter);
     width: calc(100% - var(--w43-hero-gutter) - var(--w43-hero-gutter));
   }
   .${styles.homeHeroTitle} {
     width: calc(100% - 16px);
+  }
+  .${styles.threeCols} {
+    width: var(--w43-mobile-reading-width);
+    max-width: 100%;
+    justify-items: start;
+  }
+  .${styles.threeCols} > * {
+    width: min(342px, 100%);
+  }
+  .${styles.stats} {
+    width: var(--w43-mobile-reading-width);
+    max-width: 100%;
+    justify-items: start;
+  }
+  .${styles.stats} > * {
+    width: min(342px, 100%);
   }
 
   .${styles.blogHero} {
@@ -258,6 +329,20 @@ export function Website43TransitionStyles() {
   }
   .${styles.blogHeroCopy} p {
     width: 100%;
+  }
+
+  .${styles.articleReadingGrid} {
+    display: block;
+    width: var(--w43-mobile-reading-width);
+    max-width: 100%;
+    margin-left: 0;
+    margin-right: auto;
+  }
+  .${styles.legalGrid} {
+    width: var(--w43-mobile-reading-width);
+    max-width: 100%;
+    margin-left: 0;
+    margin-right: auto;
   }
 
   .${styles.toolHero} {
@@ -326,10 +411,6 @@ export function Website43TransitionStyles() {
     width: clamp(140px, calc(31.579vw + 16.8421px), 206.316px);
     min-width: 140px;
     margin-top: 10px;
-  }
-
-  .${styles.articleReadingGrid} {
-    display: block;
   }
 }
 `;
