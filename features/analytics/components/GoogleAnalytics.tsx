@@ -5,12 +5,15 @@ import { CCPUN_SITE_VERSION, clearPendingAnalyticsEvents, flushPendingAnalyticsE
 import { getConsentData } from '@/lib/cookie-consent';
 
 function loadGA(gaId: string) {
-  if (document.getElementById('ga-script')) return flushPendingAnalyticsEvents('analytics');
   if (!document.getElementById('gtm-script') || typeof window.gtag !== 'function') return;
+  window.gtag('set', { site_version: CCPUN_SITE_VERSION });
+  // GTM owns GA initialization after the semantic cutover; keep the native fallback below.
+  if (process.env.NEXT_PUBLIC_SEMANTIC_EVENT_LAYER_ENABLED === 'true' || document.getElementById('ga-script')) {
+    return flushPendingAnalyticsEvents('analytics');
+  }
   window.dataLayer = window.dataLayer || [];
   window.gtag = (...args: unknown[]) => window.dataLayer?.push(args);
   window.gtag('js', new Date());
-  window.gtag('set', { site_version: CCPUN_SITE_VERSION });
   window.gtag('config', gaId);
   const script = document.createElement('script');
   script.id = 'ga-script'; script.async = true; script.src = `https://www.googletagmanager.com/gtag/js?id=${gaId}`;

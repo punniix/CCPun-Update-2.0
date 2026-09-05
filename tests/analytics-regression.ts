@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { getDeviceType, getGAAttribution } from '../lib/acquisition';
-import { buildSemanticDataLayerEvent, CCPUN_SITE_VERSION, getCIPlanningPageVersion, resolveEventMapping, sanitizeEventParams } from '../lib/analytics';
+import { buildSemanticDataLayerEvent, CCPUN_SITE_VERSION, clearPendingAnalyticsEvents, flushPendingAnalyticsEvents, getCIPlanningPageVersion, resolveEventMapping, sanitizeEventParams, trackEvent } from '../lib/analytics';
 
 assert.equal(CCPUN_SITE_VERSION, '4.0', 'Web 4.0 measurement version must stay explicit');
 assert.equal(typeof getDeviceType(), 'string', 'device classification must remain safe outside a browser');
@@ -45,4 +45,43 @@ assert.deepEqual(buildSemanticDataLayerEvent('ci_calculator_start', safe, { anal
 assert.equal(buildSemanticDataLayerEvent('ci_calculator_start', safe, { analytics: false, social: false }), null, 'semantic event layer must fail closed without consent');
 const acquisitionSource = readFileSync(new URL('../lib/acquisition.ts', import.meta.url), 'utf8');
 assert.equal(acquisitionSource.includes('fbclid'), false, 'click identifiers must not be parsed, stored, or sent');
+process.env.NEXT_PUBLIC_SEMANTIC_EVENT_LAYER_ENABLED = 'false';
+let analyticsConsent = true;
+const sent: unknown[][] = [];
+const browser = { gtag: (...args: unknown[]) => { sent.push(args); } } as Window;
+Object.defineProperty(globalThis, 'window', { configurable: true, value: browser });
+Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: {
+  getItem: () => JSON.stringify({ analytics: analyticsConsent, social: false, expires: Date.now() + 60000 }),
+} });
+try {
+  const cta = { tool_name: 'ci_planning', cta_location: 'ci_landing' };
+  for (const eventName of ['ci_calculator_cta_click', 'result_image_download']) {
+    clearPendingAnalyticsEvents();
+    sent.length = 0;
+    for (let i = 0; i < 3; i++) trackEvent(eventName, cta);
+    assert.equal(sent.length, 1, 'repeated duplicates must not reset page-lifetime dedupe');
+  }
+  clearPendingAnalyticsEvents();
+  sent.length = 0;
+  delete browser.gtag;
+  trackEvent('ci_landing_view', cta);
+  trackEvent('ci_calculator_cta_click', cta);
+  trackEvent('ci_calculator_cta_click', cta);
+  browser.gtag = (...args: unknown[]) => { sent.push(args); };
+  flushPendingAnalyticsEvents('analytics');
+  assert.deepEqual(sent.map((args) => args[1]), ['ci_landing_view', 'ci_calculator_cta_click'], 'a duplicate must preserve earlier queued events');
+  delete browser.gtag;
+  trackEvent('ci_result_view', cta);
+  analyticsConsent = false;
+  trackEvent('ci_landing_view', cta);
+  analyticsConsent = true;
+  browser.gtag = (...args: unknown[]) => { sent.push(args); };
+  flushPendingAnalyticsEvents('analytics');
+  assert.equal(sent.length, 2, 'revoking consent must discard queued events');
+} finally {
+  clearPendingAnalyticsEvents();
+  Reflect.deleteProperty(globalThis, 'window');
+  Reflect.deleteProperty(globalThis, 'localStorage');
+  delete process.env.NEXT_PUBLIC_SEMANTIC_EVENT_LAYER_ENABLED;
+}
 console.log('analytics regression checks passed');
