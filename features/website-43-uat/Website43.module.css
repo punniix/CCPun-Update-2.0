@@ -216,12 +216,14 @@
 .partner { min-height: 88px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; border: 1px solid var(--w43-border); border-radius: 14px; background: var(--w43-surface); text-align: center; }
 .partner strong { font-size: 18px; font-weight: 600; }
 .partner span { color: var(--w43-muted); font-size: 13px; }
-.partnerLogoFrame { position: relative; overflow: hidden; flex: 0 0 auto; }
-.partnerLogoFrameFairdee { width: 128px; height: 40px; }
-.partnerLogoFrameWebull { width: 72px; height: 46px; }
+.partnerLogoFrame { position: relative; overflow: hidden; flex: 0 0 auto; border-radius: 4px; background: #fff; }
+.partnerLogoFrameStandard { width: 64px; height: 26px; }
+.partnerLogoFrameFairdee { width: 112px; height: 30px; }
+.partnerLogoFrameWebull { width: 58px; height: 32px; }
 .partnerLogo { position: absolute; display: block; max-width: none; object-fit: contain; }
-.partnerLogoFairdee { width: 128px; height: 128px; top: -49px; left: 0; }
-.partnerLogoWebull { width: 100px; height: 100px; top: -25px; left: -14px; }
+.partnerLogoStandard { width: 64px; height: 26px; top: 0; left: 0; }
+.partnerLogoFairdee { width: 112px; height: 112px; top: -42px; left: 0; }
+.partnerLogoWebull { width: 76px; height: 76px; top: -22px; left: -10px; }
 .voices { display: grid; grid-template-columns: 1fr auto 1fr; gap: 48px; align-items: start; margin-top: 16px; }
 .voiceDivider { width: 1px; height: 86px; background: var(--w43-border); }
 .voice blockquote { margin: 0; font-size: 16px; line-height: 1.6; }
