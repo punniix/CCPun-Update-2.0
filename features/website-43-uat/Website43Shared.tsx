@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import styles from './Website43.module.css';
 import { Website43FinalPolishStyles } from './Website43FinalPolishStyles';
@@ -16,6 +17,9 @@ export function Website43Brand() {
 }
 
 export function Website43Navbar({ overlay = false, notFound = false, responsiveOverlay = false }: { overlay?: boolean; notFound?: boolean; responsiveOverlay?: boolean }) {
+  const pathname = usePathname()?.replace(/\/$/, '');
+  const blogCurrent = pathname === `${BASE}/blog` ? 'page' : pathname?.startsWith(`${BASE}/blog/`) ? 'location' : undefined;
+  const toolsCurrent = pathname === `${BASE}/tools/financial-health-check` || pathname === `${BASE}/ci-planning`;
   const [open, setOpen] = useState(false);
   const [toolsOpen, setToolsOpen] = useState(false);
   const [mobileToolsOpen, setMobileToolsOpen] = useState(false);
@@ -35,16 +39,16 @@ export function Website43Navbar({ overlay = false, notFound = false, responsiveO
       <Link href={BASE} aria-label="CCPUN หน้าแรก"><Website43Brand /></Link>
       <div className={styles.navSpacer} />
       <nav className={styles.navLinks} aria-label="เมนูหลัก">
-        <Link href={BASE}>หน้าแรก</Link>
-        <Link href={`${BASE}/blog`}>บทความ</Link>
+        <Link href={BASE} aria-current={pathname === BASE ? 'page' : undefined}>หน้าแรก</Link>
+        <Link href={`${BASE}/blog`} aria-current={blogCurrent}>บทความ</Link>
         <div className={styles.navTools} ref={toolsRef}>
-          <button className={styles.navToolsButton} type="button" aria-haspopup="menu" aria-expanded={toolsOpen} onClick={() => setToolsOpen((v) => !v)}>
+          <button className={styles.navToolsButton} data-active={toolsCurrent} type="button" aria-haspopup="menu" aria-expanded={toolsOpen} onClick={() => setToolsOpen((v) => !v)}>
             เครื่องมือ <span className={`${styles.navChevron} ${toolsOpen ? styles.navChevronOpen : ''}`} aria-hidden="true">⌄</span>
           </button>
           {toolsOpen ? (
             <div className={styles.navDropdown} role="menu">
-              <Link href={`${BASE}/tools/financial-health-check`} role="menuitem" onClick={() => setToolsOpen(false)}><span aria-hidden="true" />ตรวจสุขภาพการเงิน (Beta)</Link>
-              <Link href={`${BASE}/ci-planning`} role="menuitem" onClick={() => setToolsOpen(false)}><span aria-hidden="true" />วางแผนเงินก้อนโรคร้ายแรง</Link>
+              <Link href={`${BASE}/tools/financial-health-check`} aria-current={pathname === `${BASE}/tools/financial-health-check` ? 'page' : undefined} role="menuitem" onClick={() => setToolsOpen(false)}><span aria-hidden="true" />ตรวจสุขภาพการเงิน (Beta)</Link>
+              <Link href={`${BASE}/ci-planning`} aria-current={pathname === `${BASE}/ci-planning` ? 'page' : undefined} role="menuitem" onClick={() => setToolsOpen(false)}><span aria-hidden="true" />วางแผนเงินก้อนโรคร้ายแรง</Link>
             </div>
           ) : null}
         </div>
@@ -55,16 +59,16 @@ export function Website43Navbar({ overlay = false, notFound = false, responsiveO
       </button>
       {open ? (
         <nav id="mobile-navigation" className={styles.mobileMenu} aria-label="เมนูมือถือ">
-          <Link href={BASE} onClick={() => setOpen(false)}>หน้าแรก</Link>
-          <Link href={`${BASE}/blog`} onClick={() => setOpen(false)}>บทความ</Link>
+          <Link href={BASE} aria-current={pathname === BASE ? 'page' : undefined} onClick={() => setOpen(false)}>หน้าแรก</Link>
+          <Link href={`${BASE}/blog`} aria-current={blogCurrent} onClick={() => setOpen(false)}>บทความ</Link>
           <div className={styles.mobileTools}>
-            <button type="button" aria-expanded={mobileToolsOpen} onClick={() => setMobileToolsOpen((v) => !v)}>
+            <button type="button" data-active={toolsCurrent} aria-expanded={mobileToolsOpen} onClick={() => setMobileToolsOpen((v) => !v)}>
               <span>เครื่องมือ</span><span className={`${styles.navChevron} ${mobileToolsOpen ? styles.navChevronOpen : ''}`} aria-hidden="true">⌄</span>
             </button>
             {mobileToolsOpen ? (
               <div className={styles.mobileSubmenu}>
-                <Link href={`${BASE}/tools/financial-health-check`} onClick={() => { setOpen(false); setMobileToolsOpen(false); }}>ตรวจสุขภาพการเงิน (Beta)</Link>
-                <Link href={`${BASE}/ci-planning`} onClick={() => { setOpen(false); setMobileToolsOpen(false); }}>วางแผนเงินก้อนโรคร้ายแรง</Link>
+                <Link href={`${BASE}/tools/financial-health-check`} aria-current={pathname === `${BASE}/tools/financial-health-check` ? 'page' : undefined} onClick={() => { setOpen(false); setMobileToolsOpen(false); }}>ตรวจสุขภาพการเงิน (Beta)</Link>
+                <Link href={`${BASE}/ci-planning`} aria-current={pathname === `${BASE}/ci-planning` ? 'page' : undefined} onClick={() => { setOpen(false); setMobileToolsOpen(false); }}>วางแผนเงินก้อนโรคร้ายแรง</Link>
               </div>
             ) : null}
           </div>

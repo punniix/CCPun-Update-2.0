@@ -109,7 +109,7 @@ export function Website43TransitionStyles() {
   min-width: 140px;
 }
 .${styles.toolHero}::after {
-  content: none;
+  content: '';
 }
 
 .${styles.articleReadingGrid} {
