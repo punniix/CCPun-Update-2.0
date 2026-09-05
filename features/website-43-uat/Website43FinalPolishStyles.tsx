@@ -9,15 +9,15 @@ import styles from './Website43.module.css';
  */
 export function Website43FinalPolishStyles() {
   const css = String.raw`
-.${styles.footerWrap} {
-  padding-left: var(--w43-nav-gutter);
-  padding-right: var(--w43-nav-gutter);
-}
-
 @media (min-width: 1024px) {
+  .${styles.footerWrap} {
+    padding-left: var(--w43-nav-gutter);
+    padding-right: var(--w43-nav-gutter);
+  }
   .${styles.notFound} {
     height: clamp(390px, calc(16.4706vw + 208.8235px), 446px);
     padding-top: clamp(72px, calc(4.70588vw + 20.2353px), 88px);
+    padding-bottom: clamp(30px, calc(2.94118vw - 2.35294px), 40px);
   }
   .${styles.notFoundCode} {
     font-size: clamp(96px, calc(7.05882vw + 18.3529px), 120px);
