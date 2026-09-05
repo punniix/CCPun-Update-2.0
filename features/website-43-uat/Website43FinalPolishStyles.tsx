@@ -32,6 +32,35 @@ export function Website43FinalPolishStyles() {
   background: none;
 }
 
+/*
+ * Thai copy must use native dictionary line breaking. Do not fall back to
+ * arbitrary grapheme breaking (for example leaving the last character of a
+ * Thai word on a new line). URLs keep their own emergency wrapping rule below.
+ */
+.${styles.root} {
+  word-break: normal;
+  overflow-wrap: normal;
+  line-break: auto;
+  hyphens: none;
+}
+.${styles.root} h1,
+.${styles.root} h2,
+.${styles.root} h3,
+.${styles.root} p,
+.${styles.root} li,
+.${styles.root} summary,
+.${styles.root} a,
+.${styles.root} button,
+.${styles.root} span {
+  word-break: normal;
+  overflow-wrap: normal;
+  line-break: auto;
+  hyphens: none;
+}
+.${styles.articleSources} a {
+  overflow-wrap: anywhere;
+}
+
 /* Figma uses a centered IMAGE/FILL crop for the Home portrait at every mode. */
 .${styles.homeHeroPicture} img {
   object-position: center center;
@@ -134,7 +163,7 @@ export function Website43FinalPolishStyles() {
     --w43-content-gutter: var(--w43-hero-gutter);
   }
 
-  /* Current Figma places the lower Home copy beneath the portrait, not at the stale earlier offsets. */
+  /* Current Figma places the lower Home copy beneath the portrait, not at stale earlier offsets. */
   .${styles.homeHeroBody} {
     top: 583px;
   }
@@ -149,6 +178,78 @@ export function Website43FinalPolishStyles() {
   .${styles.threeCols} > *,
   .${styles.stats} > * {
     width: 100%;
+  }
+
+  /*
+   * Tool heroes use the same mobile composition language as Home:
+   * navigation + top title, portrait starts below the title, and the supporting
+   * copy/CTA sits on the lower image with a dedicated readability gradient.
+   */
+  .${styles.toolHero} {
+    height: 740px;
+  }
+  .${styles.toolHeroImage} {
+    top: 300px;
+    right: auto;
+    bottom: auto;
+    left: 0;
+    width: 100%;
+    height: 440px;
+    object-fit: cover;
+    object-position: center center;
+  }
+  .${styles.toolHeroGradient} {
+    inset: 0;
+    width: 100%;
+    height: 740px;
+    background: linear-gradient(180deg,rgb(4,6,5) 0%,rgb(4,6,5) 34%,rgba(4,6,5,.88) 37%,rgba(4,6,5,.55) 40%,rgba(4,6,5,.25) 42%,rgba(4,6,5,0) 44%,rgba(4,6,5,0) 100%);
+  }
+  .${styles.toolHero}::after {
+    content: '';
+    position: absolute;
+    z-index: 2;
+    top: 505px;
+    right: 0;
+    left: 0;
+    height: 235px;
+    pointer-events: none;
+    background: linear-gradient(180deg,rgba(4,5,4,.1) 0%,rgba(4,5,4,.34) 22%,rgba(4,5,4,.58) 52%,rgba(4,5,4,.7) 78%,rgba(4,5,4,.74) 100%);
+  }
+  .${styles.toolHeroCopy} {
+    top: 0;
+    left: var(--w43-hero-gutter);
+    width: calc(100% - var(--w43-hero-gutter) - var(--w43-hero-gutter));
+    height: 740px;
+  }
+  .${styles.toolBadge} {
+    position: absolute;
+    top: 104px;
+    left: 0;
+  }
+  .${styles.toolTitle} {
+    position: absolute;
+    top: 164px;
+    left: 0;
+    width: 100%;
+    margin: 0;
+    font-size: 30px;
+    line-height: 39px;
+  }
+  .${styles.toolDescription} {
+    position: absolute;
+    top: 548px;
+    left: 0;
+    width: 100%;
+    margin: 0;
+    font-size: 15px;
+    line-height: 1.6;
+  }
+  .${styles.toolHero} .${styles.primaryButton} {
+    position: absolute;
+    top: 635px;
+    left: 0;
+    min-width: 140px;
+    margin: 0;
   }
 
   .${styles.notFound} {
