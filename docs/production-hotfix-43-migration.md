@@ -55,9 +55,17 @@ Rollback: restore the prior approved GTM version as a unit if LINE routing fails
 
 ## 4.3-specific launch work outside this hotfix
 
-- Replace snapshot-only article delivery with the approved content provider; carry canonical, metadata and schema contracts into the new presentation.
+- Recheck the earlier snapshot-only article finding against the target 4.3 SHA: confirm approved content-provider delivery and canonical, metadata and schema contracts in the new presentation. Do not redo fixes already present in 4.3.
 - Verify 4.3 LINE CTA locations, real links/buttons and calculator event contracts against the rendered page.
 - Optimize oversized hero assets at their intended breakpoints after visual comparison. This hotfix makes no crop, typography or layout changes.
 - Resolve any 4.3-only architecture/lint failures on the integration branch; do not weaken shared checks to accept the migration.
+
+## Rehearsal result for the recorded 4.3 snapshot
+
+Applied source commits `6e55325dd9d3a1da23b5b8d5e0aa41172a2df6f4` and `b90fd48ad63e8e045961f132a7961519c99513c4` to a disposable branch `codex/hotfix-43-rehearsal-20260905`. The active UAT checkout was untouched.
+
+One conflict occurred in `tests/analytics-regression.ts`: 4.3 already had the CTA dedupe and pending-queue assertions. Resolve only that test region using the hotfix's superset (same CTA/queue assertions plus result-download dedupe and revocation coverage, with cleanup). Keep 4.3's existing nested consent/dedupe implementation in `lib/analytics.ts`; its fix is already equivalent. Do not replace the whole analytics file, which also contains 4.3 changes. The crawler source/import relocation was already present; only its missing documentation and the on-demand download imports applied.
+
+The resolved rehearsal source commits are `822fd58` and `51d736d`. Analytics/component tests and the full foundation gate passed after resolution. This is an inspected resolution for `fb915c4`, not a universal conflict recipe for later versions.
 
 See the accompanying task report for actual build, regression and migration-rehearsal results. Authenticated GTM delivery, Vercel Preview and final 4.3 visual UAT remain release checks.
