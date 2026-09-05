@@ -119,6 +119,7 @@
 }
 .hamburger span { display: block; width: 18px; height: 2px; margin: 5px auto; border-radius: 2px; background: var(--w43-ink); }
 .mobileMenu {
+  display: none; /* ponytail: breakpoint CSS hides stale mobile state after a desktop resize. */
   position: absolute;
   z-index: 50;
   top: calc(100% + 8px);
@@ -436,6 +437,7 @@
   .brand { font-size: 22px; }
   .navLinks, .navCta { display: none; }
   .hamburger { display: block; }
+  .mobileMenu { display: block; }
   .section, .sectionDeep { padding: 24px 40px; }
   .sectionTopLarge { padding-top: 40px; }
   .sectionBottomLarge { padding-bottom: 40px; }

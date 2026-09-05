@@ -148,6 +148,15 @@ async function inspect(client, routeKey, viewport) {
     })()`);
     const expectedPortrait = viewport.width <= 639 ? 318 : viewport.width < 1024 ? 260 : 400;
     if (viewport.width >= 1024) {
+      if (viewport.width === 1440) {
+        await setViewport(client, { ...viewport, width: 820 });
+        await sleep(80);
+        await evaluate(client, `(() => { document.querySelector('button[aria-label="เปิดเมนู"]')?.click(); return true; })()`);
+        await setViewport(client, viewport);
+        await sleep(80);
+        const mobileMenuVisible = await evaluate(client, `(() => { const menu=document.querySelector('nav[aria-label="เมนูมือถือ"]'); return Boolean(menu && getComputedStyle(menu).display !== 'none'); })()`);
+        expect('Mobile navigation stays hidden after resizing to desktop', !mobileMenuVisible, String(mobileMenuVisible));
+      }
       await evaluate(client, `(() => { const b=[...document.querySelectorAll('nav[aria-label="เมนูหลัก"] button')].find(x=>x.textContent?.includes('เครื่องมือ')); b?.click(); return !!b; })()`);
       await sleep(80);
       const submenu = await evaluate(client, `(() => { const menu=document.querySelector('[role="menu"]'); return { visible:Boolean(menu && getComputedStyle(menu).visibility !== 'hidden' && getComputedStyle(menu).display !== 'none'), links:menu?[...menu.querySelectorAll('a')].map(a=>a.getAttribute('href')):[] }; })()`);
