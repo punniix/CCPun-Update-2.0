@@ -170,7 +170,7 @@ export function trackEvent(eventName: string, params: EventParams = {}): void {
       if (typeof window.gtag === 'function') window.gtag('event', name, gaParams);
       else enqueue(pendingGA, [name, gaParams]);
     }
-  } else clearPendingAnalyticsEvents('analytics');
+  } else if (!consent.analytics) clearPendingAnalyticsEvents('analytics');
   if (consent.social && event.meta !== 'none' && event.metaName) {
     const safeMeta = metaParams(safe);
     if (typeof window.fbq === 'function') window.fbq(event.meta === 'standard' ? 'track' : 'trackCustom', event.metaName, safeMeta);
