@@ -205,8 +205,10 @@
 .aboutPortrait { position: absolute; top: 22px; left: 0; width: 400px; height: 526px; max-width: none; object-fit: cover; border-radius: 20px; }
 .aboutCopy { margin-left: 470px; width: min(720px, calc(100% - 470px)); }
 .aboutCopy .h2 { margin-top: 20px; }
-.aboutParagraphs { margin-top: 56px; color: var(--w43-muted); font-size: 17px; line-height: 1.65; }
-.advisorNote { margin-top: 28px; padding: 24px; border: 1px solid var(--w43-border); border-radius: 16px; background: var(--w43-surface); font-size: 24px; font-weight: 600; line-height: 1.45; }
+.aboutParagraphs { margin-top: 36px; color: var(--w43-muted); font-size: 17px; line-height: 1.7; }
+.aboutParagraphs p { margin: 0; }
+.aboutParagraphs p + p { margin-top: 16px; }
+.advisorNote { margin-top: 20px; padding: 20px; border: 1px solid var(--w43-border); border-radius: 16px; background: var(--w43-surface); font-size: 20px; font-weight: 600; line-height: 1.55; }
 .stats { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 16px; margin-top: 20px; }
 .stat { padding: 20px; border: 1px solid var(--w43-border); border-radius: 16px; background: var(--w43-surface); }
 .stat strong { display: block; color: var(--w43-gold); font-size: 28px; line-height: 1.18; }
@@ -221,7 +223,7 @@
 .partnerLogoFrameStandard,
 .partnerLogoFrameFairdee,
 .partnerLogoFrameWebull { width: 72px; height: 72px; }
-.partnerLogo { position: absolute; inset: 0; display: block; width: 100%; height: 100%; max-width: 100%; object-fit: contain; object-position: center; }
+.partnerLogo { position: absolute; inset: 0; display: block; width: 100%; height: 100%; max-width: 100%; padding: 8px 6px; object-fit: contain; object-position: center; }
 .partnerLogoStandard,
 .partnerLogoFairdee,
 .partnerLogoWebull { width: 100%; height: 100%; top: 0; left: 0; }
@@ -247,8 +249,8 @@
 .learnCard h3 { margin: 0; font-size: 20px; font-weight: 600; }
 .learnCard p { margin: 0; color: var(--w43-muted); font-size: 14px; line-height: 1.45; }
 .learnCard a { margin-top: auto; color: var(--w43-gold); font-size: 14px; font-weight: 600; }
-.toolCtaGrid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; }
-.toolCtaCard { position: relative; min-height: 220px; overflow: hidden; display: flex; border: 1px solid var(--w43-border); border-radius: 12px; color: var(--w43-ink); text-decoration: none; }
+.toolCtaGrid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); grid-auto-rows: 1fr; gap: 12px; }
+.toolCtaCard { position: relative; min-height: 220px; height: 100%; overflow: hidden; display: flex; border: 1px solid var(--w43-border); border-radius: 12px; color: var(--w43-ink); text-decoration: none; }
 .toolCtaImage { object-fit: cover; }
 .toolCtaOverlay { position: absolute; inset: 0; background: linear-gradient(180deg,rgba(37,24,24,.2) 0%,rgba(37,24,24,.84) 72%,rgba(37,24,24,.96) 100%); }
 .toolCtaContent { position: relative; z-index: 1; display: flex; width: 100%; flex-direction: column; gap: 8px; padding: 20px; }
@@ -264,6 +266,7 @@
 .faqIcon { flex: 0 0 auto; color: var(--w43-ink); font-size: 22px; font-weight: 600; line-height: 1; transition: transform .18s ease; }
 .faqItem[open] .faqIcon { transform: rotate(45deg); }
 .faqAnswer { margin: 0; padding: 0 20px 20px; color: var(--w43-muted); font-size: 15px; font-weight: 400; line-height: 1.65; }
+.faqCta { min-height: 48px; display: inline-flex; align-items: center; justify-content: center; margin-top: 20px; padding: 0 20px; border-radius: 12px; background: var(--w43-gold); color: var(--w43-deep) !important; font-weight: 600; }
 .finalActions { display: flex; gap: 12px; margin-top: 20px; }
 .finalActions .primaryButton { width: 180px; }
 .finalActions .outlineButton { width: 200px; }
@@ -349,7 +352,8 @@
 .toolHero .primaryButton { margin-top: 28px; min-width: 150px; }
 .storyIntro { display: grid; grid-template-columns: 1.05fr .95fr; gap: 48px; align-items: center; }
 .storyVisual { width: 100%; aspect-ratio: 4/3; object-fit: cover; border-radius: 18px; }
-.storyCopy p { color: var(--w43-muted); font-size: 17px; line-height: 1.65; }
+.storyCopy p { margin: 14px 0 0; color: var(--w43-muted); font-size: 17px; line-height: 1.7; }
+.toolDisclaimer { margin: 20px 0 0; color: var(--w43-gold); font-size: 14px; line-height: 1.6; }
 .truthGrid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 12px; margin-top: 24px; }
 .truth { min-height: 180px; padding: 20px; border: 1px solid rgba(91,72,72,.5); border-radius: 14px; background: rgba(74,58,58,.16); }
 
@@ -369,8 +373,8 @@
 .faqDetails p { margin: 0; padding: 0 0 18px; color: var(--w43-muted); font-size: 15px; line-height: 1.65; }
 .toolCtas { display: flex; justify-content: space-between; gap: 24px; align-items: center; margin-top: 36px; padding-top: 24px; border-top: 1px solid var(--w43-border); }
 .toolCtasActions { display: flex; gap: 12px; }
-.toolStorySection { padding: 48px 80px 40px; background: var(--w43-bg); }
-.calculatorSection { padding: 64px 80px 80px; background: var(--w43-bg); }
+.toolStorySection { padding: 48px 80px 24px; background: var(--w43-bg); }
+.calculatorSection { padding: 32px 80px 64px; background: var(--w43-bg); }
 .calculatorHeader { width: min(768px,100%); margin: 0 auto 28px; text-align: center; }
 .calculatorHeader h2 { margin: 8px 0 0; font-size: 30px; line-height: 1.3; }
 .calculatorHeader p { margin: 8px 0 0; color: var(--w43-muted); font-size: 15px; }
@@ -463,7 +467,7 @@
   .aboutPortraitStage { top: 64px; width: 260px; height: 260px; }
   .aboutPortrait { top: 16px; width: 260px; height: 342px; }
   .aboutCopy { margin-left: 290px; width: calc(100% - 290px); }
-  .aboutParagraphs { margin-top: 58px; font-size: 16px; }
+  .aboutParagraphs { margin-top: 32px; font-size: 16px; }
   .advisorNote { margin-top: 22px; padding: 24px; font-size: 20px; }
   .stats { gap: 12px; }
   .partners { gap: 12px; }
@@ -511,8 +515,8 @@
   .truthGrid .truth:last-child { grid-column: 1 / -1; }
   .truth { min-height: 0; padding: 20px; }
   .methodBox { margin-top: 44px; padding: 26px; }
-  .toolStorySection { padding: 40px; }
-  .calculatorSection { padding: 48px 40px 56px; }
+  .toolStorySection { padding: 40px 40px 20px; }
+  .calculatorSection { padding: 28px 40px 48px; }
   .ciStoryGrid { gap: 12px; }
 
   .legalHeader { padding: 168px 40px 48px; }
@@ -660,8 +664,8 @@
   .toolCtas { flex-direction: column; align-items: stretch; }
   .toolCtasActions { flex-direction: column; }
   .toolCtasActions a { width: 100%; }
-  .toolStorySection { padding: 32px 24px; }
-  .calculatorSection { padding: 40px 24px; }
+  .toolStorySection { padding: 32px 24px 16px; }
+  .calculatorSection { padding: 24px 24px 40px; }
   .calculatorHeader h2 { font-size: 26px; }
   .ciStoryGrid { grid-template-columns: 1fr; }
 
@@ -1140,6 +1144,11 @@
 
 @media (max-width: 639px) {
   .articleGallery { grid-template-columns: 1fr; }
+}
+
+@media (min-width: 640px) {
+  /* ponytail: override the legacy safe-area offset only where it creates visible letterboxing. */
+  .root .toolHeroImage { top: 0; bottom: 0; height: 100%; object-fit: cover; }
 }
 
 /* Website 4.3 interaction feedback: stable geometry, no entrance animation. */

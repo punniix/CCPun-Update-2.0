@@ -22,6 +22,11 @@ const ROUTES = [
   ['cookie', '/preview/website-4-3/cookie-policy'],
   ['not-found', '/preview/website-4-3/404'],
 ];
+const EXPECTED_ABOUT_PARAGRAPHS = [
+  'จากคนที่โฟกัสแต่เพียงเรื่องการลงทุน จนเจอเหตุไม่คาดฝัน และสูญเสียในครอบครัวในเวลาต่อมา ผมจึงเริ่มเห็นความสำคัญของประกันชีวิต และกลับมาจัดแผนการเงินใหม่จากระดับรากฐาน และเลือกเดินต่อในบทบาทตัวแทนประกันชีวิตกับผู้แนะนำการลงทุนเพื่อช่วยเหลือผู้คนให้มีฐานการเงินที่ดีขึ้น',
+  'โดยนำประสบการณ์ด้านการเงินและการลงทุนจากการทำงานกว่า 5 ปี มาแนะนำ และช่วยตัดสินใจเลือกผลิตภัณฑ์ทางการเงินที่ตอบโจทย์เฉพาะบุคคล เพื่อสร้างทั้งความมั่นคงและความมั่งคั่งได้ในระยะสั้น กลางและยาว',
+];
+const EXPECTED_ABOUT_QUOTE = 'เป้าหมายไม่ใช่การเลือกเพียงแค่ผลิตภัณฑ์ใดผลิตภัณฑ์หนึ่ง แต่วางองค์รวม และเลือกสิ่งที่ดีที่สุด เหมาะสม ตอบโจทย์กับลูกค้าที่สุด';
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -137,6 +142,16 @@ async function inspect(client, routeKey, viewport) {
       const proof = actions?.nextElementSibling;
       const buttons = actions ? [...actions.children].map(detail) : [];
       const trustStripGone = !document.body.innerText.includes('วางแผนประกัน\\nวางแผนการลงทุน\\nวางแผนการเงิน');
+      const partnerLogos = [...document.querySelectorAll('img')].filter((img) => ['AIA','Fairdee','Maybank','PhillipCapital','Webull','Finnomena'].includes(img.alt));
+      const partnerLogoPadding = partnerLogos.map((img) => { const style=getComputedStyle(img); return { top:parseFloat(style.paddingTop), bottom:parseFloat(style.paddingBottom) }; });
+      const fairdeeRole = document.querySelector('img[alt="Fairdee"]')?.parentElement?.parentElement?.querySelector('span')?.textContent?.trim();
+      const learningSection = [...document.querySelectorAll('section')].find((section) => section.textContent?.includes('เข้าใจมากขึ้น ก่อนตัดสินใจ'));
+      const toolCards = learningSection ? [...learningSection.querySelectorAll('a')].filter((a) => a.getAttribute('href')?.includes('/tools/financial-health-check') || a.getAttribute('href')?.includes('/ci-planning')).map(detail) : [];
+      const faqSection = document.querySelector('[data-uat-section="home-faq"]');
+      const faqQuestions = faqSection ? [...faqSection.querySelectorAll('summary')].map((summary) => summary.textContent?.replace('+','').trim()) : [];
+      const faqCtas = faqSection ? [...faqSection.querySelectorAll('a')].map((link) => ({ text:link.textContent?.trim(), href:link.getAttribute('href') })) : [];
+      const aboutParagraphs = [...document.querySelectorAll('[class*="aboutParagraphs"] p')].map((paragraph) => paragraph.textContent?.trim());
+      const aboutQuote = document.querySelector('[class*="advisorNote"]')?.textContent?.trim();
       return {
         stage: sr && {w:sr.width,h:sr.height},
         portrait: pr && {top:pr.top-(sr?.top||0),w:pr.width,h:pr.height},
@@ -144,6 +159,14 @@ async function inspect(client, routeKey, viewport) {
         heroContent: { eyebrow:detail(title?.previousElementSibling), title:detail(title), body:detail(body), actions:detail(actions), proof:detail(proof), buttons },
         heroFitsViewport: [title?.previousElementSibling,title,body,actions,proof].every((node) => { const rect=node?.getBoundingClientRect(); return rect && rect.left >= 0 && rect.right <= innerWidth && rect.bottom <= (heroRect?.bottom ?? 0); }),
         trustStripGone,
+        partnerLogoPadding,
+        fairdeeRole,
+        toolCards,
+        faqQuestions,
+        faqCtas,
+        removedPlanSection: !document.body.innerText.includes('ไม่มีคำตอบเดียวสำหรับทุกคน'),
+        aboutParagraphs,
+        aboutQuote,
       };
     })()`);
     const expectedPortrait = viewport.width <= 639 ? 318 : viewport.width < 1024 ? 260 : 400;
@@ -175,6 +198,13 @@ async function inspect(client, routeKey, viewport) {
       await sleep(40);
     }
     expect('Home removed Trust Strip', home.trustStripGone);
+    expect('Home removed plan-category section', home.removedPlanSection);
+    expect('Home uses exact updated About copy', JSON.stringify(home.aboutParagraphs) === JSON.stringify(EXPECTED_ABOUT_PARAGRAPHS) && home.aboutQuote === EXPECTED_ABOUT_QUOTE, JSON.stringify({ paragraphs:home.aboutParagraphs, quote:home.aboutQuote }));
+    expect('Fairdee role is insurance broker', home.fairdeeRole === 'นายหน้าประกันวินาศภัย', String(home.fairdeeRole));
+    expect('Partner logos have balanced vertical padding', home.partnerLogoPadding.length === 6 && home.partnerLogoPadding.every(({top,bottom}) => top > 0 && Math.abs(top-bottom) < .1), JSON.stringify(home.partnerLogoPadding));
+    expect('Home tool cards have equal dimensions', home.toolCards.length === 2 && Math.abs(home.toolCards[0].w-home.toolCards[1].w) < 1 && Math.abs(home.toolCards[0].h-home.toolCards[1].h) < 1, JSON.stringify(home.toolCards));
+    expect('Home FAQ removes purchase and start-point questions', home.faqQuestions.length === 2 && !home.faqQuestions.some((question) => question?.includes('คุยแล้วต้องซื้อ') || question?.includes('ถ้ายังไม่รู้ว่าควรเริ่มจากอะไร')), JSON.stringify(home.faqQuestions));
+    expect('Home FAQ has one LINE add-friend CTA', home.faqCtas.length === 1 && home.faqCtas[0].text === 'เพิ่มเพื่อน LINE @ccpun' && home.faqCtas[0].href === 'https://lin.ee/tqLCs4f', JSON.stringify(home.faqCtas));
     expect('About portrait stage is square', home.stage && Math.abs(home.stage.w - home.stage.h) < 1, JSON.stringify(home.stage));
     if ([390,820,1440].includes(viewport.width)) expect('About portrait stage matches Figma target', home.stage && Math.abs(home.stage.w - expectedPortrait) < 1.5, JSON.stringify(home.stage));
     expect('Portrait subject is shifted down inside square', home.portrait && home.portrait.top >= 14, JSON.stringify(home.portrait));
@@ -214,6 +244,28 @@ async function inspect(client, routeKey, viewport) {
   if (routeKey === 'article') {
     expect('Article has Figma title', base.bodyText.includes('พีระมิดทางการเงิน คืออะไร? วางรากฐานก่อนลงทุน'));
     expect('Article production-source body present', base.bodyText.includes('พีระมิดทางการเงินมีองค์ประกอบหลัก 4 ชั้น'));
+  }
+  if (routeKey === 'fhc' || routeKey === 'ci') {
+    const imageName = routeKey === 'fhc' ? 'fhc-hero' : 'ci-hero';
+    const tool = await evaluate(client, `(() => {
+      const box = (node) => { const rect=node?.getBoundingClientRect(); return rect ? { top:rect.top+scrollY, bottom:rect.bottom+scrollY, height:rect.height } : null; };
+      const image = document.querySelector('img[src*="${imageName}"]');
+      const hero = image?.closest('section');
+      const intro = document.querySelector('[data-uat-section="tool-intro"]');
+      const calculator = document.querySelector('[data-uat-section="calculator"]');
+      const faq = document.querySelector('[data-uat-section="tool-faq"]');
+      const details = faq ? [...faq.querySelectorAll('details')] : [];
+      return {
+        hero:box(hero), image:box(image), intro:box(intro), calculator:box(calculator), faq:box(faq),
+        introParagraphs:intro?.querySelectorAll('p').length ?? 0,
+        faqCount:details.length,
+        openFaqCount:details.filter((detail) => detail.open).length,
+      };
+    })()`);
+    expect('Tool layout follows hero, intro, calculator, FAQ order', tool.hero && tool.intro && tool.calculator && tool.faq && tool.hero.bottom <= tool.intro.top + 1 && tool.intro.bottom <= tool.calculator.top + 1 && tool.calculator.bottom <= tool.faq.top + 1, JSON.stringify(tool));
+    expect('Tool intro stays brief', tool.introParagraphs >= 2 && tool.introParagraphs <= 4, String(tool.introParagraphs));
+    expect('Tool FAQ is below calculator and collapsed', tool.faqCount > 0 && tool.openFaqCount === 0, JSON.stringify({ faqCount:tool.faqCount, openFaqCount:tool.openFaqCount }));
+    if (viewport.width >= 640) expect('Tool hero image fills top and bottom without letterbox', tool.hero && tool.image && Math.abs(tool.image.top-tool.hero.top) < 1 && Math.abs(tool.image.bottom-tool.hero.bottom) < 1, JSON.stringify({ hero:tool.hero, image:tool.image }));
   }
   if (routeKey === 'fhc') expect('FHC live calculator reused', base.bodyText.includes('เครื่องคำนวณทุนประกันชีวิต') && base.bodyText.includes('ค่าใช้จ่ายครัวเรือนต่อเดือนที่ยังต้องดูแล'));
   if (routeKey === 'ci') expect('CI live calculator reused', base.bodyText.includes('2 ขั้นตอน เพื่อเห็นส่วนต่างที่ต้องเตรียม') && base.bodyText.includes('รายได้ต่อเดือน'));
