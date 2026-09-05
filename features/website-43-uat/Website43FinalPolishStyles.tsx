@@ -61,6 +61,20 @@ export function Website43FinalPolishStyles() {
   overflow-wrap: anywhere;
 }
 
+/* Blog: keep the wrapped article rows anchored to the left like Figma. */
+.${styles.articleGrid} {
+  justify-content: flex-start;
+}
+
+/* Blog category trigger is a compact one-line control in every reference. */
+.${styles.categoryMenu} {
+  width: 157px;
+}
+.${styles.categoryMenuButton},
+.${styles.categoryMenuButton} > span:first-child {
+  white-space: nowrap;
+}
+
 /* Figma uses a centered IMAGE/FILL crop for the Home portrait at every mode. */
 .${styles.homeHeroPicture} img {
   object-position: center center;
@@ -163,7 +177,14 @@ export function Website43FinalPolishStyles() {
     --w43-content-gutter: var(--w43-hero-gutter);
   }
 
-  /* Current Figma places the lower Home copy beneath the portrait, not at stale earlier offsets. */
+  /* Blog search fills the reading shell: 342px at 390 and 504px at 600. */
+  .${styles.searchFilters},
+  .${styles.searchField} {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  /* Current Figma places the lower Home copy beneath the portrait, not at the stale earlier offsets. */
   .${styles.homeHeroBody} {
     top: 583px;
   }
