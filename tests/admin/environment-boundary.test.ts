@@ -30,6 +30,8 @@ const draftImporter = readFileSync(new URL("../../scripts/import-wordpress-draft
 const draftSeeder = readFileSync(new URL("../../scripts/create-sanity-uat-draft.mjs", import.meta.url), "utf8");
 const survivorGuard = readFileSync(new URL("../../scripts/guard-survivor-deploy.mjs", import.meta.url), "utf8");
 const proxySource = readFileSync(new URL("../../proxy.ts", import.meta.url), "utf8");
+const rootPageSource = readFileSync(new URL("../../app/page.tsx", import.meta.url), "utf8");
+const notFoundSource = readFileSync(new URL("../../app/not-found.tsx", import.meta.url), "utf8");
 const studioConfig = readFileSync(new URL("../../sanity.config.ts", import.meta.url), "utf8");
 const studioCli = readFileSync(new URL("../../sanity.cli.ts", import.meta.url), "utf8");
 const packageJson = JSON.parse(readFileSync(new URL("../../package.json", import.meta.url), "utf8"));
@@ -276,6 +278,15 @@ test("Admin proxy uses the project-aware surface guard", () => {
   assert.match(proxySource, /isAdminSurfaceAllowed/);
   assert.match(proxySource, /if \(!adminSurfaceAllowed\)/);
   assert.match(proxySource, /status: 404/);
+});
+
+test("Admin root is the login URL and public routes fail closed", () => {
+  assert.match(proxySource, /const isAdminRoot = pathname === "\/"/);
+  assert.match(proxySource, /if \(isAdminRoot\)[\s\S]*?return NextResponse\.next\(\)/);
+  assert.match(proxySource, /if \(!isAdminSurfacePath\)[\s\S]*?status: 404/);
+  assert.match(rootPageSource, /if \(IS_DEPLOYED_ADMIN_APPLICATION\) return <AdminLoginPage/);
+  assert.match(notFoundSource, /if \(IS_ADMIN_APPLICATION\)/);
+  assert.match(notFoundSource, /กลับหน้า Dashboard/);
 });
 
 test("survivor deploy guard allows only immutable survivor IDs and rejects every unknown project", () => {

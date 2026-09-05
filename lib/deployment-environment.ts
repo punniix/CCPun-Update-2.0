@@ -3,6 +3,7 @@ import { getAdminEnvironment, isAdminMutationEnvironment, isAdminReadDataPlaneAl
 const APP_ENVIRONMENT = getAdminEnvironment();
 
 export const IS_ADMIN_APPLICATION = ["local-uat", "local-production", "lab", "uat", "admin-uat", "production-admin"].includes(APP_ENVIRONMENT);
+export const IS_DEPLOYED_ADMIN_APPLICATION = ["admin-uat", "production-admin"].includes(APP_ENVIRONMENT);
 
 export const IS_REVIEW_ENVIRONMENT =
   process.env.VERCEL_ENV === "preview" ||

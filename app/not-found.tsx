@@ -3,22 +3,41 @@ import Link from "next/link";
 import { ArrowLeft, SearchX } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
+import { IS_ADMIN_APPLICATION } from "@/lib/deployment-environment";
 
 export const metadata: Metadata = {
-  title: "ไม่พบหน้า | CCPun",
-  description: "ไม่พบหน้าที่คุณกำลังหา กลับหน้าแรกหรือเลือกเครื่องมือวางแผนการเงินของ CCPun",
+  title: IS_ADMIN_APPLICATION ? "ไม่พบหน้า | CCPun Control Plane" : "ไม่พบหน้า | CCPun",
+  description: IS_ADMIN_APPLICATION
+    ? "ไม่พบหน้าภายในพื้นที่ควบคุม CCPun"
+    : "ไม่พบหน้าที่คุณกำลังหา กลับหน้าแรกหรือเลือกเครื่องมือวางแผนการเงินของ CCPun",
   alternates: { canonical: null },
-  openGraph: {
+  openGraph: IS_ADMIN_APPLICATION ? null : {
     title: "ไม่พบหน้า | CCPun",
     description: "ไม่พบหน้าที่คุณกำลังหา กลับหน้าแรกหรือเลือกเครื่องมือวางแผนการเงินของ CCPun",
   },
-  twitter: {
+  twitter: IS_ADMIN_APPLICATION ? null : {
     title: "ไม่พบหน้า | CCPun",
     description: "ไม่พบหน้าที่คุณกำลังหา กลับหน้าแรกหรือเลือกเครื่องมือวางแผนการเงินของ CCPun",
   },
 };
 
 export default function NotFound() {
+  if (IS_ADMIN_APPLICATION) {
+    return (
+      <main id="main-content" className="flex min-h-screen items-center justify-center bg-[#11151a] px-5 py-16 text-white">
+        <section className="w-full max-w-lg rounded-3xl border border-white/10 bg-white/[0.05] p-7 text-center shadow-2xl md:p-9">
+          <p className="text-sm font-semibold text-[#e0c985]">404</p>
+          <h1 className="mt-3 text-3xl font-semibold">ไม่พบหน้าภายในพื้นที่ควบคุม</h1>
+          <p className="mt-3 text-base leading-7 text-white/65">ลิงก์นี้อาจถูกย้าย หรือไม่มีอยู่ในระบบหลังบ้าน</p>
+          <Link href="/snt-admin/dashboard/" className="mt-7 inline-flex min-h-12 items-center gap-2 rounded-2xl bg-[#e0c985] px-5 py-3 text-sm font-semibold text-[#17191d] transition hover:brightness-105">
+            <ArrowLeft className="h-4 w-4" />
+            กลับหน้า Dashboard
+          </Link>
+        </section>
+      </main>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <Navbar isToolPage />
