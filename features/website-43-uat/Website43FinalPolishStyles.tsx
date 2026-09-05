@@ -151,6 +151,16 @@ export function Website43FinalPolishStyles() {
     width: 508px;
     height: 346px;
   }
+
+  /* Featured stories use the same two-column card width as the article grid. */
+  .${styles.featuredCard} {
+    width: calc((100vw - 98px) / 2);
+    flex-basis: calc((100vw - 98px) / 2);
+  }
+  .${styles.featuredScroller} {
+    padding-inline: calc(25vw + 24.5px);
+  }
+
   .${styles.toolHeroImage} {
     inset: 80px 0 auto 0;
     width: 100%;
@@ -182,6 +192,15 @@ export function Website43FinalPolishStyles() {
   .${styles.searchField} {
     width: 100%;
     max-width: 100%;
+  }
+
+  /* Featured stories share the same reading width as the single-column cards below. */
+  .${styles.featuredCard} {
+    width: var(--w43-mobile-reading-width);
+    flex-basis: var(--w43-mobile-reading-width);
+  }
+  .${styles.featuredScroller} {
+    padding-inline: var(--w43-hero-gutter);
   }
 
   /* Current Figma places the lower Home copy beneath the portrait, not at the stale earlier offsets. */
