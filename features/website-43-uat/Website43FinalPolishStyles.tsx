@@ -33,6 +33,25 @@ export function Website43FinalPolishStyles() {
 }
 
 @media (min-width: 1024px) {
+  /*
+   * Home hero must interpolate the actual Figma text/gradient geometry between
+   * the 1100 transition reference and the 1440 canonical frame. Previously only
+   * the left gutter interpolated, leaving the 1440 text widths active at 1100-
+   * 1439px and changing the line breaks/crop balance.
+   */
+  .${styles.homeHeroGradient} {
+    width: clamp(840px, calc(82.35294vw - 65.88235px), 1120px);
+  }
+  .${styles.homeHeroTitle} {
+    width: clamp(580.556px, 52.77778vw, 760px);
+  }
+  .${styles.homeHeroBody} {
+    width: clamp(465.972px, 42.36111vw, 610px);
+  }
+  .${styles.heroActions} {
+    margin-left: calc(var(--w43-nav-gutter) - var(--w43-hero-gutter));
+  }
+
   .${styles.footerWrap} {
     padding-left: var(--w43-nav-gutter);
     padding-right: var(--w43-nav-gutter);
