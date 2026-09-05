@@ -7,10 +7,10 @@
   --w43-gold-bright: #ebd9a2;
   --w43-ink: #faf9f9;
   --w43-muted: #baabab;
-  --w43-menu-bg: rgba(37,24,24,.88);
+  --w43-menu-bg: rgba(37,24,24,.96);
   --w43-menu-border: rgba(255,255,255,.14);
   --w43-menu-radius: 14px;
-  --w43-menu-shadow: none;
+  --w43-menu-shadow: inset 0 1px 0 rgba(255,255,255,.12), 0 8px 20px rgba(10,4,4,.16);
   --w43-menu-item-hover: rgba(255,255,255,.06);
   min-height: 100vh;
   overflow-x: clip;
@@ -57,10 +57,9 @@
   padding: 0 16px 0 24px;
   border: 1px solid rgba(255,255,255,.14);
   border-radius: 16px;
-  background: rgba(255,255,255,.05);
-  box-shadow: 0 4px 5px rgba(0,0,0,.04);
-  backdrop-filter: blur(9px);
-  -webkit-backdrop-filter: blur(9px);
+  /* ponytail: static glass avoids per-frame backdrop sampling over the hero. */
+  background: linear-gradient(135deg, rgba(255,255,255,.11), rgba(255,255,255,.025)), rgba(37,24,24,.72);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.13), 0 4px 5px rgba(0,0,0,.04);
 }
 
 .navSpacer { flex: 1 1 auto; }
@@ -78,7 +77,7 @@
   position: absolute; z-index: 80; top: calc(100% + 8px); left: 50%; width: 288px; padding: 8px;
   transform: translateX(-50%);
   border: 1px solid rgba(255,255,255,.12); border-radius: 16px; background: rgba(50,42,42,.96);
-  box-shadow: 0 18px 42px rgba(0,0,0,.34); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 18px 42px rgba(0,0,0,.34);
 }
 .navDropdown::before {
   content: ''; position: absolute; top: -6px; left: 50%; width: 12px; height: 12px;
@@ -89,7 +88,10 @@
   position: relative; z-index: 1; min-height: 48px; display: flex; align-items: center; gap: 10px; padding: 0 12px;
   border-radius: 11px; color: var(--w43-muted); font-size: 14px; font-weight: 500; transition: background .15s ease, color .15s ease;
 }
-.navDropdown a:hover, .navDropdown a:focus-visible { background: rgba(255,255,255,.06); color: var(--w43-gold-bright); outline: none; }
+@media (hover: hover) and (pointer: fine) {
+  .navDropdown a:hover { background: rgba(255,255,255,.06); color: var(--w43-gold-bright); outline: none; }
+}
+.navDropdown a:focus-visible { background: rgba(255,255,255,.06); color: var(--w43-gold-bright); outline: none; }
 .navDropdown a > span { width: 6px; height: 6px; flex: 0 0 6px; border-radius: 999px; background: var(--w43-gold); opacity: .7; }
 
 .navCta {
@@ -261,7 +263,10 @@
 .featuredCard img { width: 100%; height: 100%; object-fit: cover; }
 .carouselControls { display: flex; justify-content: center; align-items: center; gap: 7px; margin-top: 14px; }
 .carouselDotButton { width: 9px; height: 9px; padding: 0; border: 0; border-radius: 999px; background: var(--w43-border); cursor: pointer; transition: width .18s ease, background .18s ease; }
-.carouselDotButton:hover, .carouselDotButton:focus-visible { background: var(--w43-gold-bright); outline: none; }
+@media (hover: hover) and (pointer: fine) {
+  .carouselDotButton:hover { background: var(--w43-gold-bright); outline: none; }
+}
+.carouselDotButton:focus-visible { background: var(--w43-gold-bright); outline: none; }
 .carouselDotButtonActive { width: 30px; background: var(--w43-gold); }
 .searchFilters { display: flex; gap: 16px; align-items: center; margin-top: 32px; }
 .searchField { width: 360px; height: 52px; border: 1px solid var(--w43-border); border-radius: 12px; background: var(--w43-surface); color: var(--w43-ink); padding: 0 16px; outline: none; }
@@ -714,7 +719,13 @@
   background: var(--w43-gold);
   box-shadow: 0 0 0 3px rgba(224,201,133,.08);
 }
-.tocPrimary:hover,
+@media (hover: hover) and (pointer: fine) {
+  .tocPrimary:hover {
+  background: rgba(255,255,255,.055);
+  color: var(--w43-gold-bright) !important;
+  outline: none;
+  }
+}
 .tocPrimary:focus-visible {
   background: rgba(255,255,255,.055);
   color: var(--w43-gold-bright) !important;
@@ -739,7 +750,13 @@
   line-height: 1.45 !important;
   transition: background .16s ease, color .16s ease;
 }
-.tocSecondary:hover,
+@media (hover: hover) and (pointer: fine) {
+  .tocSecondary:hover {
+  background: rgba(255,255,255,.035);
+  color: rgba(235,217,162,.94) !important;
+  outline: none;
+  }
+}
 .tocSecondary:focus-visible {
   background: rgba(255,255,255,.035);
   color: rgba(235,217,162,.94) !important;
@@ -758,8 +775,6 @@
     0 24px 64px rgba(10,4,4,.34),
     inset 0 1px 0 rgba(255,255,255,.18),
     inset 0 -1px 0 rgba(255,255,255,.035);
-  backdrop-filter: blur(30px) saturate(145%);
-  -webkit-backdrop-filter: blur(30px) saturate(145%);
 }
 .navDropdown::before {
   background: linear-gradient(145deg, rgba(255,255,255,.13), rgba(255,255,255,.055));
@@ -772,7 +787,17 @@
   background: transparent;
 }
 .navDropdown a + a { margin-top: 4px; }
-.navDropdown a:hover,
+@media (hover: hover) and (pointer: fine) {
+  .navDropdown a:hover {
+  border-color: rgba(255,255,255,.11);
+  background:
+    linear-gradient(135deg, rgba(255,255,255,.105), rgba(255,255,255,.045));
+  color: var(--w43-gold-bright);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.10),
+    0 8px 24px rgba(0,0,0,.12);
+  }
+}
 .navDropdown a:focus-visible {
   border-color: rgba(255,255,255,.11);
   background:
@@ -839,7 +864,13 @@
   text-align: left;
   cursor: pointer;
 }
-.categoryMenuButton:hover,
+@media (hover: hover) and (pointer: fine) {
+  .categoryMenuButton:hover {
+  border-color: var(--w43-gold-bright);
+  box-shadow: 0 0 0 2px rgba(224,201,133,.16);
+  outline: none;
+  }
+}
 .categoryMenuButton:focus-visible {
   border-color: var(--w43-gold-bright);
   box-shadow: 0 0 0 2px rgba(224,201,133,.16);
@@ -863,8 +894,6 @@
   border-radius: 14px;
   background: rgba(37,24,24,.97);
   box-shadow: 0 18px 40px rgba(0,0,0,.35);
-  backdrop-filter: blur(18px) saturate(120%);
-  -webkit-backdrop-filter: blur(18px) saturate(120%);
 }
 .categoryMenuOption {
   width: 100%;
@@ -884,7 +913,13 @@
   text-align: left;
   cursor: pointer;
 }
-.categoryMenuOption:hover,
+@media (hover: hover) and (pointer: fine) {
+  .categoryMenuOption:hover {
+  background: rgba(255,255,255,.06);
+  color: var(--w43-gold-bright);
+  outline: none;
+  }
+}
 .categoryMenuOption:focus-visible,
 .categoryMenuOptionActive {
   background: rgba(255,255,255,.06);
@@ -913,11 +948,9 @@
   border: 1px solid var(--w43-menu-border);
   border-radius: var(--w43-menu-radius);
   background:
-    linear-gradient(145deg, rgba(255,255,255,.045), rgba(255,255,255,.012)),
+    linear-gradient(145deg, rgba(255,255,255,.09), rgba(255,255,255,.015)),
     var(--w43-menu-bg);
   box-shadow: var(--w43-menu-shadow);
-  backdrop-filter: blur(20px) saturate(125%);
-  -webkit-backdrop-filter: blur(20px) saturate(125%);
 }
 
 .navDropdown {
@@ -941,15 +974,22 @@
   transition: background .16s ease, color .16s ease;
 }
 
-.navDropdown a:hover,
+@media (hover: hover) and (pointer: fine) {
+  .navDropdown a:hover,
+  .mobileMenu > a:not(:last-child):hover,
+  .mobileTools > button:hover,
+  .mobileSubmenu a:hover,
+  .categoryMenuOption:hover {
+  background: var(--w43-menu-item-hover);
+  color: var(--w43-gold-bright);
+  box-shadow: none;
+  outline: none;
+  }
+}
 .navDropdown a:focus-visible,
-.mobileMenu > a:not(:last-child):hover,
 .mobileMenu > a:not(:last-child):focus-visible,
-.mobileTools > button:hover,
 .mobileTools > button:focus-visible,
-.mobileSubmenu a:hover,
 .mobileSubmenu a:focus-visible,
-.categoryMenuOption:hover,
 .categoryMenuOption:focus-visible,
 .categoryMenuOptionActive {
   background: var(--w43-menu-item-hover);
@@ -1069,4 +1109,41 @@
 
 @media (max-width: 639px) {
   .articleGallery { grid-template-columns: 1fr; }
+}
+
+/* Website 4.3 interaction feedback: stable geometry, no entrance animation. */
+.primaryButton, .outlineButton, .navCta, .hamburger {
+  transition: background-color .14s ease, border-color .14s ease, transform .12s ease;
+}
+.navLinks > a, .navToolsButton { border-radius: 6px; transition: background-color .12s ease, color .12s ease; }
+.navLinks [aria-current], .mobileMenu [aria-current],
+.navToolsButton[data-active="true"], .mobileTools > button[data-active="true"] {
+  color: var(--w43-gold-bright);
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 6px;
+}
+.articleCard, .featuredCard { transition: border-color .15s ease; }
+.articleTitle { text-decoration: underline; text-decoration-color: transparent; text-underline-offset: .2em; transition: text-decoration-color .15s ease; }
+.faqSummary { transition: background-color .14s ease; }
+.faqIcon, .navChevron, .categoryMenuChevron { transition: transform .2s ease; }
+
+@media (hover: hover) and (pointer: fine) {
+  .primaryButton:not(:disabled):hover, .navCta:hover { background-color: var(--w43-gold-bright); border-color: var(--w43-gold-bright); }
+  .outlineButton:not(:disabled):hover { background-color: rgba(224,201,133,.10); }
+  .navLinks > a:hover, .navToolsButton:hover, .hamburger:hover, .faqSummary:hover { background-color: rgba(224,201,133,.06); }
+  .articleCard:hover, .featuredCard:hover { border-color: var(--w43-gold); }
+  .articleCard:hover .articleTitle { text-decoration-color: var(--w43-gold); }
+  .planLink:hover, .learnCard a:hover { text-decoration: underline; text-underline-offset: .2em; }
+}
+.primaryButton:not(:disabled):active, .outlineButton:not(:disabled):active, .navCta:active { transform: scale(.985); }
+.primaryButton:disabled, .outlineButton:disabled { opacity: .5; cursor: not-allowed; }
+.articleCard:focus-visible, .featuredCard:focus-visible { border-color: var(--w43-gold); }
+.articleCard:focus-visible .articleTitle { text-decoration-color: var(--w43-gold); }
+.root :is(a, button, input, select, textarea, summary):focus-visible { outline: 2px solid var(--w43-gold-bright); outline-offset: 3px; }
+.root :is(.faqSummary, .tocMobile summary, .featuredCard):focus-visible { outline-offset: -3px; }
+.root :is(input, select, textarea):not([aria-invalid="true"]):focus-visible { border-color: var(--w43-gold-bright); }
+@media (prefers-reduced-motion: reduce) {
+  .root *, .root *::before, .root *::after { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
+  .primaryButton:active, .outlineButton:active, .navCta:active { transform: none; }
 }

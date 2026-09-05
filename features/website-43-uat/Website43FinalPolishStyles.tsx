@@ -10,29 +10,6 @@ import styles from './Website43.module.css';
 export function Website43FinalPolishStyles() {
   const css = String.raw`
 /*
- * Floating menus sit over brighter hero/content imagery than Navbar.
- * A darker translucent neutral base preserves the same perceived glass density
- * without changing Navbar itself.
- */
-.${styles.navDropdown},
-.${styles.mobileMenu},
-.${styles.categoryMenuPanel} {
-  border-color: rgba(255,255,255,.14);
-  background: rgba(20,16,16,.68);
-  box-shadow: 0 4px 5px rgba(0,0,0,.04);
-  backdrop-filter: blur(9px) saturate(100%);
-  -webkit-backdrop-filter: blur(9px) saturate(100%);
-}
-.${styles.navDropdown}::before {
-  background: rgba(20,16,16,.68);
-  border-color: rgba(255,255,255,.14);
-  box-shadow: none;
-}
-.${styles.navDropdown}::after {
-  background: none;
-}
-
-/*
  * Thai copy must use native dictionary line breaking. Do not fall back to
  * arbitrary grapheme breaking (for example leaving the last character of a
  * Thai word on a new line). URLs keep their own emergency wrapping rule below.
