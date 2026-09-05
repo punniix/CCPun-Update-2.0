@@ -26,9 +26,11 @@ export default function Website43Blog() {
   const featuredScrollerRef = useRef<HTMLDivElement>(null);
   const featuredRailRef = useRef<HTMLDivElement>(null);
   const featuredScrollEndTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const categoryMenuRef = useRef<HTMLDivElement>(null);
   const [activeFeatured, setActiveFeatured] = useState(0);
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState('ทั้งหมด');
+  const [categoryMenuOpen, setCategoryMenuOpen] = useState(false);
 
   const featuredCount = website43ArticlesByPublished.length;
   const loopedFeaturedArticles = useMemo(
@@ -66,9 +68,19 @@ export default function Website43Blog() {
     const frame = requestAnimationFrame(() => {
       centerFeaturedCard(featuredCount, 'auto');
     });
+    const onPointerDown = (event: MouseEvent) => {
+      if (categoryMenuRef.current && !categoryMenuRef.current.contains(event.target as Node)) setCategoryMenuOpen(false);
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setCategoryMenuOpen(false);
+    };
+    document.addEventListener('mousedown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
 
     return () => {
       cancelAnimationFrame(frame);
+      document.removeEventListener('mousedown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
       if (featuredScrollEndTimerRef.current) clearTimeout(featuredScrollEndTimerRef.current);
     };
   }, [featuredCount]);
@@ -171,17 +183,41 @@ export default function Website43Blog() {
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
               />
-              <label className={styles.categorySelectWrap}>
-                <span className={styles.srOnly}>เลือกหมวดหมู่บทความ</span>
-                <select className={styles.categorySelect} value={category} onChange={(event) => setCategory(event.target.value)}>
-                  {categories.map((item) => <option value={item} key={item}>{item === 'ทั้งหมด' ? 'ทุกหมวดหมู่' : item}</option>)}
-                </select>
-                <span className={styles.categoryChevron} aria-hidden="true">⌄</span>
-              </label>
+              <div className={styles.categoryMenu} ref={categoryMenuRef}>
+                <button
+                  className={styles.categoryMenuButton}
+                  type="button"
+                  aria-haspopup="menu"
+                  aria-expanded={categoryMenuOpen}
+                  onClick={() => setCategoryMenuOpen((open) => !open)}
+                >
+                  <span>{category === 'ทั้งหมด' ? 'ทุกหมวดหมู่' : category}</span>
+                  <span className={`${styles.categoryMenuChevron} ${categoryMenuOpen ? styles.categoryMenuChevronOpen : ''}`} aria-hidden="true">⌄</span>
+                </button>
+                {categoryMenuOpen ? (
+                  <div className={styles.categoryMenuPanel} role="menu" aria-label="เลือกหมวดหมู่บทความ">
+                    {categories.map((item) => {
+                      const selected = category === item;
+                      return (
+                        <button
+                          className={`${styles.categoryMenuOption} ${selected ? styles.categoryMenuOptionActive : ''}`}
+                          type="button"
+                          role="menuitemradio"
+                          aria-checked={selected}
+                          onClick={() => { setCategory(item); setCategoryMenuOpen(false); }}
+                          key={item}
+                        >
+                          <span className={styles.categoryMenuIndicator} aria-hidden="true">{selected ? '✓' : ''}</span>
+                          <span>{item === 'ทั้งหมด' ? 'ทุกหมวดหมู่' : item}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : null}
+              </div>
             </div>
             <div className={styles.articleListHeading}>
               <h2 className={styles.h2}>บทความทั้งหมด</h2>
-              <p className={styles.articleSortNote}>เรียงตามวันที่เผยแพร่ครั้งแรก · ใหม่ไปเก่า</p>
             </div>
             {filteredArticles.length ? (
               <div className={styles.articleGrid}>
