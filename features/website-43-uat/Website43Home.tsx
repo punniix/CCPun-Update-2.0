@@ -32,9 +32,9 @@ export default function Website43Home() {
           <div className={styles.homeHeroPicture}><Image src="/assets/website-43/home-hero-desktop.png" alt="CCPun กำลังนั่งทำงานพร้อมคอมพิวเตอร์โน้ตบุ๊ก" fill priority sizes="100vw" /></div>
           <div className={styles.homeHeroGradient} aria-hidden="true" /><div className={styles.homeHeroBottomGradient} aria-hidden="true" /><Website43Navbar overlay />
           <div className={styles.homeHeroCopy}>
-            <p className={styles.eyebrow}>วางแผนจากชีวิตจริง ไม่ใช่ผลิตภัณฑ์</p>
+            <p className={styles.eyebrow}>วางแผนจากชีวิตจริง ก่อนเลือกผลิตภัณฑ์</p>
             <h1 id="home-hero-title" className={styles.homeHeroTitle}>วางแผนประกัน การลงทุน และความเสี่ยงในชีวิต<br />ให้เหมาะกับคุณจริง ๆ</h1>
-            <p className={styles.homeHeroBody}>เริ่มจากสิ่งที่คุณมี สิ่งที่กังวล และเป้าหมายของคุณ ก่อนค่อยเลือกเครื่องมือหรือผลิตภัณฑ์ที่เหมาะสม</p>
+            <p className={styles.homeHeroBody}>เริ่มจากสิ่งที่คุณมี เป้าหมายที่อยากไปให้ถึง และความเสี่ยงที่รับได้ แล้วค่อยจัดลำดับว่าอะไรควรทำก่อน</p>
             <div className={styles.heroActions}><Link className={styles.primaryButton} href={`${BASE}/tools/financial-health-check`}>เช็กสุขภาพการเงิน</Link><a className={styles.outlineButton} href="https://lin.ee/tqLCs4f" target="_blank" rel="noopener noreferrer" data-analytics-surface="homepage" data-analytics-location="home_hero">คุยกับปั้น</a></div>
             <p className={styles.heroProof}>5+ ปี · 3 ใบอนุญาต · 6 พาร์ทเนอร์/แพลตฟอร์ม</p>
           </div>
