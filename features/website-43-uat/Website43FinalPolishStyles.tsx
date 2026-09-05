@@ -32,7 +32,17 @@ export function Website43FinalPolishStyles() {
   background: none;
 }
 
+/* Figma uses a centered IMAGE/FILL crop for the Home portrait at every mode. */
+.${styles.homeHeroPicture} img {
+  object-position: center center;
+}
+
 @media (min-width: 1024px) {
+  /* 1100 reference uses the same 56px shell gutter as Navbar; 1440 resolves to 80px. */
+  .${styles.root} {
+    --w43-content-gutter: var(--w43-nav-gutter);
+  }
+
   /*
    * Home hero must interpolate the actual Figma text/gradient geometry between
    * the 1100 transition reference and the 1440 canonical frame. Previously only
@@ -119,6 +129,28 @@ export function Website43FinalPolishStyles() {
 }
 
 @media (max-width: 639px) {
+  /* 390 canonical = 24px content gutter; 600 transition reference = 48px. */
+  .${styles.root} {
+    --w43-content-gutter: var(--w43-hero-gutter);
+  }
+
+  /* Current Figma places the lower Home copy beneath the portrait, not at the stale earlier offsets. */
+  .${styles.homeHeroBody} {
+    top: 583px;
+  }
+  .${styles.heroActions} {
+    top: 639px;
+  }
+  .${styles.heroProof} {
+    top: 703px;
+  }
+
+  /* Cards fill the Figma reading shell: 342px at 390 and 504px at 600. */
+  .${styles.threeCols} > *,
+  .${styles.stats} > * {
+    width: 100%;
+  }
+
   .${styles.notFound} {
     padding-top: clamp(48px, calc(3.80952vw + 33.1429px), 56px);
     padding-right: var(--w43-hero-gutter);
