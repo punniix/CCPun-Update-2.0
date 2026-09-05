@@ -1,12 +1,12 @@
-import LifeCoverageWizard from '@/features/financial-health-check/components/LifeCoverageWizard';
-import CIWizard from '@/features/ci-planning/components/CIWizard';
+import Image from 'next/image';
+import type { ReactNode } from 'react';
 import styles from './Website43.module.css';
 import { Website43Footer, Website43Navbar } from './Website43Shared';
 
 function ToolHero({ image, badge, line1, line2, description }: { image: string; badge: string; line1: string; line2: string; description: string }) {
   return (
     <section className={styles.toolHero}>
-      <img className={styles.toolHeroImage} src={image} alt="" />
+      <Image className={styles.toolHeroImage} src={image} alt="" width={1448} height={1086} sizes="(max-width: 639px) 100vw, (max-width: 1023px) 560px, 820px" priority />
       <div className={styles.toolHeroGradient} aria-hidden="true" />
       <Website43Navbar overlay />
       <div className={styles.toolHeroCopy}>
@@ -25,7 +25,7 @@ const fhcFaq = [
   ['ผลลัพธ์ใช้เป็นคำแนะนำเฉพาะบุคคลได้หรือไม่?', 'ไม่ได้ ผลลัพธ์เป็นประมาณการเบื้องต้น ไม่ใช่คำแนะนำให้ซื้อผลิตภัณฑ์หรือวงเงินเฉพาะ ควรตรวจรายละเอียดความคุ้มครอง เงื่อนไข และข้อยกเว้นของกรมธรรม์ก่อนตัดสินใจ'],
 ] as const;
 
-export function Website43FinancialHealthCheck() {
+export function Website43FinancialHealthCheck({ calculator }: { calculator: ReactNode }) {
   return (
     <div className={styles.root}>
       <main id="main-content">
@@ -60,14 +60,14 @@ export function Website43FinancialHealthCheck() {
             </div>
             <div className={styles.toolCtas}>
               <p className={styles.eyebrow}>เริ่มจากข้อมูลที่ทราบก่อน แล้วค่อยกลับมาแก้ไขเมื่อพร้อม</p>
-              <div className={styles.toolCtasActions}><a className={styles.primaryButton} href="#calculator">เริ่มประเมินความต้องการทุนประกันชีวิต</a><a className={styles.outlineButton} href="https://lin.ee/tqLCs4f" target="_blank" rel="noopener noreferrer">คุยกับ CCPun ทาง LINE OA</a></div>
+              <div className={styles.toolCtasActions}><a className={styles.primaryButton} href="#calculator">เริ่มประเมินความต้องการทุนประกันชีวิต</a><a className={styles.outlineButton} href="https://lin.ee/tqLCs4f" target="_blank" rel="noopener noreferrer" data-analytics-surface="fhc" data-analytics-location="fhc_landing">คุยกับ CCPun ทาง LINE OA</a></div>
             </div>
             <p className={styles.eyebrow} style={{ marginTop: 24 }}>ผลลัพธ์เป็นประมาณการเบื้องต้นจากข้อมูลและสมมติฐานที่คุณกรอก ไม่ใช่คำแนะนำเฉพาะบุคคล และไม่ยืนยันว่าจำนวนเงินจะเพียงพอในทุกกรณี โปรดศึกษารายละเอียดความคุ้มครอง เงื่อนไข และข้อยกเว้นของกรมธรรม์ก่อนตัดสินใจทำประกันภัย และประกันไม่ใช่เงินฝาก</p>
           </div>
         </section>
 
         <section id="calculator" className={styles.calculatorSection}>
-          <div className={styles.calculatorStage}><LifeCoverageWizard /></div>
+          <div className={styles.calculatorStage}>{calculator}</div>
         </section>
       </main>
       <Website43Footer />
@@ -75,11 +75,12 @@ export function Website43FinancialHealthCheck() {
   );
 }
 
-export function Website43CIPlanning() {
+export function Website43CIPlanning({ calculator, landingTracker, faqItems }: { calculator: ReactNode; landingTracker?: ReactNode; faqItems: readonly { question: string; answer: string }[] }) {
   return (
     <div className={styles.root}>
       <main id="main-content">
         <ToolHero image="/assets/website-43/ci-hero.png" badge="เครื่องมือวางแผนทุนโรคร้ายแรง" line1="เงินก้อนจากประกันโรคร้ายแรงที่มี" line2="เพียงพอรับภาระจริงไหม?" description="กรอกรายได้หรือภาระที่ยังต้องดูแล แล้วเทียบกับเงินก้อนจากประกันโรคร้ายแรงและสินทรัพย์สภาพคล่องที่พร้อมใช้" />
+        {landingTracker}
 
         <section className={styles.toolStorySection}>
           <div className={styles.narrow}>
@@ -90,9 +91,9 @@ export function Website43CIPlanning() {
               <p>ผมจึงลองแยกรายได้และภาระทีละส่วน วางตามช่วงเวลาที่ต้องรับผิดชอบจริง แล้วเทียบกับเงินก้อนจากประกันโรคร้ายแรงและสินทรัพย์ที่พร้อมใช้ เพื่อให้เห็นที่มาของตัวเลขชัดขึ้น</p>
             </div>
             <div className={styles.ciStoryGrid}>
-              <article className={styles.ciStoryCard}><img src="/assets/website-43/ci-hero.png" alt="" /><div><h3>รายได้ที่หายไป</h3><p>ถ้าต้องพักรักษาตัวไม่กี่วัน ก็อาจขาดรายได้ไม่กี่วัน แต่ถ้าต้องรักษาตัวหลายเดือน รายได้ที่เคยมีก็อาจหายจนเหลือศูนย์</p></div></article>
-              <article className={styles.ciStoryCard}><img src="/assets/website-43/ci-story-debt.png" alt="" /><div><h3>ค่าบ้าน รถ และภาระค่าใช้จ่ายอื่นๆ</h3><p>ถ้าเสาหลักต้องหยุดรักษาตัว ค่าบ้าน รถ บัตรเครดิต และสินเชื่อส่วนบุคคลอาจกลายเป็นภาระที่ครอบครัวต้องช่วยกันรับต่อ</p></div></article>
-              <article className={styles.ciStoryCard}><img src="/assets/website-43/ci-story-coverage.png" alt="" /><div><h3>ทุนประกันโรคร้ายแรงที่มีอยู่ และสินทรัพย์</h3><p>ผมจึงเทียบภาระกับทุนประกันโรคร้ายแรง รวมถึงสินทรัพย์ที่พร้อมเปลี่ยนเป็นเงินสดได้เร็ว</p></div></article>
+              <article className={styles.ciStoryCard}><Image src="/assets/website-43/ci-hero.png" alt="" width={1448} height={1086} sizes="(max-width: 639px) calc(100vw - 48px), 33vw" loading="lazy" /><div><h3>รายได้ที่หายไป</h3><p>ถ้าต้องพักรักษาตัวไม่กี่วัน ก็อาจขาดรายได้ไม่กี่วัน แต่ถ้าต้องรักษาตัวหลายเดือน รายได้ที่เคยมีก็อาจหายจนเหลือศูนย์</p></div></article>
+              <article className={styles.ciStoryCard}><Image src="/assets/website-43/ci-story-debt.png" alt="" width={1448} height={1086} sizes="(max-width: 639px) calc(100vw - 48px), 33vw" loading="lazy" /><div><h3>ค่าบ้าน รถ และภาระค่าใช้จ่ายอื่นๆ</h3><p>ถ้าเสาหลักต้องหยุดรักษาตัว ค่าบ้าน รถ บัตรเครดิต และสินเชื่อส่วนบุคคลอาจกลายเป็นภาระที่ครอบครัวต้องช่วยกันรับต่อ</p></div></article>
+              <article className={styles.ciStoryCard}><Image src="/assets/website-43/ci-story-coverage.png" alt="" width={1448} height={1086} sizes="(max-width: 639px) calc(100vw - 48px), 33vw" loading="lazy" /><div><h3>ทุนประกันโรคร้ายแรงที่มีอยู่ และสินทรัพย์</h3><p>ผมจึงเทียบภาระกับทุนประกันโรคร้ายแรง รวมถึงสินทรัพย์ที่พร้อมเปลี่ยนเป็นเงินสดได้เร็ว</p></div></article>
             </div>
             <p className={styles.eyebrow} style={{ marginTop: 20 }}>ภาพประกอบสร้างด้วย Generative AI</p>
             <p className={styles.cardBody}>เมื่อแยกทีละส่วน คุณจะเห็นที่มาของตัวเลข ภาระส่วนไหนต้องดูแลอีกนาน และเงินก้อนจากประกันโรคร้ายแรงที่มีอยู่ช่วยรองรับได้เพียงใด</p>
@@ -102,16 +103,22 @@ export function Website43CIPlanning() {
 
         <section id="calculator" className={styles.calculatorSection}>
           <div className={styles.calculatorHeader}><p className={styles.eyebrow}>เครื่องคำนวณเงินก้อนรับมือโรคร้ายแรง</p><h2>2 ขั้นตอน เพื่อเห็นส่วนต่างที่ต้องเตรียม</h2></div>
-          <div className={styles.calculatorStage}><CIWizard /></div>
+          <div className={styles.calculatorStage}>{calculator}</div>
         </section>
 
         <section className={`${styles.sectionDeep} ${styles.sectionBottomLarge}`}>
           <div className={styles.inner}>
             <h2 className={styles.h2}>คำถามที่พบบ่อย</h2>
             <div className={styles.faqList}>
-              <div className={styles.faqItem}>เงินก้อนต่างจากค่ารักษาพยาบาลอย่างไร?&nbsp;&nbsp;+</div>
-              <div className={styles.faqItem}>ควรนับเงินสำรองฉุกเฉินทั้งหมดไหม?&nbsp;&nbsp;+</div>
-              <div className={styles.faqItem}>ผลประเมินใช้แทนคำแนะนำได้หรือไม่?&nbsp;&nbsp;+</div>
+              {faqItems.map(({ question, answer }) => (
+                <details className={styles.faqItem} key={question}>
+                  <summary className={styles.faqSummary}>
+                    <span>{question}</span>
+                    <span className={styles.faqIcon} aria-hidden="true">+</span>
+                  </summary>
+                  <p className={styles.faqAnswer}>{answer}</p>
+                </details>
+              ))}
             </div>
           </div>
         </section>

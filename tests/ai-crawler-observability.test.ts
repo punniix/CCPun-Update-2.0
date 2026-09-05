@@ -8,7 +8,7 @@ import {
   classifyAiCrawler,
   isTrackablePublicPath,
   observeAiCrawlerRequest,
-} from "../lib/ai-crawler-observability";
+} from "../lib/observability/ai-crawler";
 
 test("classifies every configured AI crawler token case-insensitively", () => {
   for (const expected of AI_CRAWLER_DEFINITIONS) {

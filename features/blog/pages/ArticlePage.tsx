@@ -10,13 +10,12 @@ import ArticleBody, { ArticleTableOfContents } from "@/features/blog/components/
 import ArticleFaq from "@/features/blog/components/ArticleFaq";
 import { serializeJsonLd } from "@/lib/content/structured-data/serialize-json-ld";
 import { getContentProvider } from "@/lib/content/provider";
+import { buildArticleMetadata } from "@/lib/content/article-metadata";
 import { buildArticleSchemaGraph } from "@/lib/content/structured-data/article-schema";
 import { getArticleSemanticTopic } from "@/lib/content/taxonomy";
-import { getArticleCanonical, getArticleCategorySlug, getArticlePath, getMovedArticleRedirectPath, isArticleCanonicalAligned } from "@/lib/content/url";
+import { getArticleCategorySlug, getArticlePath, getMovedArticleRedirectPath, isArticleCanonicalAligned } from "@/lib/content/url";
 
 const LINE_OA_URL = "https://lin.ee/tqLCs4f";
-const DEFAULT_SOCIAL_IMAGE = "/assets/blog-hub-hero-ccpun-v1.webp";
-
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("th-TH", { dateStyle: "long" }).format(new Date(value));
 }
@@ -25,40 +24,9 @@ export async function generateMetadata({ params }: { params: Promise<{ category:
   const { category, slug } = await params;
   const { isEnabled } = await draftMode();
   const article = await getContentProvider().getArticleBySlug(slug, { includeDrafts: isEnabled });
-  if (!article) {
-    return {
-      title: "ไม่พบหน้า | CCPun",
-      robots: { index: false, follow: true },
-    };
-  }
-
-  const finalCategory = getArticleCategorySlug(article);
-  if (category !== finalCategory) return { robots: { index: false, follow: true } };
-  const canonical = getArticleCanonical(article);
-  const isDraft = article.status !== "published";
-  const noindex = isDraft || article.noindex === true || !isArticleCanonicalAligned(article);
-
-  return {
-    title: article.seoTitle,
-    description: article.seoDescription,
-    alternates: { canonical },
-    robots: noindex ? { index: false, follow: false } : { index: true, follow: true },
-    openGraph: {
-      type: "article",
-      locale: "th_TH",
-      url: canonical,
-      title: article.ogTitle || article.seoTitle,
-      description: article.ogDescription || article.seoDescription,
-      siteName: "CCPun Financial Advisor",
-      images: [{ url: article.ogImage?.src ?? article.featuredImage?.src ?? DEFAULT_SOCIAL_IMAGE, alt: article.ogImage?.alt ?? article.featuredImage?.alt ?? "CCPun บทความวางแผนการเงิน" }],
-    },
-    twitter: {
-      card: "summary_large_image",
-      title: article.ogTitle || article.seoTitle,
-      description: article.ogDescription || article.seoDescription,
-      images: [article.ogImage?.src ?? article.featuredImage?.src ?? DEFAULT_SOCIAL_IMAGE],
-    },
-  };
+  return buildArticleMetadata(article, {
+    categoryMatches: article ? category === getArticleCategorySlug(article) : true,
+  });
 }
 
 export default async function ArticlePage({ params }: { params: Promise<{ category: string; slug: string }> }) {

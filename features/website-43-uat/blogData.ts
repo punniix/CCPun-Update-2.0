@@ -1,6 +1,6 @@
+import type { Article } from '@/lib/content/types';
 import { getArticleSemanticTopic } from '@/lib/content/taxonomy';
 import { getArticlePath } from '@/lib/content/url';
-import snapshot from './blogMirror.index.snapshot.json';
 import { WEBSITE43_BASE as BASE } from './constants';
 
 export type Website43ArticleItem = {
@@ -11,20 +11,9 @@ export type Website43ArticleItem = {
   meta: string;
   publishedAt: string;
   image: string;
+  imageWidth: number;
+  imageHeight: number;
   href: string;
-};
-
-type MirrorIndexArticle = {
-  _id: string;
-  title: string;
-  slug: string;
-  excerpt?: string | null;
-  tags?: string[] | null;
-  publishedAt: string;
-  contentUpdatedAt?: string | null;
-  category: { title: string; slug: string };
-  author?: { name: string; slug: string } | null;
-  migratedFeaturedImage?: { src: string; alt: string; width: number; height: number } | null;
 };
 
 const thaiDateFormatter = new Intl.DateTimeFormat('th-TH', {
@@ -34,33 +23,33 @@ const thaiDateFormatter = new Intl.DateTimeFormat('th-TH', {
   timeZone: 'Asia/Bangkok',
 });
 
-function toWebsite43Article(article: MirrorIndexArticle): Website43ArticleItem {
+export function toWebsite43ArticleItem(article: Article): Website43ArticleItem {
   const semanticTopic = getArticleSemanticTopic({
     articleSlug: article.slug,
-    categoryTitle: article.category.title,
-    categorySlug: article.category.slug,
+    semanticTopic: article.semanticTopic,
+    categoryTitle: article.category,
+    categorySlug: article.categorySlug,
     tags: article.tags,
   });
-  const articlePath = getArticlePath({
-    slug: article.slug,
-    category: article.category.title,
-    categorySlug: article.category.slug,
-  });
+  const articlePath = getArticlePath(article);
+  const displayDate = article.publishedAt ?? article.updatedAt;
 
   return {
     slug: article.slug,
-    category: semanticTopic?.title ?? article.category.title,
+    category: semanticTopic?.title ?? article.category,
     title: article.title,
-    excerpt: article.excerpt?.trim() || article.title,
-    meta: `เผยแพร่ ${thaiDateFormatter.format(new Date(article.publishedAt))}`,
-    publishedAt: article.publishedAt,
-    image: article.migratedFeaturedImage?.src ?? '/assets/blog-hub-hero-ccpun-v1.webp',
+    excerpt: article.excerpt.trim() || article.title,
+    meta: `${article.publishedAt ? 'เผยแพร่' : 'อัปเดต'} ${thaiDateFormatter.format(new Date(displayDate))}`,
+    publishedAt: displayDate,
+    image: article.featuredImage?.src ?? '/assets/blog-hub-hero-ccpun-v1.webp',
+    imageWidth: article.featuredImage?.width ?? 1774,
+    imageHeight: article.featuredImage?.height ?? 887,
     href: `${BASE}${articlePath}`,
   };
 }
 
-export const website43Articles = (snapshot.articles as MirrorIndexArticle[]).map(toWebsite43Article);
-
-export const website43ArticlesByPublished = [...website43Articles].sort(
-  (a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime(),
-);
+export function toWebsite43ArticleItems(articles: Article[]): Website43ArticleItem[] {
+  return articles
+    .map(toWebsite43ArticleItem)
+    .sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
+}

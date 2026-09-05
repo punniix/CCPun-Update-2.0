@@ -46,17 +46,19 @@ export default function GoogleAnalytics({ gaId }: { gaId: string }) {
       if (path.startsWith('/privacy') || path.startsWith('/cookie-policy')) return;
 
       const nav = link.closest('nav');
-      const surface = path.startsWith('/ci-planning') ? 'ci_planning'
+      const explicitSurface = link.dataset.analyticsSurface;
+      const explicitLocation = link.dataset.analyticsLocation;
+      const surface = explicitSurface ?? (path.startsWith('/ci-planning') ? 'ci_planning'
         : path.startsWith('/tools/fhc') || path.startsWith('/tools/financial-health-check') ? 'fhc'
         : path.startsWith('/blog/') ? 'blog'
         : path === '/' ? 'homepage'
-        : null;
-      const location = nav ? (link.closest('#mobile-navigation') ? 'navbar_mobile' : 'navbar')
+        : null);
+      const location = explicitLocation ?? (nav ? (link.closest('#mobile-navigation') ? 'navbar_mobile' : 'navbar')
         : link.closest('#home') ? 'home_hero'
         : link.closest('[data-uat-section="contact"]') ? 'home_contact'
         : surface === 'fhc' ? 'fhc_landing'
         : surface === 'blog' ? 'blog_article'
-        : null;
+        : null);
       if (!surface || !location) return;
       trackEvent('line_oa_click', { contact_channel: 'line', cta_location: location, surface_group: surface });
     };

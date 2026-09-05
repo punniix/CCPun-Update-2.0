@@ -204,7 +204,7 @@ async function inspect(client, routeKey, viewport) {
   }
   if (routeKey === 'article') {
     expect('Article has Figma title', base.bodyText.includes('พีระมิดทางการเงิน คืออะไร? วางรากฐานก่อนลงทุน'));
-    expect('Article key quote present', base.bodyText.includes('ฐานที่ดีไม่ได้ทำให้คุณรวยช้าลง'));
+    expect('Article production-source body present', base.bodyText.includes('พีระมิดทางการเงินมีองค์ประกอบหลัก 4 ชั้น'));
   }
   if (routeKey === 'fhc') expect('FHC live calculator reused', base.bodyText.includes('เครื่องคำนวณทุนประกันชีวิต') && base.bodyText.includes('ค่าใช้จ่ายครัวเรือนต่อเดือนที่ยังต้องดูแล'));
   if (routeKey === 'ci') expect('CI live calculator reused', base.bodyText.includes('2 ขั้นตอน เพื่อเห็นส่วนต่างที่ต้องเตรียม') && base.bodyText.includes('รายได้ต่อเดือน'));

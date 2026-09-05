@@ -45,27 +45,7 @@ const provenance = {
   source: { projectId: 'kyfxgjnq', dataset: 'production', perspective: 'published' },
   mirror: { projectId: TARGET.projectId, dataset: TARGET.dataset, state: 'draft-only' },
 };
-const fullSnapshot = { ...provenance, articles };
-const indexSnapshot = {
-  ...provenance,
-  articles: articles.map((article) => ({
-    _id: article._id,
-    title: article.title,
-    slug: article.slug,
-    excerpt: article.excerpt,
-    tags: article.tags,
-    publishedAt: article.publishedAt,
-    contentUpdatedAt: article.contentUpdatedAt,
-    category: article.category,
-    author: article.author ? { name: article.author.name, slug: article.author.slug } : null,
-    migratedFeaturedImage: article.migratedFeaturedImage,
-  })),
-};
-
-const fullOutput = new URL('../features/website-43-uat/blogMirror.snapshot.json', import.meta.url);
-const indexOutput = new URL('../features/website-43-uat/blogMirror.index.snapshot.json', import.meta.url);
-await Promise.all([
-  writeFile(fullOutput, `${JSON.stringify(fullSnapshot, null, 2)}\n`, 'utf8'),
-  writeFile(indexOutput, `${JSON.stringify(indexSnapshot, null, 2)}\n`, 'utf8'),
-]);
-console.log(JSON.stringify({ ok: true, articles: articles.length, publishedCounterparts: 0, outputs: [fullOutput.pathname, indexOutput.pathname] }, null, 2));
+const fixtureSnapshot = { ...provenance, articles };
+const output = new URL('../features/website-43-uat/blogPreviewFixture.snapshot.json', import.meta.url);
+await writeFile(output, `${JSON.stringify(fixtureSnapshot, null, 2)}\n`, 'utf8');
+console.log(JSON.stringify({ ok: true, articles: articles.length, publishedCounterparts: 0, output: output.pathname }, null, 2));

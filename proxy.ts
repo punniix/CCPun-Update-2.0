@@ -10,7 +10,7 @@ import {
   isAdminSurfaceAllowed,
   isProductionEnvironment,
 } from "@/lib/admin/environment";
-import { observeAiCrawlerRequest } from "@/lib/ai-crawler-observability";
+import { observeAiCrawlerRequest } from "@/lib/observability/ai-crawler";
 
 export default auth((request) => {
   const { pathname } = request.nextUrl;

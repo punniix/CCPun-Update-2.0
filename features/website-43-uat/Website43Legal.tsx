@@ -34,7 +34,7 @@ function LegalHeader({ title, intro, takeaway }: { title: string; intro: string;
 export function Website43Privacy() {
   return (
     <div className={styles.root}>
-      <Website43Navbar />
+      <Website43Navbar responsiveOverlay />
       <main id="main-content">
         <LegalHeader title="นโยบายความเป็นส่วนตัว" intro="นโยบายนี้อธิบายว่า CCPUN เก็บและใช้ข้อมูลจากการเยี่ยมชมเว็บไซต์ การใช้เครื่องมือ และการติดต่อขอคำปรึกษาอย่างไร รวมถึงกรณีที่คุณขอให้ส่งข้อมูลต่อไปยังผู้ให้บริการที่เกี่ยวข้อง" takeaway="สรุป: เก็บเท่าที่จำเป็น • ไม่ขายข้อมูล • ใช้เพื่อให้บริการและติดต่อกลับ • คุณขอเข้าถึง แก้ไข หรือลบข้อมูลได้" />
         <section className={styles.legalBody}>
@@ -66,7 +66,7 @@ export function Website43CookiePolicy() {
   const openCookieSettings = () => window.dispatchEvent(new Event('ccpun:openCookieSettings'));
   return (
     <div className={styles.root}>
-      <Website43Navbar />
+      <Website43Navbar responsiveOverlay />
       <main id="main-content">
         <LegalHeader title="นโยบายคุกกี้" intro="CCPUN ใช้คุกกี้และเทคโนโลยีที่คล้ายกันเพื่อให้เว็บไซต์ทำงาน จดจำการตั้งค่า เข้าใจการใช้งาน และวัดผลการสื่อสาร โดยส่วนที่ไม่จำเป็นจะทำงานตามการตั้งค่าความยินยอมของคุณ" takeaway="สรุป: คุกกี้จำเป็นทำงานเสมอ • วิเคราะห์/ฟังก์ชัน/การตลาดควบคุมได้ • เปลี่ยนการตั้งค่าได้ทุกเมื่อ" />
         <section className={styles.legalBody}>

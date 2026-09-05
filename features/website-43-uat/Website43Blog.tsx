@@ -1,17 +1,18 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import styles from './Website43.module.css';
 import { Website43Footer, Website43Navbar } from './Website43Shared';
-import { website43ArticlesByPublished, type Website43ArticleItem } from './blogData';
+import type { Website43ArticleItem } from './blogData';
 
 const FEATURED_REPEAT_COUNT = 3;
 
 function ArticleCard({ article }: { article: Website43ArticleItem }) {
   return (
     <Link className={styles.articleCard} href={article.href}>
-      <img className={styles.articleImage} src={article.image} alt="" />
+      <Image className={styles.articleImage} src={article.image} alt="" width={article.imageWidth} height={article.imageHeight} sizes="(max-width: 639px) calc(100vw - 48px), (max-width: 1023px) 48vw, 380px" loading="lazy" />
       <div className={styles.articleCardBody}>
         <span className={styles.articleCategory}>{article.category}</span>
         <h2 className={styles.articleTitle}>{article.title}</h2>
@@ -22,7 +23,7 @@ function ArticleCard({ article }: { article: Website43ArticleItem }) {
   );
 }
 
-export default function Website43Blog() {
+export default function Website43Blog({ articles }: { articles: Website43ArticleItem[] }) {
   const featuredScrollerRef = useRef<HTMLDivElement>(null);
   const featuredRailRef = useRef<HTMLDivElement>(null);
   const featuredScrollEndTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -32,25 +33,25 @@ export default function Website43Blog() {
   const [category, setCategory] = useState('ทั้งหมด');
   const [categoryMenuOpen, setCategoryMenuOpen] = useState(false);
 
-  const featuredCount = website43ArticlesByPublished.length;
+  const featuredCount = articles.length;
   const loopedFeaturedArticles = useMemo(
-    () => Array.from({ length: FEATURED_REPEAT_COUNT }, () => website43ArticlesByPublished).flat(),
-    [],
+    () => Array.from({ length: FEATURED_REPEAT_COUNT }, () => articles).flat(),
+    [articles],
   );
 
   const categories = useMemo(
-    () => ['ทั้งหมด', ...Array.from(new Set(website43ArticlesByPublished.map((article) => article.category)))],
-    [],
+    () => ['ทั้งหมด', ...Array.from(new Set(articles.map((article) => article.category)))],
+    [articles],
   );
 
   const filteredArticles = useMemo(() => {
     const normalizedQuery = query.trim().toLocaleLowerCase('th');
-    return website43ArticlesByPublished.filter((article) => {
+    return articles.filter((article) => {
       const matchesCategory = category === 'ทั้งหมด' || article.category === category;
       const searchable = `${article.title} ${article.excerpt} ${article.category}`.toLocaleLowerCase('th');
       return matchesCategory && (!normalizedQuery || searchable.includes(normalizedQuery));
     });
-  }, [category, query]);
+  }, [articles, category, query]);
 
   const centerFeaturedCard = (cardIndex: number, behavior: ScrollBehavior = 'smooth') => {
     const scroller = featuredScrollerRef.current;
@@ -125,7 +126,7 @@ export default function Website43Blog() {
     <div className={styles.root}>
       <main id="main-content">
         <section className={styles.blogHero} aria-labelledby="blog-title">
-          <img className={styles.blogHeroImage} src="/assets/website-43/blog-hero.png" alt="" />
+          <Image className={styles.blogHeroImage} src="/assets/website-43/blog-hero.png" alt="" width={1774} height={887} sizes="(max-width: 639px) 100vw, 56vw" priority />
           <div className={styles.blogHeroGradient} aria-hidden="true" />
           <Website43Navbar overlay />
           <div className={styles.blogHeroCopy}>
@@ -153,14 +154,14 @@ export default function Website43Blog() {
                       aria-hidden={isPrimarySet ? undefined : true}
                       tabIndex={isPrimarySet ? undefined : -1}
                     >
-                      <img src={article.image} alt="" />
+                      <Image src={article.image} alt="" width={article.imageWidth} height={article.imageHeight} sizes="(max-width: 639px) 274px, (max-width: 1023px) 300px, 480px" loading={isPrimarySet ? undefined : 'lazy'} />
                     </Link>
                   );
                 })}
               </div>
             </div>
             <div className={styles.carouselControls} aria-label="เลือกบทความแนะนำ">
-              {website43ArticlesByPublished.map((article, index) => (
+              {articles.map((article, index) => (
                 <button
                   className={`${styles.carouselDotButton} ${index === activeFeatured ? styles.carouselDotButtonActive : ''}`}
                   type="button"

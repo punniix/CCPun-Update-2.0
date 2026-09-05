@@ -46,12 +46,10 @@ export default function Website43Home() {
   return (
     <div className={styles.root}>
       <main id="main-content">
-        <section className={styles.homeHero} aria-labelledby="home-hero-title">
-          <picture className={styles.homeHeroPicture}>
-            <source media="(max-width: 639px)" srcSet="/assets/website-43/home-hero-mobile.png" />
-            <source media="(max-width: 1023px)" srcSet="/assets/website-43/home-hero-tablet.png" />
-            <img src="/assets/website-43/home-hero-desktop.png" alt="CCPun กำลังนั่งทำงานพร้อมคอมพิวเตอร์โน้ตบุ๊ก" />
-          </picture>
+        <section id="home" className={styles.homeHero} aria-labelledby="home-hero-title">
+          <div className={styles.homeHeroPicture}>
+            <Image src="/assets/website-43/home-hero-desktop.png" alt="CCPun กำลังนั่งทำงานพร้อมคอมพิวเตอร์โน้ตบุ๊ก" fill priority sizes="100vw" />
+          </div>
           <div className={styles.homeHeroGradient} aria-hidden="true" />
           <div className={styles.homeHeroBottomGradient} aria-hidden="true" />
           <Website43Navbar overlay />
@@ -61,7 +59,7 @@ export default function Website43Home() {
             <p className={styles.homeHeroBody}>เริ่มจากสิ่งที่คุณมี สิ่งที่กังวล และเป้าหมายของคุณ ก่อนค่อยเลือกเครื่องมือหรือผลิตภัณฑ์ที่เหมาะสม</p>
             <div className={styles.heroActions}>
               <Link className={styles.primaryButton} href={`${BASE}/tools/financial-health-check`}>เช็กสุขภาพการเงิน</Link>
-              <a className={styles.outlineButton} href="https://lin.ee/tqLCs4f" target="_blank" rel="noopener noreferrer">คุยกับปั้น</a>
+              <a className={styles.outlineButton} href="https://lin.ee/tqLCs4f" target="_blank" rel="noopener noreferrer" data-analytics-surface="homepage" data-analytics-location="home_hero">คุยกับปั้น</a>
             </div>
             <p className={styles.heroProof}>5+ ปี · 2 ใบอนุญาต · 4 พาร์ทเนอร์</p>
           </div>
@@ -73,7 +71,7 @@ export default function Website43Home() {
             <div className={styles.threeCols}>
               {pains.map(([icon, title, body]) => (
                 <article className={styles.editorialCard} key={title}>
-                  <img className={styles.editorialCardIcon} src={icon} alt="" aria-hidden="true" />
+                  <Image className={styles.editorialCardIcon} src={icon} alt="" width={24} height={24} aria-hidden="true" />
                   <h3 className={styles.cardTitle}>{title}</h3>
                   <p className={styles.cardBody}>{body}</p>
                 </article>
@@ -88,11 +86,10 @@ export default function Website43Home() {
             <div className={styles.threeCols}>
               {services.map(([icon, number, title, body]) => (
                 <article className={styles.planCard} key={number}>
-                  <img className={styles.editorialCardIcon} src={icon} alt="" aria-hidden="true" />
+                  <Image className={styles.editorialCardIcon} src={icon} alt="" width={24} height={24} aria-hidden="true" />
                   <span className={styles.planNum}>{number}</span>
                   <h3>{title}</h3>
                   <p>{body}</p>
-                  <span className={styles.planLink}>ดูรายละเอียด →</span>
                 </article>
               ))}
             </div>
@@ -181,11 +178,11 @@ export default function Website43Home() {
             <SectionHeading eyebrow="ยังไม่พร้อมคุย ก็เริ่มศึกษาก่อนได้" title="เข้าใจมากขึ้น ก่อนตัดสินใจ" description="เลือกอ่านบทความ หรือทดลองใช้เครื่องมือวางแผนก่อน แล้วค่อยกลับมาคุยเมื่อคุณพร้อม" />
             <div className={styles.learnGrid}>
               <article className={styles.learnCard}>
-                <img className={styles.editorialCardIcon} src="/assets/website-43/icon-financial-health.svg" alt="" aria-hidden="true" />
+                <Image className={styles.editorialCardIcon} src="/assets/website-43/icon-financial-health.svg" alt="" width={24} height={24} aria-hidden="true" />
                 <span className={styles.planNum}>READ</span><h3>อ่านก่อนตัดสินใจ</h3><p>บทความเรื่องประกัน การลงทุน และการวางแผนการเงิน</p><Link href={`${BASE}/blog`}>ดูบทความทั้งหมด →</Link>
               </article>
               <article className={`${styles.learnCard} ${styles.learnCardAlt}`}>
-                <img className={styles.editorialCardIcon} src="/assets/website-43/icon-protection.svg" alt="" aria-hidden="true" />
+                <Image className={styles.editorialCardIcon} src="/assets/website-43/icon-protection.svg" alt="" width={24} height={24} aria-hidden="true" />
                 <span className={styles.planNum}>TRY</span><h3>ลองประเมินด้วยตัวเอง</h3><p>ตรวจสุขภาพการเงิน · วางแผนเงินก้อนโรคร้ายแรง · เครื่องมืออื่นในอนาคต</p><Link href={`${BASE}/tools/financial-health-check`}>ดูเครื่องมือวางแผน →</Link>
               </article>
             </div>
@@ -209,11 +206,11 @@ export default function Website43Home() {
           </div>
         </section>
 
-        <section className={`${styles.sectionDeep} ${styles.sectionTopLarge}`}>
+        <section className={`${styles.sectionDeep} ${styles.sectionTopLarge}`} data-uat-section="contact">
           <div className={styles.inner}>
             <SectionHeading eyebrow="เลือกวิธีเริ่มต้นที่สบายใจกับคุณ" title="ยังไม่แน่ใจว่าควรเริ่มตรงไหน?" description="คุยกับปั้นได้เลย หรือถ้ายังไม่พร้อม ลองเช็กสุขภาพการเงินของตัวเองก่อน" />
             <div className={styles.finalActions}>
-              <a className={styles.primaryButton} href="https://lin.ee/tqLCs4f" target="_blank" rel="noopener noreferrer">คุยกับปั้น</a>
+              <a className={styles.primaryButton} href="https://lin.ee/tqLCs4f" target="_blank" rel="noopener noreferrer" data-analytics-surface="homepage" data-analytics-location="home_contact">คุยกับปั้น</a>
               <Link className={styles.outlineButton} href={`${BASE}/tools/financial-health-check`}>ลองเช็กตัวเองก่อน</Link>
             </div>
           </div>

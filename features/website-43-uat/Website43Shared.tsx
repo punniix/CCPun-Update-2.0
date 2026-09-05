@@ -13,7 +13,7 @@ export function Website43Brand() {
   );
 }
 
-export function Website43Navbar({ overlay = false, notFound = false }: { overlay?: boolean; notFound?: boolean }) {
+export function Website43Navbar({ overlay = false, notFound = false, responsiveOverlay = false }: { overlay?: boolean; notFound?: boolean; responsiveOverlay?: boolean }) {
   const [open, setOpen] = useState(false);
   const [toolsOpen, setToolsOpen] = useState(false);
   const [mobileToolsOpen, setMobileToolsOpen] = useState(false);
@@ -45,12 +45,12 @@ export function Website43Navbar({ overlay = false, notFound = false }: { overlay
           ) : null}
         </div>
       </nav>
-      <a className={styles.navCta} href="https://lin.ee/tqLCs4f" target="_blank" rel="noopener noreferrer">ติดต่อเรา</a>
+      <a className={styles.navCta} href="https://lin.ee/tqLCs4f" target="_blank" rel="noopener noreferrer" data-analytics-location="navbar">ติดต่อเรา</a>
       <button className={styles.hamburger} type="button" aria-label={open ? 'ปิดเมนู' : 'เปิดเมนู'} aria-expanded={open} onClick={() => { setOpen((v) => !v); setToolsOpen(false); }}>
         <span /><span /><span />
       </button>
       {open ? (
-        <nav className={styles.mobileMenu} aria-label="เมนูมือถือ">
+        <nav id="mobile-navigation" className={styles.mobileMenu} aria-label="เมนูมือถือ">
           <Link href={BASE} onClick={() => setOpen(false)}>หน้าแรก</Link>
           <Link href={`${BASE}/blog`} onClick={() => setOpen(false)}>บทความ</Link>
           <div className={styles.mobileTools}>
@@ -64,14 +64,14 @@ export function Website43Navbar({ overlay = false, notFound = false }: { overlay
               </div>
             ) : null}
           </div>
-          <a href="https://lin.ee/tqLCs4f" target="_blank" rel="noopener noreferrer" onClick={() => { setOpen(false); setMobileToolsOpen(false); }}>ติดต่อเรา</a>
+          <a href="https://lin.ee/tqLCs4f" target="_blank" rel="noopener noreferrer" data-analytics-location="navbar_mobile" onClick={() => { setOpen(false); setMobileToolsOpen(false); }}>ติดต่อเรา</a>
         </nav>
       ) : null}
     </div>
   );
 
   if (overlay) return <div className={styles.navOverlay}>{nav}</div>;
-  return <div className={`${styles.navBand} ${notFound ? styles.notFoundNavBand : ''}`}><div className={styles.inner}>{nav}</div></div>;
+  return <div className={`${styles.navBand} ${responsiveOverlay ? styles.responsiveOverlayBand : ''} ${notFound ? styles.notFoundNavBand : ''}`}><div className={styles.inner}>{nav}</div></div>;
 }
 
 export function Website43Footer({ warnings = false, notFound = false }: { warnings?: boolean; notFound?: boolean }) {

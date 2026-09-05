@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { getDeviceType, getGAAttribution } from '../lib/acquisition';
-import { buildSemanticDataLayerEvent, CCPUN_SITE_VERSION, getCIPlanningPageVersion, resolveEventMapping, sanitizeEventParams } from '../lib/analytics';
+import { buildSemanticDataLayerEvent, CCPUN_SITE_VERSION, clearPendingAnalyticsEvents, flushPendingAnalyticsEvents, getCIPlanningPageVersion, resolveEventMapping, sanitizeEventParams, trackEvent } from '../lib/analytics';
 
 assert.equal(CCPUN_SITE_VERSION, '4.0', 'Web 4.0 measurement version must stay explicit');
 assert.equal(typeof getDeviceType(), 'string', 'device classification must remain safe outside a browser');
@@ -45,4 +45,51 @@ assert.deepEqual(buildSemanticDataLayerEvent('ci_calculator_start', safe, { anal
 assert.equal(buildSemanticDataLayerEvent('ci_calculator_start', safe, { analytics: false, social: false }), null, 'semantic event layer must fail closed without consent');
 const acquisitionSource = readFileSync(new URL('../lib/acquisition.ts', import.meta.url), 'utf8');
 assert.equal(acquisitionSource.includes('fbclid'), false, 'click identifiers must not be parsed, stored, or sent');
+process.env.NEXT_PUBLIC_SEMANTIC_EVENT_LAYER_ENABLED = 'false';
+const browserConsent = JSON.stringify({
+  status: 'custom',
+  essential: true,
+  performance: false,
+  analytics: true,
+  social: false,
+  timestamp: new Date().toISOString(),
+  expires: Date.now() + 60_000,
+});
+Object.defineProperty(globalThis, 'localStorage', {
+  configurable: true,
+  value: {
+    getItem: () => browserConsent,
+    setItem: () => undefined,
+    removeItem: () => undefined,
+    clear: () => undefined,
+    key: () => null,
+    length: 0,
+  },
+});
+
+clearPendingAnalyticsEvents();
+const readyEvents: unknown[][] = [];
+Object.defineProperty(globalThis, 'window', {
+  configurable: true,
+  writable: true,
+  value: { gtag: (...args: unknown[]) => readyEvents.push(args) },
+});
+const duplicateParams = { tool_name: 'ci_planning', cta_location: 'ci_landing' };
+for (let index = 0; index < 3; index += 1) trackEvent('ci_calculator_cta_click', duplicateParams);
+assert.equal(readyEvents.length, 1, 'duplicate scoped CTA events must be skipped without resetting dedupe state');
+
+clearPendingAnalyticsEvents();
+const queuedEvents: unknown[][] = [];
+Object.defineProperty(globalThis, 'window', { configurable: true, writable: true, value: {} });
+trackEvent('ci_landing_view', duplicateParams);
+trackEvent('ci_calculator_cta_click', duplicateParams);
+trackEvent('ci_calculator_cta_click', duplicateParams);
+window.gtag = (...args: unknown[]) => queuedEvents.push(args);
+flushPendingAnalyticsEvents('analytics');
+assert.deepEqual(
+  queuedEvents.map((entry) => entry[1]),
+  ['ci_landing_view', 'ci_calculator_cta_click'],
+  'duplicate CTA must not clear unrelated pending analytics events before provider readiness',
+);
+
 console.log('analytics regression checks passed');

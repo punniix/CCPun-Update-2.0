@@ -162,13 +162,15 @@ export function trackEvent(eventName: string, params: EventParams = {}): void {
     window.dataLayer.push(semanticEvent);
     return;
   }
-  if (consent.analytics && isNewGAEventScope(eventName, safe)) {
-    const gaParams = safe.tool_name === 'ci_planning'
-      ? sanitizeEventParams({ ...safe, ...getGAAttribution(), device_type: getDeviceType() })
-      : safe;
-    for (const name of event.ga) {
-      if (typeof window.gtag === 'function') window.gtag('event', name, gaParams);
-      else enqueue(pendingGA, [name, gaParams]);
+  if (consent.analytics) {
+    if (isNewGAEventScope(eventName, safe)) {
+      const gaParams = safe.tool_name === 'ci_planning'
+        ? sanitizeEventParams({ ...safe, ...getGAAttribution(), device_type: getDeviceType() })
+        : safe;
+      for (const name of event.ga) {
+        if (typeof window.gtag === 'function') window.gtag('event', name, gaParams);
+        else enqueue(pendingGA, [name, gaParams]);
+      }
     }
   } else clearPendingAnalyticsEvents('analytics');
   if (consent.social && event.meta !== 'none' && event.metaName) {

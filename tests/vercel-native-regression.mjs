@@ -63,6 +63,7 @@ for (const requiredRoute of [
   'features/blog/pages/BlogCategoryPage.tsx',
   'features/blog/pages/ArticlePage.tsx',
   'lib/content/url.ts',
+  'lib/content/article-metadata.ts',
   'app/api/preview/enable/route.ts',
   'app/api/snt-admin/content/[id]/preview/route.ts',
   'app/studio/[[...tool]]/page.tsx',
@@ -150,10 +151,12 @@ assert.match(blogSitemap, /getArticleCanonical/);
 assert.match(blogSitemap, /filter\(isArticleCanonicalAligned\)/);
 
 const articlePage = read('features/blog/pages/ArticlePage.tsx');
-assert.match(articlePage, /index:\s*false,\s*follow:\s*false/);
+const articleMetadata = read('lib/content/article-metadata.ts');
+assert.match(articlePage, /buildArticleMetadata\(article/);
+assert.match(articleMetadata, /index:\s*false,\s*follow:\s*false/);
 assert.match(articlePage, /isArticleCanonicalAligned\(article\) \? buildArticleSchemaGraph\(article\) : null/);
 assert.match(articlePage, /blog\.ccpun\.com|blog-article-hero|Financial/);
-assert.match(articlePage, /getArticleCanonical/);
+assert.match(articleMetadata, /getArticleCanonical/);
 assert.match(articlePage, /href="\/tools\/financial-health-check\/"/);
 assert.doesNotMatch(articlePage, /ฟรี|ไม่มีค่าใช้จ่าย/);
 
@@ -414,7 +417,7 @@ assert.match(analyticsRegression, /discard calculator values/);
 assert.match(analyticsRegression, /semantic event layer must fail closed without consent/);
 
 for (const landingSource of [
-  read('features/ci-planning/components/CILandingIntro.tsx'),
+  read('features/ci-planning/components/CILandingTracker.tsx'),
   read('features/financial-health-check/components/LifeCoverageWizard.tsx'),
 ]) {
   assert.match(landingSource, /landingTrackedRef/);
