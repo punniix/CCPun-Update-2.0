@@ -9,6 +9,25 @@ import styles from './Website43.module.css';
  */
 export function Website43FinalPolishStyles() {
   const css = String.raw`
+/* All floating navigation/menu surfaces use the same glass material as Navbar. */
+.${styles.navDropdown},
+.${styles.mobileMenu},
+.${styles.categoryMenuPanel} {
+  border-color: rgba(255,255,255,.14);
+  background: rgba(255,255,255,.05);
+  box-shadow: 0 4px 5px rgba(0,0,0,.04);
+  backdrop-filter: blur(9px) saturate(100%);
+  -webkit-backdrop-filter: blur(9px) saturate(100%);
+}
+.${styles.navDropdown}::before {
+  background: rgba(255,255,255,.05);
+  border-color: rgba(255,255,255,.14);
+  box-shadow: none;
+}
+.${styles.navDropdown}::after {
+  background: none;
+}
+
 @media (min-width: 1024px) {
   .${styles.footerWrap} {
     padding-left: var(--w43-nav-gutter);
