@@ -14,6 +14,23 @@ export function Website43FinalPolishStyles() {
     padding-left: var(--w43-nav-gutter);
     padding-right: var(--w43-nav-gutter);
   }
+
+  /* Keep portrait subjects below the navigation safe area on image-led heroes. */
+  .${styles.blogHeroImage} {
+    inset: 80px 0 auto auto;
+    height: calc(100% - 18px);
+  }
+  .${styles.toolHeroImage} {
+    inset: 96px 0 auto auto;
+    height: 620px;
+  }
+
+  /* The 1100 transition reference uses the same fluid shell as navigation. */
+  .${styles.toolStorySection} {
+    padding-left: var(--w43-nav-gutter);
+    padding-right: var(--w43-nav-gutter);
+  }
+
   .${styles.notFound} {
     height: clamp(390px, calc(16.4706vw + 208.8235px), 446px);
     padding-top: clamp(72px, calc(4.70588vw + 20.2353px), 88px);
@@ -27,6 +44,22 @@ export function Website43FinalPolishStyles() {
     padding-right: var(--w43-nav-gutter);
     padding-bottom: clamp(0px, calc(11.7647vw - 129.4118px), 40px);
     padding-left: var(--w43-nav-gutter);
+  }
+}
+
+@media (min-width: 640px) and (max-width: 1023px) {
+  .${styles.blogHeroImage} {
+    top: 76px;
+    right: 0;
+    bottom: auto;
+    left: auto;
+    width: 508px;
+    height: 346px;
+  }
+  .${styles.toolHeroImage} {
+    inset: 80px 0 auto 0;
+    width: 100%;
+    height: 600px;
   }
 }
 
