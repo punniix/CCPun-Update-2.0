@@ -9,18 +9,22 @@ import styles from './Website43.module.css';
  */
 export function Website43FinalPolishStyles() {
   const css = String.raw`
-/* All floating navigation/menu surfaces use the same glass material as Navbar. */
+/*
+ * Floating menus sit over brighter hero/content imagery than Navbar.
+ * A darker translucent neutral base preserves the same perceived glass density
+ * without changing Navbar itself.
+ */
 .${styles.navDropdown},
 .${styles.mobileMenu},
 .${styles.categoryMenuPanel} {
   border-color: rgba(255,255,255,.14);
-  background: rgba(255,255,255,.05);
+  background: rgba(20,16,16,.68);
   box-shadow: 0 4px 5px rgba(0,0,0,.04);
   backdrop-filter: blur(9px) saturate(100%);
   -webkit-backdrop-filter: blur(9px) saturate(100%);
 }
 .${styles.navDropdown}::before {
-  background: rgba(255,255,255,.05);
+  background: rgba(20,16,16,.68);
   border-color: rgba(255,255,255,.14);
   box-shadow: none;
 }
