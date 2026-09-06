@@ -1,9 +1,9 @@
 import { homeFaqs as faqs } from './homeFaqs';
 import Image from 'next/image';
 import Link from 'next/link';
-import styles from './Website43.module.css';
-import { SectionHeading, Website43Footer, Website43Navbar } from './Website43Shared';
-import { WEBSITE43_BASE as BASE } from './constants';
+import styles from '@/components/layout/website-43/Website43.module.css';
+import { SectionHeading, Website43Footer, Website43Navbar } from '@/components/layout/website-43/Website43Shared';
+import { WEBSITE43_BASE as BASE } from '@/components/layout/website-43/constants';
 
 const pains = [
   ['/assets/website-43/icon-protection-gap.svg', 'ไม่แน่ใจว่ามีประกันเพียงพอหรือยัง', 'มีความคุ้มครองอยู่ แต่ไม่แน่ใจว่าที่มีอยู่นั้น เพียงพอหรือไม่ ต้องเตรียมหรือปรับเพิ่มลดอย่างไร'],
