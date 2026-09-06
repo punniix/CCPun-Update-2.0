@@ -9,7 +9,7 @@ const GoogleAnalytics = require('../features/analytics/components/GoogleAnalytic
 const GoogleTagManager = require('../features/analytics/components/GoogleTagManager.tsx').default;
 // No external resources execute: this checks the app's loader and consent lifecycle, not provider hits.
 const dom = new JSDOM('<div id="root"></div><nav><a href="https://lin.ee/test">LINE</a></nav>', { url: 'https://ccpun.com/' });
-for (const name of ['window', 'document', 'localStorage', 'Element', 'CustomEvent']) {
+for (const name of ['window', 'self', 'document', 'localStorage', 'Element', 'CustomEvent', 'Event']) {
   Object.defineProperty(globalThis, name, { configurable: true, value: dom.window[name] });
 }
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
@@ -104,6 +104,18 @@ try {
   assert.equal(document.querySelectorAll('#ga-script').length, 0);
   await act(() => root.unmount());
   await act(() => gtmRoot.unmount());
+  // A returning visitor can reopen the unchanged consent UI from the Home footer.
+  const CookieSettingsButton = require('../components/layout/CookieSettingsButton.tsx').default;
+  const CookieConsent = require('../features/analytics/components/CookieConsent.tsx').default;
+  const settingsRoot = createRoot(document.getElementById('root'));
+  await act(() => settingsRoot.render(createElement('div', {}, createElement(CookieSettingsButton), createElement(CookieConsent))));
+  assert.equal(document.querySelector('[aria-label="บันทึกการตั้งค่าคุกกี้"]'), null);
+  await act(() => document.querySelector('#root button').click());
+  const configure = document.querySelector('[aria-label="ตั้งค่าคุกกี้"]');
+  assert.ok(configure, 'persisted consent must still allow reopening the banner');
+  await act(() => configure.click());
+  assert.ok(document.querySelector('[aria-label="บันทึกการตั้งค่าคุกกี้"]'), 'visitor can reopen editable consent controls');
+  await act(() => settingsRoot.unmount());
   console.log('analytics component regression checks passed (semantic, consent, remount, native fallback)');
 } finally {
   dom.window.close();

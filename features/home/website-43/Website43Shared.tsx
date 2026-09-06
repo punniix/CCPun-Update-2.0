@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import CookieSettingsButton from '@/components/layout/CookieSettingsButton';
 import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import styles from './Website43.module.css';
@@ -159,6 +160,7 @@ export function Website43Footer({ warnings = false, notFound = false }: { warnin
             <p>ข้อมูลเพื่อความรู้ทั่วไป ไม่ใช่คำแนะนำเฉพาะบุคคล</p>
           </>}
         </div>
+        <CookieSettingsButton />
       </div>
     </footer>
   );
