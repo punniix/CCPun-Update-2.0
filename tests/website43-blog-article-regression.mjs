@@ -98,4 +98,37 @@ await articleRoute.generateMetadata({ params: Promise.resolve({ category: 'life-
 assert.ok(calls.length > 0 && calls.every((call) => call.includeDrafts === false), 'stale draft cookie cannot cross public Production read gate');
 const shared = readFileSync(new URL('../components/layout/website-43/Website43Shared.tsx', import.meta.url), 'utf8');
 assert.ok(shared.includes('Website43TransitionStyles') && shared.includes('Website43FinalPolishStyles'));
-console.log('PASS: actual Article block/credit/anchor/profile renderer, Bangkok date, public route/filter/metadata/redirect and stale-Draft-cookie contracts');
+// Render the client list as a cached route remount after popstate already fired.
+const browserDom = new JSDOM('<div id="app"></div>', { url: 'https://ccpun.com/blog/?q=สุขภาพ' });
+const savedGlobals = new Map(['window', 'document', 'requestAnimationFrame', 'cancelAnimationFrame', 'IS_REACT_ACT_ENVIRONMENT'].map((key) => [key, Object.getOwnPropertyDescriptor(globalThis, key)]));
+Object.defineProperties(globalThis, {
+  window: { value: browserDom.window, configurable: true },
+  document: { value: browserDom.window.document, configurable: true },
+  requestAnimationFrame: { value: () => 0, configurable: true },
+  cancelAnimationFrame: { value: () => {}, configurable: true },
+  IS_REACT_ACT_ENVIRONMENT: { value: true, configurable: true },
+});
+mock('../components/layout/website-43/Website43Shared.tsx', { Website43Navbar: () => null, Website43Footer: () => null });
+mock('next/link', { __esModule: true, default: ({ children, href, ...props }) => React.createElement('a', { ...props, href }, children) });
+mock('next/image', { __esModule: true, default: ({ src, alt }) => React.createElement('img', { src, alt }) });
+delete require.cache[require.resolve('../features/blog/website-43/Website43Blog.tsx')];
+const BlogClient = require('../features/blog/website-43/Website43Blog.tsx').default;
+const { createRoot } = require('react-dom/client');
+const root = createRoot(browserDom.window.document.getElementById('app'));
+await React.act(async () => root.render(React.createElement(BlogClient, { articles: [toWebsite43ArticleItem(article), toWebsite43ArticleItem(health)], initialQuery: '' })));
+const input = browserDom.window.document.querySelector('input[type="search"]');
+assert.equal(input.value, 'สุขภาพ', 'cached stale initial props must read the restored browser URL on mount');
+assert.equal(browserDom.window.document.querySelectorAll('.articleGrid > a').length, 1);
+await React.act(async () => {
+  browserDom.window.history.replaceState(null, '', '/blog/');
+  browserDom.window.dispatchEvent(new browserDom.window.PopStateEvent('popstate'));
+});
+assert.equal(input.value, '');
+assert.equal(browserDom.window.document.querySelectorAll('.articleGrid > a').length, 2);
+await React.act(async () => root.unmount());
+for (const [key, descriptor] of savedGlobals) {
+  if (descriptor) Object.defineProperty(globalThis, key, descriptor);
+  else delete globalThis[key];
+}
+browserDom.window.close();
+console.log('PASS: actual Article block/credit/anchor/profile renderer, Bangkok date, public route/filter/metadata/redirect, stale Draft cookie and cached browser query restoration');
