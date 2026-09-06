@@ -9,7 +9,7 @@ const GoogleAnalytics = require('../features/analytics/components/GoogleAnalytic
 const GoogleTagManager = require('../features/analytics/components/GoogleTagManager.tsx').default;
 // No external resources execute: this checks the app's loader and consent lifecycle, not provider hits.
 const dom = new JSDOM('<div id="root"></div><nav><a href="https://lin.ee/test">LINE</a></nav>', { url: 'https://ccpun.com/' });
-for (const name of ['window', 'document', 'localStorage', 'Element', 'CustomEvent']) {
+for (const name of ['window', 'self', 'document', 'localStorage', 'Element', 'CustomEvent', 'Event']) {
   Object.defineProperty(globalThis, name, { configurable: true, value: dom.window[name] });
 }
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
@@ -64,6 +64,34 @@ try {
   assert.equal(commands('config').length, 0, 'regrant must not configure GA again');
   assert.equal(document.querySelectorAll('#ga-script').length, 0);
 
+  // Explicit labels only select approved CTA locations; pathname still owns surface.
+  const clickFixture = (path, markup, expected) => {
+    window.history.replaceState({}, '', path);
+    const fixture = document.createElement('div');
+    fixture.innerHTML = markup;
+    document.body.appendChild(fixture);
+    const anchor = fixture.querySelector('a');
+    anchor.addEventListener('click', (event) => event.preventDefault());
+    const before = lineEvents().length;
+    anchor.dispatchEvent(new window.MouseEvent('click', { bubbles: true, cancelable: true }));
+    assert.equal(lineEvents().length, before + (expected ? 1 : 0), `${path}: event count`);
+    if (expected) {
+      assert.equal(lineEvents().at(-1).cta_location, expected[0]);
+      assert.equal(lineEvents().at(-1).surface_group, expected[1]);
+    }
+    fixture.remove();
+  };
+  clickFixture('/', '<section id="home"><a href="https://lin.ee/test" data-analytics-location="navbar">LINE</a></section>', ['navbar', 'homepage']);
+  clickFixture('/', '<section><a href="https://lin.ee/test" data-analytics-location="home_faq" data-analytics-surface="blog">LINE</a></section>', ['home_faq', 'homepage']);
+  clickFixture('/', '<nav id="mobile-navigation"><a href="https://lin.ee/test" data-analytics-location="navbar_mobile">LINE</a></nav>', ['navbar_mobile', 'homepage']);
+  clickFixture('/', '<section id="home"><a href="https://lin.ee/test" data-analytics-location="untrusted">LINE</a></section>', ['home_hero', 'homepage']);
+  clickFixture('/blog/life-insurance/example/', '<a href="https://lin.ee/test">LINE</a>', ['blog_article', 'blog']);
+  clickFixture('/ci-planning/', '<section id="ci-calculator"><a href="https://lin.ee/test" data-analytics-location="navbar">LINE</a></section>', null);
+  clickFixture('/tools/financial-health-check/', '<section id="fhc-calculator"><a href="https://lin.ee/test" data-analytics-location="home_faq">LINE</a></section>', null);
+  clickFixture('/privacy/', '<a href="https://lin.ee/test" data-analytics-location="navbar">LINE</a>', null);
+  clickFixture('/cookie-policy/', '<a href="https://lin.ee/test" data-analytics-location="navbar">LINE</a>', null);
+  clickFixture('/missing/', '<a href="https://lin.ee/test" data-analytics-location="navbar">LINE</a>', null);
+
   process.env.NEXT_PUBLIC_SEMANTIC_EVENT_LAYER_ENABLED = 'false';
   await consent(true);
   assert.equal(document.querySelectorAll('#ga-script').length, 1, 'native fallback still loads GA');
@@ -76,6 +104,18 @@ try {
   assert.equal(document.querySelectorAll('#ga-script').length, 0);
   await act(() => root.unmount());
   await act(() => gtmRoot.unmount());
+  // A returning visitor can reopen the unchanged consent UI from the Home footer.
+  const CookieSettingsButton = require('../components/layout/CookieSettingsButton.tsx').default;
+  const CookieConsent = require('../features/analytics/components/CookieConsent.tsx').default;
+  const settingsRoot = createRoot(document.getElementById('root'));
+  await act(() => settingsRoot.render(createElement('div', {}, createElement(CookieSettingsButton), createElement(CookieConsent))));
+  assert.equal(document.querySelector('[aria-label="บันทึกการตั้งค่าคุกกี้"]'), null);
+  await act(() => document.querySelector('#root button').click());
+  const configure = document.querySelector('[aria-label="ตั้งค่าคุกกี้"]');
+  assert.ok(configure, 'persisted consent must still allow reopening the banner');
+  await act(() => configure.click());
+  assert.ok(document.querySelector('[aria-label="บันทึกการตั้งค่าคุกกี้"]'), 'visitor can reopen editable consent controls');
+  await act(() => settingsRoot.unmount());
   console.log('analytics component regression checks passed (semantic, consent, remount, native fallback)');
 } finally {
   dom.window.close();
