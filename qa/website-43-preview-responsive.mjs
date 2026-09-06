@@ -23,7 +23,8 @@ const ROUTES = [
   ['not-found', '/preview/website-4-3/404'],
 ];
 const EXPECTED_ABOUT_PARAGRAPHS = [
-  'จากคนที่โฟกัสแต่เพียงเรื่องการลงทุน จนเจอเหตุไม่คาดฝัน และสูญเสียในครอบครัวในเวลาต่อมา ผมจึงเริ่มเห็นความสำคัญของประกันชีวิต และกลับมาจัดแผนการเงินใหม่จากระดับรากฐาน และเลือกเดินต่อในบทบาทตัวแทนประกันชีวิตกับผู้วางแผนการลงทุนเพื่อช่วยเหลือผู้คนให้มีฐานการเงินที่ดีขึ้น',
+  'จากคนที่โฟกัสแต่เพียงเรื่องการลงทุน จนเจอเหตุไม่คาดฝัน และสูญเสียในครอบครัวในเวลาต่อมา ผมจึงเริ่มเห็นความสำคัญของประกันชีวิต และกลับมาจัดแผนการเงินใหม่จากระดับรากฐาน',
+  'และเลือกเดินต่อในบทบาทตัวแทนประกันชีวิต นายหน้าประกันวินาศภัย และผู้วางแผนการลงทุน เพื่อช่วยเหลือผู้คนให้มีฐานการเงินที่ดีขึ้น',
   'โดยนำประสบการณ์ด้านการเงินและการลงทุนจากการทำงานกว่า 5 ปี มาแนะนำ และช่วยตัดสินใจเลือกผลิตภัณฑ์ทางการเงินที่ตอบโจทย์เฉพาะบุคคล เพื่อสร้างทั้งความมั่นคงและความมั่งคั่งได้ในระยะสั้น กลางและยาว',
 ];
 const EXPECTED_ABOUT_QUOTE = 'เป้าหมายไม่ใช่การเลือกเพียงแค่ผลิตภัณฑ์ใดผลิตภัณฑ์หนึ่ง แต่วางองค์รวม และเลือกสิ่งที่ดีที่สุด เหมาะสม ตอบโจทย์กับลูกค้าที่สุด';
@@ -213,6 +214,10 @@ async function inspect(client, routeKey, viewport) {
     }
     expect('Home removed Trust Strip', home.trustStripGone);
     expect('Home removed plan-category section', home.removedPlanSection);
+    expect('Home copy matches the approved problem framing', base.bodyText.includes('ถ้าเรื่องเงินยังเป็นเรื่องที่คุณกังวล') && base.bodyText.includes('เริ่มจากปัญหาที่เจอ ดูแผนการเงินในภาพรวม และหาผลิตภัณฑ์ที่เหมาะสม') && base.bodyText.includes('มีความคุ้มครองอยู่ แต่ไม่แน่ใจว่าที่มีอยู่นั้น เพียงพอหรือไม่ ต้องเตรียมหรือปรับเพิ่มลดอย่างไร'), base.bodyText);
+    expect('Home partner copy matches the approved labels', base.bodyText.includes('6 แพลตฟอร์มการเงิน') && base.bodyText.includes('ทางเลือกที่หลากหลาย ตอบโจทย์ลูกค้า') && base.bodyText.includes('พาร์ทเนอร์ทั้งหมดที่ร่วมงาน'), base.bodyText);
+    expect('Home removes the trust heading copy', !base.bodyText.includes('TRUST & VERIFICATION') && !base.bodyText.includes('ตรวจสอบได้ ก่อนตัดสินใจ'), base.bodyText);
+    expect('Home About heading matches the approved copy', base.bodyText.includes('รู้จักที่ปรึกษาทางการเงิน CCPun') && base.bodyText.includes('จากคนที่โฟกัสแต่เรื่องการลงทุน สู่ที่ปรึกษาทางการเงินแบบครบลูป'), base.bodyText);
     expect('Home uses exact updated About copy', JSON.stringify(home.aboutParagraphs) === JSON.stringify(EXPECTED_ABOUT_PARAGRAPHS) && home.aboutQuote === EXPECTED_ABOUT_QUOTE, JSON.stringify({ paragraphs:home.aboutParagraphs, quote:home.aboutQuote }));
     expect('Fairdee role is insurance broker', home.fairdeeRole === 'นายหน้าประกันวินาศภัย', String(home.fairdeeRole));
     expect('Home license line uses the updated roles and numbers', home.licenseText === 'ใบอนุญาต: ตัวแทนประกันชีวิต 6801064783 · ผู้วางแผนการลงทุน 106654 · นายหน้าประกันวินาศภัย 6904009841', String(home.licenseText));
