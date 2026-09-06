@@ -209,7 +209,6 @@ export default function Website43Article({ article, relatedArticles = [] }: { ar
               <p className={styles.authorBio}>ผู้แนะนำการลงทุนและตัวแทนประกันชีวิต เน้นอธิบายจากเป้าหมายและสถานการณ์จริง เพื่อช่วยให้เห็นภาพรวมก่อนตัดสินใจ</p>
               <Link className={styles.authorLink} href={`${BASE}#about-ccpun`}>รู้จัก CCPun เพิ่มเติม →</Link>
             </div>
-            <p className={styles.articleMeta} style={{ marginTop: 16 }}>บทความนี้มีวัตถุประสงค์เพื่อให้ความรู้ทั่วไป ไม่ใช่คำแนะนำทางการเงิน การลงทุน ภาษี หรือประกันภัยเฉพาะบุคคล</p>
           </div>
         </section>
 
@@ -217,7 +216,7 @@ export default function Website43Article({ article, relatedArticles = [] }: { ar
           <div className={styles.inner}>
             <h2 className={styles.h2}>อยากจัดลำดับแผนให้เหมาะกับชีวิตคุณ?</h2>
             <p className={styles.lead} style={{ color: '#faf9f9' }}>เตรียมข้อมูลรายได้ รายจ่าย หนี้ และเป้าหมาย แล้วคุยกันแบบเห็นภาพรวม</p>
-            <a className={styles.primaryButton} style={{ width: 200, marginTop: 20 }} href="https://lin.ee/tqLCs4f" target="_blank" rel="noopener noreferrer" data-analytics-surface="blog" data-analytics-location="blog_article">คุยกับ Pun ทาง LINE</a>
+            <a className={styles.faqCta} href="https://lin.ee/tqLCs4f" target="_blank" rel="noopener noreferrer" data-analytics-surface="blog" data-analytics-location="blog_article">ปรึกษากับ CCPun</a>
           </div>
         </section>
 
