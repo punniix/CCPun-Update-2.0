@@ -150,6 +150,7 @@
 .sectionDeep { background: var(--w43-deep); }
 .sectionTopLarge { padding-top: 80px; }
 .sectionBottomLarge { padding-bottom: 80px; }
+.trustSection { padding-top: 56px; padding-bottom: 56px; }
 .inner { width: min(1280px, 100%); margin: 0 auto; }
 .narrow { width: min(1152px, 100%); margin: 0 auto; }
 .reading { width: min(720px, 100%); }
@@ -213,7 +214,7 @@
 .stat { padding: 20px; border: 1px solid var(--w43-border); border-radius: 16px; background: var(--w43-surface); }
 .stat strong { display: block; color: var(--w43-gold); font-size: 28px; line-height: 1.18; }
 .stat span { display: block; margin-top: 12px; font-size: 14px; line-height: 1.45; }
-.license { margin: 20px 0 0; color: var(--w43-muted); font-size: 14px; line-height: 1.45; }
+.license { margin: 20px 0 0; color: var(--w43-muted); font-size: 16px; line-height: 1.55; }
 .partnerLabel { margin: 20px 0 0; color: var(--w43-gold); font-size: 14px; font-weight: 600; }
 .partners { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 12px; margin-top: 12px; }
 .partner { min-height: 174px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; padding: 20px 8px; box-sizing: border-box; border: 1px solid var(--w43-border); border-radius: 14px; background: var(--w43-surface); text-align: center; }
@@ -553,6 +554,7 @@
   .navOverlay { top: 20px; width: calc(100% - 48px); }
   .section, .sectionDeep { padding: 24px; }
   .sectionTopLarge, .sectionBottomLarge { padding-top: 24px; padding-bottom: 24px; }
+  .trustSection { padding: 24px; }
   .eyebrow { font-size: 14px; }
   .h2 { margin-top: 16px; font-size: 28px; line-height: 1.25; font-weight: 600; }
   .lead { margin-top: 16px; font-size: 16px; line-height: 1.45; }

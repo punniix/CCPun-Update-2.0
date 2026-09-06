@@ -23,7 +23,7 @@ const ROUTES = [
   ['not-found', '/preview/website-4-3/404'],
 ];
 const EXPECTED_ABOUT_PARAGRAPHS = [
-  'จากคนที่โฟกัสแต่เพียงเรื่องการลงทุน จนเจอเหตุไม่คาดฝัน และสูญเสียในครอบครัวในเวลาต่อมา ผมจึงเริ่มเห็นความสำคัญของประกันชีวิต และกลับมาจัดแผนการเงินใหม่จากระดับรากฐาน และเลือกเดินต่อในบทบาทตัวแทนประกันชีวิตกับผู้แนะนำการลงทุนเพื่อช่วยเหลือผู้คนให้มีฐานการเงินที่ดีขึ้น',
+  'จากคนที่โฟกัสแต่เพียงเรื่องการลงทุน จนเจอเหตุไม่คาดฝัน และสูญเสียในครอบครัวในเวลาต่อมา ผมจึงเริ่มเห็นความสำคัญของประกันชีวิต และกลับมาจัดแผนการเงินใหม่จากระดับรากฐาน และเลือกเดินต่อในบทบาทตัวแทนประกันชีวิตกับผู้วางแผนการลงทุนเพื่อช่วยเหลือผู้คนให้มีฐานการเงินที่ดีขึ้น',
   'โดยนำประสบการณ์ด้านการเงินและการลงทุนจากการทำงานกว่า 5 ปี มาแนะนำ และช่วยตัดสินใจเลือกผลิตภัณฑ์ทางการเงินที่ตอบโจทย์เฉพาะบุคคล เพื่อสร้างทั้งความมั่นคงและความมั่งคั่งได้ในระยะสั้น กลางและยาว',
 ];
 const EXPECTED_ABOUT_QUOTE = 'เป้าหมายไม่ใช่การเลือกเพียงแค่ผลิตภัณฑ์ใดผลิตภัณฑ์หนึ่ง แต่วางองค์รวม และเลือกสิ่งที่ดีที่สุด เหมาะสม ตอบโจทย์กับลูกค้าที่สุด';
@@ -147,6 +147,7 @@ async function inspect(client, routeKey, viewport) {
       const partnerCardPadding = partnerLogos.map((img) => { const style=getComputedStyle(img.parentElement?.parentElement); return { top:parseFloat(style.paddingTop), bottom:parseFloat(style.paddingBottom) }; });
       const partnerCardBreathingRoom = partnerLogos.map((img) => { const frame=img.parentElement; const card=frame?.parentElement; const frameRect=frame?.getBoundingClientRect(); const cardRect=card?.getBoundingClientRect(); return { top:frameRect && cardRect ? frameRect.top-cardRect.top : 0, bottom:frameRect && cardRect ? cardRect.bottom-frameRect.bottom : 0 }; });
       const fairdeeRole = document.querySelector('img[alt="Fairdee"]')?.parentElement?.parentElement?.querySelector('span')?.textContent?.trim();
+      const licenseText = document.querySelector('[class*="license"]')?.textContent?.trim();
       const learningSection = [...document.querySelectorAll('section')].find((section) => section.textContent?.includes('เข้าใจมากขึ้น ก่อนตัดสินใจ'));
       const toolCards = learningSection ? [...learningSection.querySelectorAll('a')].filter((a) => a.getAttribute('href')?.includes('/tools/financial-health-check') || a.getAttribute('href')?.includes('/ci-planning')).map(detail) : [];
       const learningCards = learningSection ? [detail(learningSection.querySelector('article')),...toolCards] : [];
@@ -169,6 +170,7 @@ async function inspect(client, routeKey, viewport) {
         partnerCardPadding,
         partnerCardBreathingRoom,
         fairdeeRole,
+        licenseText,
         toolCards,
         learningCards,
         faqQuestions,
@@ -213,6 +215,7 @@ async function inspect(client, routeKey, viewport) {
     expect('Home removed plan-category section', home.removedPlanSection);
     expect('Home uses exact updated About copy', JSON.stringify(home.aboutParagraphs) === JSON.stringify(EXPECTED_ABOUT_PARAGRAPHS) && home.aboutQuote === EXPECTED_ABOUT_QUOTE, JSON.stringify({ paragraphs:home.aboutParagraphs, quote:home.aboutQuote }));
     expect('Fairdee role is insurance broker', home.fairdeeRole === 'นายหน้าประกันวินาศภัย', String(home.fairdeeRole));
+    expect('Home license line uses the updated roles and numbers', home.licenseText === 'ใบอนุญาต: ตัวแทนประกันชีวิต 6801064783 · ผู้วางแผนการลงทุน 106654 · นายหน้าประกันวินาศภัย 6904009841', String(home.licenseText));
     expect('Partner logos have balanced vertical padding', home.partnerLogoPadding.length === 6 && home.partnerLogoPadding.every(({top,bottom}) => top > 0 && Math.abs(top-bottom) < .1), JSON.stringify(home.partnerLogoPadding));
     expect('Partner cards leave space above and below the logo', home.partnerCardPadding.length === 6 && home.partnerCardPadding.every(({top,bottom}) => top >= 20 && Math.abs(top-bottom) < .1) && home.partnerCardBreathingRoom.every(({top}) => top >= 20), JSON.stringify({ padding:home.partnerCardPadding, room:home.partnerCardBreathingRoom }));
     if (viewport.width >= 1024) expect('Home review names share a baseline', home.voiceCites.length === 2 && Math.abs(home.voiceCites[0]-home.voiceCites[1]) < 1, JSON.stringify(home.voiceCites));
