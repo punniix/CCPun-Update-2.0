@@ -11,6 +11,8 @@ assert.match(hero, /fetchPriority="high"/);
 assert.match(hero, /sizes="100vw"/);
 assert.doesNotMatch(hero, /loading="lazy"/);
 assert.equal((hero.match(/<Image\b/g) ?? []).length, 1, "Home hero must request one responsive image");
+const headline = home.match(/<h1[^>]*>([\s\S]*?)<\/h1>/)?.[1].replace(/<[^>]+>/g, "");
+assert.equal(headline, "เพราะปัญหาทางการเงินมันซับซ้อน เราจึงต้องวางแผน ออกแบบให้เหมาะกับตัวคุณ", "Line-wrap markup must preserve the approved headline text");
 assert.match(home, /<main id="main-content" tabIndex=\{\-1\}>/);
 assert.match(route, /mainEntity: homeFaqs\.map/);
 assert.match(home, /homeFaqs as faqs/);

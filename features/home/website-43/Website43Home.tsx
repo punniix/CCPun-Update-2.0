@@ -29,7 +29,7 @@ export default function Website43Home() {
           <div className={styles.homeHeroGradient} aria-hidden="true" /><div className={styles.homeHeroBottomGradient} aria-hidden="true" /><Website43Navbar overlay />
           <div className={styles.homeHeroCopy}>
             <p className={styles.eyebrow}>คุณเล่าปัญหามา เราสร้างแผนแก้ไขไป</p>
-            <h1 id="home-hero-title" className={styles.homeHeroTitle}>เพราะปัญหาทางการเงินมันซับซ้อน เราจึงต้องวางแผน ออกแบบให้เหมาะกับตัวคุณ</h1>
+            <h1 id="home-hero-title" className={styles.homeHeroTitle}>เพราะปัญหาทางการเงินมัน<span className={styles.homeHeroWord}>ซับซ้อน</span> เราจึงต้องวางแผน ออกแบบให้เหมาะกับตัวคุณ</h1>
             <p className={styles.homeHeroBody}>เริ่มจากสิ่งที่คุณมี เป้าหมายที่อยากไปให้ถึง และความเสี่ยงที่รับได้ แล้วค่อยจัดลำดับว่าอะไรควรทำก่อน</p>
             <div className={styles.heroActions}><Link className={styles.primaryButton} href="#about-ccpun">รู้จัก CCPun</Link><a className={styles.outlineButton} href="https://lin.ee/tqLCs4f" target="_blank" rel="noopener noreferrer" data-analytics-location="home_hero">ปรึกษากับ CCPun</a></div>
             <p className={styles.heroProof}>5+ ปี · 3 ใบอนุญาต · 6 พาร์ทเนอร์/แพลตฟอร์ม</p>
