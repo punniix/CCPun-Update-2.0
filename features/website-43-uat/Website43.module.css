@@ -180,7 +180,7 @@
 .homeHeroBottomGradient { display: none; }
 .homeHeroCopy { position: absolute; z-index: 5; top: 196px; left: max(80px, calc((100vw - 1280px) / 2)); width: 760px; }
 .homeHeroCopy .eyebrow { font-size: 15px; line-height: 22px; }
-.homeHeroTitle { margin: 22px 0 0; font-size: 44px; font-weight: 700; line-height: 60px; }
+.homeHeroTitle { min-height: 180px; margin: 22px 0 0; font-size: 44px; font-weight: 700; line-height: 60px; }
 .homeHeroTitle .homeHeroWord { white-space: nowrap; }
 .homeHeroBody { width: 610px; margin: 20px 0 0; color: rgba(247,245,242,.92); font-size: 18px; line-height: 26px; }
 .heroActions { display: flex; gap: 12px; margin-top: 20px; }
@@ -452,7 +452,7 @@
   .homeHeroGradient { width: min(700px, 100%); background: linear-gradient(90deg,rgba(3,5,4,.97) 0%,rgba(3,5,4,.91) 34%,rgba(3,5,4,.68) 54%,rgba(3,5,4,.28) 72%,rgba(3,5,4,0) 100%); }
   .homeHeroCopy { top: 390px; left: 40px; width: min(650px, calc(100% - 80px)); }
   .homeHeroCopy .eyebrow { font-size: 14px; line-height: 20px; }
-  .homeHeroTitle { width: min(490px, 100%); margin-top: 16px; font-size: 38px; line-height: 48px; }
+  .homeHeroTitle { min-height: 0; width: min(490px, 100%); margin-top: 16px; font-size: 38px; line-height: 48px; }
   .homeHeroBody { width: 440px; margin-top: 24px; font-size: 16px; line-height: 23px; }
   .heroActions { margin-top: 23px; }
   .heroActions .primaryButton { width: 176px; min-height: 48px; }
