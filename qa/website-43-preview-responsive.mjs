@@ -148,8 +148,10 @@ async function inspect(client, routeKey, viewport) {
       const partnerCardPadding = partnerLogos.map((img) => { const style=getComputedStyle(img.parentElement?.parentElement); return { top:parseFloat(style.paddingTop), bottom:parseFloat(style.paddingBottom) }; });
       const partnerCardBreathingRoom = partnerLogos.map((img) => { const frame=img.parentElement; const card=frame?.parentElement; const frameRect=frame?.getBoundingClientRect(); const cardRect=card?.getBoundingClientRect(); return { top:frameRect && cardRect ? frameRect.top-cardRect.top : 0, bottom:frameRect && cardRect ? cardRect.bottom-frameRect.bottom : 0 }; });
       const fairdeeRole = document.querySelector('img[alt="Fairdee"]')?.parentElement?.parentElement?.querySelector('span')?.textContent?.trim();
-      const licenseText = document.querySelector('[class*="license"]')?.textContent?.trim();
-      const learningSection = [...document.querySelectorAll('section')].find((section) => section.textContent?.includes('เข้าใจมากขึ้น ก่อนตัดสินใจ'));
+      const license = document.querySelector('[class*="license"]');
+      const licenseText = license?.textContent?.trim();
+      const licenseLines = license ? [...license.querySelectorAll('span:not([aria-hidden="true"])')].map((line) => ({ text: line.textContent?.trim(), display: getComputedStyle(line).display })) : [];
+      const learningSection = [...document.querySelectorAll('section')].find((section) => section.textContent?.includes('ไม่รู้จะเริ่มอย่างไร เริ่มจากบทความและเครื่องมือก่อน'));
       const toolCards = learningSection ? [...learningSection.querySelectorAll('a')].filter((a) => a.getAttribute('href')?.includes('/tools/financial-health-check') || a.getAttribute('href')?.includes('/ci-planning')).map(detail) : [];
       const learningCards = learningSection ? [detail(learningSection.querySelector('article')),...toolCards] : [];
       const faqSection = document.querySelector('[data-uat-section="home-faq"]');
@@ -173,6 +175,7 @@ async function inspect(client, routeKey, viewport) {
         partnerCardBreathingRoom,
         fairdeeRole,
         licenseText,
+        licenseLines,
         toolCards,
         learningCards,
         faqQuestions,
@@ -222,18 +225,21 @@ async function inspect(client, routeKey, viewport) {
     expect('Home uses exact updated About copy', JSON.stringify(home.aboutParagraphs) === JSON.stringify(EXPECTED_ABOUT_PARAGRAPHS) && home.aboutQuote === EXPECTED_ABOUT_QUOTE, JSON.stringify({ paragraphs:home.aboutParagraphs, quote:home.aboutQuote }));
     expect('Fairdee role is insurance broker', home.fairdeeRole === 'นายหน้าประกันวินาศภัย', String(home.fairdeeRole));
     expect('Home license line uses the updated roles and numbers', home.licenseText === 'ใบอนุญาต: ตัวแทนประกันชีวิต 6801064783 · ผู้วางแผนการลงทุน 106654 · นายหน้าประกันวินาศภัย 6904009841', String(home.licenseText));
+    if (viewport.width < 640) expect('Home license entries use one line each on mobile', home.licenseLines.length === 3 && home.licenseLines.every((line) => line.display === 'block'), JSON.stringify(home.licenseLines));
+    expect('Home learning and FAQ copy matches the approved updates', base.bodyText.includes('ไม่รู้จะเริ่มอย่างไร เริ่มจากบทความและเครื่องมือก่อน') && base.bodyText.includes('บทความการเงิน') && base.bodyText.includes('เข้าใจเรื่องการเงินได้ แม้จะเริ่มจาก 0') && base.bodyText.includes('Financial Health Check') && base.bodyText.includes('เช็กทุนประกันชีวิตที่ควรมีก่อนตัดสินใจทำประกันผ่านการตรวจสุขภาพทางการเงิน') && base.bodyText.includes('วางแผนการเงินเมื่อเจอโรคร้ายแรง') && base.bodyText.includes('เตรียมเงินก้อนรับมือภาระค่าใช้จ่าย เมื่อเจอโรคร้ายแรง') && base.bodyText.includes('CCPun ช่วยให้คำแนะนำทางการเงินด้านใดได้บ้าง'), base.bodyText);
     expect('Partner logos have balanced vertical padding', home.partnerLogoPadding.length === 6 && home.partnerLogoPadding.every(({top,bottom}) => top > 0 && Math.abs(top-bottom) < .1), JSON.stringify(home.partnerLogoPadding));
     expect('Partner cards leave space above and below the logo', home.partnerCardPadding.length === 6 && home.partnerCardPadding.every(({top,bottom}) => top >= 20 && Math.abs(top-bottom) < .1) && home.partnerCardBreathingRoom.every(({top}) => top >= 20), JSON.stringify({ padding:home.partnerCardPadding, room:home.partnerCardBreathingRoom }));
     if (viewport.width >= 1024) expect('Home review names share a baseline', home.voiceCites.length === 2 && Math.abs(home.voiceCites[0]-home.voiceCites[1]) < 1, JSON.stringify(home.voiceCites));
     expect('Home tool cards have equal dimensions', home.toolCards.length === 2 && Math.abs(home.toolCards[0].w-home.toolCards[1].w) < 1 && Math.abs(home.toolCards[0].h-home.toolCards[1].h) < 1, JSON.stringify(home.toolCards));
     expect('Home learning cards have equal dimensions', home.learningCards.length === 3 && home.learningCards.every((card) => Math.abs(card.w-home.learningCards[0].w) < 1 && Math.abs(card.h-home.learningCards[0].h) < 1), JSON.stringify(home.learningCards));
-    expect('Home FAQ removes purchase and start-point questions', home.faqQuestions.length === 2 && !home.faqQuestions.some((question) => question?.includes('คุยแล้วต้องซื้อ') || question?.includes('ถ้ายังไม่รู้ว่าควรเริ่มจากอะไร')), JSON.stringify(home.faqQuestions));
+    expect('Home FAQ questions match the approved updates', JSON.stringify(home.faqQuestions) === JSON.stringify(['CCPun คือใคร?', 'CCPun ช่วยให้คำแนะนำทางการเงินด้านใดได้บ้าง']), JSON.stringify(home.faqQuestions));
     expect('Home FAQ has one LINE add-friend CTA', home.faqCtas.length === 1 && home.faqCtas[0].text === 'เพิ่มเพื่อน LINE @ccpun' && home.faqCtas[0].href === 'https://lin.ee/tqLCs4f', JSON.stringify(home.faqCtas));
     expect('Home removes the duplicate CTA after FAQ', home.duplicateContactCtaRemoved, String(home.duplicateContactCtaRemoved));
     expect('Home keeps a compact gap between learning cards and FAQ', home.learningFaqGap !== null && home.learningFaqGap <= 48, String(home.learningFaqGap));
     expect('About portrait stage is square', home.stage && Math.abs(home.stage.w - home.stage.h) < 1, JSON.stringify(home.stage));
     if ([390,820,1440].includes(viewport.width)) expect('About portrait stage matches Figma target', home.stage && Math.abs(home.stage.w - expectedPortrait) < 1.5, JSON.stringify(home.stage));
-    expect('Portrait subject is shifted down inside square', home.portrait && home.portrait.top >= 14, JSON.stringify(home.portrait));
+    if (viewport.width < 640) expect('Mobile portrait begins flush with its card', home.portrait && Math.abs(home.portrait.top) < 1.5, JSON.stringify(home.portrait));
+    else expect('Portrait subject is shifted down inside square', home.portrait && home.portrait.top >= 14, JSON.stringify(home.portrait));
     const targetHero = viewport.width <= 639 ? 740 : viewport.width < 1024 ? 820 : 800;
     if ([390,820,1440].includes(viewport.width)) expect('Home hero height matches Figma target', Math.abs(home.heroHeight-targetHero)<1.5, `${home.heroHeight} vs ${targetHero}`);
     expect('Home hero content stays inside its frame', home.heroFitsViewport, JSON.stringify(home.heroContent));

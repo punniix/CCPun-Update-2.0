@@ -246,7 +246,7 @@
 .planCategoriesSection .chips { margin-top: 16px; }
 .planCategoriesSection .chip { min-height: 44px; line-height: 1.3; }
 .learnGrid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 16px; margin-top: 20px; }
-.learnCard { min-height: 220px; padding: 20px; border-radius: 12px; background: var(--w43-deep); display: flex; flex-direction: column; gap: 12px; }
+.learnCard { min-height: 220px; padding: 20px; border: 1px solid var(--w43-border); border-radius: 12px; background: var(--w43-deep); display: flex; flex-direction: column; gap: 12px; }
 .learnCardAlt { border: 1px solid var(--w43-border); background: var(--w43-bg); }
 .learnCard h3 { margin: 0; font-size: 20px; font-weight: 600; }
 .learnCard p { margin: 0; color: var(--w43-muted); font-size: 14px; line-height: 1.45; }
@@ -581,13 +581,15 @@
   .about { min-height: 0; padding: 24px; }
   .aboutInner { min-height: 0; }
   .aboutPortraitStage { position: relative; top: auto; left: auto; width: 318px; height: 318px; margin-top: 16px; }
-  .aboutPortrait { top: 18px; width: 318px; height: 418px; }
+  .aboutPortrait { top: 0; width: 318px; height: 418px; }
   .aboutCopy { width: 100%; margin: 0; display: flex; flex-direction: column; }
   .aboutCopy .aboutPortraitStage { order: 3; }
   .aboutParagraphs { order: 4; margin-top: 16px; font-size: 16px; }
   .advisorNote { order: 5; margin-top: 16px; padding: 24px; font-size: 20px; }
   .stats { grid-template-columns: 1fr; gap: 12px; margin-top: 16px; }
   .stat { padding: 16px; }
+  .license span:not(.licenseSeparator) { display: block; }
+  .licenseSeparator { display: none; }
   .partners { grid-template-columns: repeat(2,minmax(0,1fr)); }
   .partner { min-height: 78px; }
   .voices { grid-template-columns: 1fr; gap: 20px; }

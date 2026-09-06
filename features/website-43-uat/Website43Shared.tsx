@@ -147,9 +147,9 @@ export function Website43Footer({ warnings = false, notFound = false }: { warnin
   );
 }
 
-export function SectionHeading({ eyebrow, title, description }: { eyebrow: string; title: string; description?: string }) {
+export function SectionHeading({ eyebrow, title, description }: { eyebrow?: string; title: string; description?: string }) {
   return <>
-    <p className={styles.eyebrow}>{eyebrow}</p>
+    {eyebrow ? <p className={styles.eyebrow}>{eyebrow}</p> : null}
     <h2 className={styles.h2}>{title}</h2>
     {description ? <p className={styles.lead}>{description}</p> : null}
   </>;
