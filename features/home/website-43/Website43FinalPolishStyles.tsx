@@ -63,20 +63,19 @@ export function Website43FinalPolishStyles() {
     --w43-content-gutter: var(--w43-nav-gutter);
   }
 
-  /*
-   * Home hero must interpolate the actual Figma text/gradient geometry between
-   * the 1100 transition reference and the 1440 canonical frame. Previously only
-   * the left gutter interpolated, leaving the 1440 text widths active at 1100-
-   * 1439px and changing the line breaks/crop balance.
+  /* Keep desktop copy in the left half, clear of the centered portrait's face.
+   * The narrower width wraps complete Thai words without changing font size.
+   * Tablet copy already starts below the face; mobile remains unchanged.
    */
   .${styles.homeHeroGradient} {
     width: clamp(840px, calc(82.35294vw - 65.88235px), 1120px);
   }
-  .${styles.homeHeroTitle} {
-    width: clamp(580.556px, 52.77778vw, 760px);
+  .${styles.homeHeroCopy} {
+    width: min(640px, calc(50vw - var(--w43-hero-gutter) - 8px));
   }
+  .${styles.homeHeroTitle},
   .${styles.homeHeroBody} {
-    width: clamp(465.972px, 42.36111vw, 610px);
+    width: 100%;
   }
   .${styles.heroActions} {
     margin-left: calc(var(--w43-nav-gutter) - var(--w43-hero-gutter));
