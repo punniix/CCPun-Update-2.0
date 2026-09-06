@@ -64,6 +64,34 @@ try {
   assert.equal(commands('config').length, 0, 'regrant must not configure GA again');
   assert.equal(document.querySelectorAll('#ga-script').length, 0);
 
+  // Explicit labels only select approved CTA locations; pathname still owns surface.
+  const clickFixture = (path, markup, expected) => {
+    window.history.replaceState({}, '', path);
+    const fixture = document.createElement('div');
+    fixture.innerHTML = markup;
+    document.body.appendChild(fixture);
+    const anchor = fixture.querySelector('a');
+    anchor.addEventListener('click', (event) => event.preventDefault());
+    const before = lineEvents().length;
+    anchor.dispatchEvent(new window.MouseEvent('click', { bubbles: true, cancelable: true }));
+    assert.equal(lineEvents().length, before + (expected ? 1 : 0), `${path}: event count`);
+    if (expected) {
+      assert.equal(lineEvents().at(-1).cta_location, expected[0]);
+      assert.equal(lineEvents().at(-1).surface_group, expected[1]);
+    }
+    fixture.remove();
+  };
+  clickFixture('/', '<section id="home"><a href="https://lin.ee/test" data-analytics-location="navbar">LINE</a></section>', ['navbar', 'homepage']);
+  clickFixture('/', '<section><a href="https://lin.ee/test" data-analytics-location="home_faq" data-analytics-surface="blog">LINE</a></section>', ['home_faq', 'homepage']);
+  clickFixture('/', '<nav id="mobile-navigation"><a href="https://lin.ee/test" data-analytics-location="navbar_mobile">LINE</a></nav>', ['navbar_mobile', 'homepage']);
+  clickFixture('/', '<section id="home"><a href="https://lin.ee/test" data-analytics-location="untrusted">LINE</a></section>', ['home_hero', 'homepage']);
+  clickFixture('/blog/life-insurance/example/', '<a href="https://lin.ee/test">LINE</a>', ['blog_article', 'blog']);
+  clickFixture('/ci-planning/', '<section id="ci-calculator"><a href="https://lin.ee/test" data-analytics-location="navbar">LINE</a></section>', null);
+  clickFixture('/tools/financial-health-check/', '<section id="fhc-calculator"><a href="https://lin.ee/test" data-analytics-location="home_faq">LINE</a></section>', null);
+  clickFixture('/privacy/', '<a href="https://lin.ee/test" data-analytics-location="navbar">LINE</a>', null);
+  clickFixture('/cookie-policy/', '<a href="https://lin.ee/test" data-analytics-location="navbar">LINE</a>', null);
+  clickFixture('/missing/', '<a href="https://lin.ee/test" data-analytics-location="navbar">LINE</a>', null);
+
   process.env.NEXT_PUBLIC_SEMANTIC_EVENT_LAYER_ENABLED = 'false';
   await consent(true);
   assert.equal(document.querySelectorAll('#ga-script').length, 1, 'native fallback still loads GA');
