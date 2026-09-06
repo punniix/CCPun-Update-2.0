@@ -123,6 +123,20 @@ const rawArticleSchema = z.object({
   categorySlug: z.string().min(1).nullish(),
   tags: z.array(z.string()).nullish(),
   authorName: z.string().min(1),
+  author: z.object({
+    name: z.string().min(1),
+    profileName: z.string().min(1).nullish().catch(undefined),
+    profileRole: z.string().min(1).nullish().catch(undefined),
+    profileBio: z.string().min(1).nullish().catch(undefined),
+    profileCtaLabel: z.string().min(1).nullish().catch(undefined),
+    profileCtaUrl: z.string().refine((value) => /^(https?:\/\/|\/(?!\/)|#)/.test(value)).nullish().catch(undefined),
+    profileAvatar: z.object({
+      src: z.string().min(1),
+      alt: z.string().min(1),
+      width: z.number().positive(),
+      height: z.number().positive(),
+    }).nullish().catch(undefined),
+  }).nullish().catch(undefined),
   publishedAt: z.string().nullish(),
   updatedAt: z.string().min(1),
   seo: z.object({
@@ -337,6 +351,17 @@ function toArticle(rawInput: unknown): Article {
     tags: raw.tags ?? undefined,
     semanticTopic: raw.seo?.semanticTopic ?? undefined,
     authorName: raw.authorName,
+    author: raw.author
+      ? {
+          name: raw.author.name,
+          profileName: raw.author.profileName ?? undefined,
+          profileRole: raw.author.profileRole ?? undefined,
+          profileBio: raw.author.profileBio ?? undefined,
+          profileCtaLabel: raw.author.profileCtaLabel ?? undefined,
+          profileCtaUrl: raw.author.profileCtaUrl ?? undefined,
+          profileAvatar: raw.author.profileAvatar ?? undefined,
+        }
+      : undefined,
     status,
     publishedAt: raw.publishedAt ?? undefined,
     updatedAt: raw.updatedAt,
@@ -393,6 +418,20 @@ const articleProjection = groq`{
   "categorySlug": category->slug.current,
   tags,
   "authorName": author->name,
+  "author": author->{
+    name,
+    profileName,
+    profileRole,
+    profileBio,
+    profileCtaLabel,
+    profileCtaUrl,
+    "profileAvatar": select(defined(profileAvatar.asset) => {
+      "src": profileAvatar.asset->url,
+      "width": profileAvatar.asset->metadata.dimensions.width,
+      "height": profileAvatar.asset->metadata.dimensions.height,
+      "alt": profileAvatar.alt
+    })
+  },
   publishedAt,
   "updatedAt": coalesce(contentUpdatedAt, migration.sourceModifiedAt, _updatedAt),
   seo,
