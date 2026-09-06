@@ -33,7 +33,7 @@ export default function Website43Home() {
             <p className={styles.eyebrow}>คุณเล่าปัญหามา เราสร้างแผนแก้ไขไป</p>
             <h1 id="home-hero-title" className={styles.homeHeroTitle}>เพราะปัญหาทางการเงินมันซับซ้อน เราจึงต้องวางแผน ออกแบบให้เหมาะกับตัวคุณ</h1>
             <p className={styles.homeHeroBody}>เริ่มจากสิ่งที่คุณมี เป้าหมายที่อยากไปให้ถึง และความเสี่ยงที่รับได้ แล้วค่อยจัดลำดับว่าอะไรควรทำก่อน</p>
-            <div className={styles.heroActions}><Link className={styles.primaryButton} href={`${BASE}/tools/financial-health-check`}>เช็กสุขภาพการเงิน</Link><a className={styles.outlineButton} href="https://lin.ee/tqLCs4f" target="_blank" rel="noopener noreferrer" data-analytics-surface="homepage" data-analytics-location="home_hero">คุยกับปั้น</a></div>
+            <div className={styles.heroActions}><Link className={styles.primaryButton} href="#about-ccpun">รู้จัก CCPun</Link><a className={styles.outlineButton} href="https://lin.ee/tqLCs4f" target="_blank" rel="noopener noreferrer" data-analytics-surface="homepage" data-analytics-location="home_hero">ปรึกษากับ CCPun</a></div>
             <p className={styles.heroProof}>5+ ปี · 3 ใบอนุญาต · 6 พาร์ทเนอร์/แพลตฟอร์ม</p>
           </div>
         </section>
@@ -77,7 +77,7 @@ export default function Website43Home() {
           </div>
         </div></div></section>
 
-        <section className={`${styles.section} ${styles.sectionBottomLarge}`} data-uat-section="home-faq"><div className={styles.inner}><SectionHeading eyebrow="คำถามที่พบบ่อย" title="ก่อนเริ่มวางแผนกับ CCPun" /><div className={styles.faqList}>{faqs.map(({question,answer})=><details className={styles.faqItem} key={question}><summary className={styles.faqSummary}><span>{question}</span><span className={styles.faqIcon} aria-hidden="true">+</span></summary><p className={styles.faqAnswer}>{answer}</p></details>)}</div><a className={styles.faqCta} href="https://lin.ee/tqLCs4f" target="_blank" rel="noopener noreferrer" data-analytics-surface="homepage" data-analytics-location="home_faq">เพิ่มเพื่อน LINE @ccpun</a></div></section>
+        <section className={`${styles.section} ${styles.sectionBottomLarge}`} data-uat-section="home-faq"><div className={styles.inner}><SectionHeading eyebrow="คำถามที่พบบ่อย" title="ก่อนเริ่มวางแผนกับ CCPun" /><div className={styles.faqList}>{faqs.map(({question,answer})=><details className={styles.faqItem} key={question}><summary className={styles.faqSummary}><span>{question}</span><span className={styles.faqIcon} aria-hidden="true">+</span></summary><p className={styles.faqAnswer}>{answer}</p></details>)}</div><a className={styles.faqCta} href="https://lin.ee/tqLCs4f" target="_blank" rel="noopener noreferrer" data-analytics-surface="homepage" data-analytics-location="home_faq">ปรึกษากับ CCPun</a></div></section>
 
       </main>
       <Website43Footer warnings />

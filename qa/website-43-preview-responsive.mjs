@@ -142,6 +142,7 @@ async function inspect(client, routeKey, viewport) {
       const actions = body?.nextElementSibling;
       const proof = actions?.nextElementSibling;
       const buttons = actions ? [...actions.children].map(detail) : [];
+      const heroLinks = actions ? [...actions.querySelectorAll('a')].map((link) => ({ text:link.textContent?.trim(), href:link.getAttribute('href') })) : [];
       const trustStripGone = !document.body.innerText.includes('วางแผนประกัน\\nวางแผนการลงทุน\\nวางแผนการเงิน');
       const partnerLogos = [...document.querySelectorAll('img')].filter((img) => ['AIA','Fairdee','Maybank','PhillipCapital','Webull','Finnomena'].includes(img.alt));
       const partnerLogoPadding = partnerLogos.map((img) => { const style=getComputedStyle(img); return { top:parseFloat(style.paddingTop), bottom:parseFloat(style.paddingBottom) }; });
@@ -168,6 +169,7 @@ async function inspect(client, routeKey, viewport) {
         heroHeight:heroRect?.height||0,
         heroBodyHasHardBreak: Boolean(body?.querySelector('br')),
         heroContent: { eyebrow:detail(title?.previousElementSibling), title:detail(title), body:detail(body), actions:detail(actions), proof:detail(proof), buttons },
+        heroLinks,
         heroFitsViewport: [title?.previousElementSibling,title,body,actions,proof].every((node) => { const rect=node?.getBoundingClientRect(); return rect && rect.left >= 0 && rect.right <= innerWidth && rect.bottom <= (heroRect?.bottom ?? 0); }),
         trustStripGone,
         partnerLogoPadding,
@@ -233,7 +235,7 @@ async function inspect(client, routeKey, viewport) {
     expect('Home tool cards have equal dimensions', home.toolCards.length === 2 && Math.abs(home.toolCards[0].w-home.toolCards[1].w) < 1 && Math.abs(home.toolCards[0].h-home.toolCards[1].h) < 1, JSON.stringify(home.toolCards));
     expect('Home learning cards have equal dimensions', home.learningCards.length === 3 && home.learningCards.every((card) => Math.abs(card.w-home.learningCards[0].w) < 1 && Math.abs(card.h-home.learningCards[0].h) < 1), JSON.stringify(home.learningCards));
     expect('Home FAQ questions match the approved updates', JSON.stringify(home.faqQuestions) === JSON.stringify(['CCPun คือใคร?', 'CCPun ช่วยให้คำแนะนำทางการเงินด้านใดได้บ้าง']), JSON.stringify(home.faqQuestions));
-    expect('Home FAQ has one LINE add-friend CTA', home.faqCtas.length === 1 && home.faqCtas[0].text === 'เพิ่มเพื่อน LINE @ccpun' && home.faqCtas[0].href === 'https://lin.ee/tqLCs4f', JSON.stringify(home.faqCtas));
+    expect('Home FAQ has one LINE consultation CTA', home.faqCtas.length === 1 && home.faqCtas[0].text === 'ปรึกษากับ CCPun' && home.faqCtas[0].href === 'https://lin.ee/tqLCs4f', JSON.stringify(home.faqCtas));
     expect('Home removes the duplicate CTA after FAQ', home.duplicateContactCtaRemoved, String(home.duplicateContactCtaRemoved));
     expect('Home keeps a compact gap between learning cards and FAQ', home.learningFaqGap !== null && home.learningFaqGap <= 48, String(home.learningFaqGap));
     expect('About portrait stage is square', home.stage && Math.abs(home.stage.w - home.stage.h) < 1, JSON.stringify(home.stage));
@@ -243,9 +245,10 @@ async function inspect(client, routeKey, viewport) {
     const targetHero = viewport.width <= 639 ? 740 : viewport.width < 1024 ? 820 : 800;
     if ([390,820,1440].includes(viewport.width)) expect('Home hero height matches Figma target', Math.abs(home.heroHeight-targetHero)<1.5, `${home.heroHeight} vs ${targetHero}`);
     expect('Home hero content stays inside its frame', home.heroFitsViewport, JSON.stringify(home.heroContent));
+    expect('Home hero routes profile and LINE CTAs correctly', JSON.stringify(home.heroLinks) === JSON.stringify([{text:'รู้จัก CCPun',href:'#about-ccpun'},{text:'ปรึกษากับ CCPun',href:'https://lin.ee/tqLCs4f'}]), JSON.stringify(home.heroLinks));
     if (viewport.width < 640) expect('Mobile hero text uses Thai browser line breaking and clears its buttons', !home.heroBodyHasHardBreak && home.heroContent.body && home.heroContent.actions && home.heroContent.body.y + home.heroContent.body.h + 8 <= home.heroContent.actions.y, JSON.stringify(home.heroContent));
     const targets = {
-      390: { eyebrow:[24,104,undefined,14], title:[24,140,342,30,39], body:[24,583,342,14], actions:[24,633], proof:[24,693,undefined,12], buttons:[[164,48],[104,48]] },
+      390: { eyebrow:[24,104,undefined,14], title:[24,140,342,30,39], body:[24,583,342,14], actions:[24,633], proof:[24,693,undefined,12], buttons:[[165,48],[165,48]] },
       820: { eyebrow:[40,390,undefined,14], title:[40,426,490,38,48], body:[40,594,440,16], actions:[40,663], proof:[40,731,undefined,12], buttons:[[176,48],[116,48]] },
       1440: { eyebrow:[80,196,undefined,15], title:[80,240,760,44,60], body:[80,440,610,18], actions:[80,512], proof:[80,584,undefined,14], buttons:[[220,52],[160,52]] },
     }[viewport.width];
