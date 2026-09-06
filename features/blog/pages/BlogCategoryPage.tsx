@@ -46,7 +46,7 @@ function hasFeaturedLink(hub: BlogTopicHub): hub is BlogTopicHub & {
 export async function generateMetadata({ params }: { params: Promise<{ category: string }> }): Promise<Metadata> {
   const { category: slug } = await params;
   const hub = getBlogTopicHub(slug);
-  if (!hub) return { title: "บทความ | CCPun", robots: { index: false, follow: true } };
+  if (!hub) return { title: "บทความ | CCPun", alternates: { canonical: null }, robots: { index: false, follow: true } };
 
   const { isEnabled } = await draftMode();
   const articles = await getContentProvider().listArticles({ includeDrafts: false });
