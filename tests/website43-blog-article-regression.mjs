@@ -76,6 +76,8 @@ const articleRoute = require('../features/blog/pages/ArticlePage.tsx');
 for (const [slug, label, expected] of [['health-insurance', 'ประกันสุขภาพ', 'บทความสุขภาพ'], ['investment', 'การลงทุน', null]]) {
   const markup = doc(await category.default({ params: Promise.resolve({ category: slug }) }));
   assert.equal(markup.querySelector('.categoryMenuButton').textContent.trim().startsWith(label), true);
+  assert.equal(markup.querySelectorAll('h1').length, 1);
+  assert.equal(markup.querySelector('h1').textContent, label);
   if (expected) assert.ok(markup.body.textContent.includes(expected));
   assert.ok(!markup.body.textContent.includes('DRAFT MUST NOT LEAK'));
   assert.ok(!markup.querySelector('a[href="/blog/life-insurance/fixture-article/"]'), 'category list stays filtered');

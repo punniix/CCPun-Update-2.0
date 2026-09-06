@@ -142,7 +142,7 @@ export default function Website43Blog({ articles, activeCategorySlug = null, ini
           <div className={styles.blogHeroGradient} aria-hidden="true" />
           <Website43Navbar overlay />
           <div className={styles.blogHeroCopy}>
-            <h1 id="blog-title">บทความ</h1>
+            <h1 id="blog-title">{activeCategory.slug ? activeCategory.title : 'บทความ'}</h1>
             <p>เข้าใจเรื่องการเงิน ประกัน การลงทุนได้ง่าย แม้จะเริ่มจาก 0</p>
           </div>
         </section>
