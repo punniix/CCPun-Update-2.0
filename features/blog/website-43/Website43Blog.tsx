@@ -59,6 +59,9 @@ export default function Website43Blog({ articles, activeCategorySlug = null, ini
 
   useEffect(() => {
     const syncQuery = () => setQuery(new URLSearchParams(window.location.search).get('q') ?? '');
+    // A cached App Router entry can remount after popstate has already fired.
+    // Read the restored URL once on mount as well as on subsequent history changes.
+    syncQuery();
     window.addEventListener('popstate', syncQuery);
     return () => window.removeEventListener('popstate', syncQuery);
   }, []);
