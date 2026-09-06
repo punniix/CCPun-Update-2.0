@@ -122,10 +122,8 @@ export default function Website43Article({ article, relatedArticles = [] }: { ar
             </nav>
             <h1 className={styles.articleHeadline}>{article.title}</h1>
             <p className={styles.articleHeaderMeta}>
-              โดย {article.authorName}
-              {article.publishedAt ? ` · เผยแพร่เมื่อ ${thaiDateFormatter.format(new Date(article.publishedAt))}` : ''}
-              {` · อัปเดตล่าสุด ${thaiDateFormatter.format(new Date(article.updatedAt))} · ${topicName}`}
-              {article.status === 'draft' ? ' · ฉบับร่าง Preview' : ''}
+              {article.publishedAt ? `เผยแพร่เมื่อ ${thaiDateFormatter.format(new Date(article.publishedAt))} · ` : ''}
+              {`อัปเดตล่าสุด ${thaiDateFormatter.format(new Date(article.updatedAt))}`}
             </p>
             {article.featuredImage && (
               <Image
@@ -144,8 +142,8 @@ export default function Website43Article({ article, relatedArticles = [] }: { ar
         <section className={styles.articleReadingWrap}>
           <div className={styles.articleReadingGrid}>
             {headings.length > 0 && (
-              <aside className={styles.toc} aria-label="สารบัญบทความ">
-                <strong>สารบัญบทความ</strong>
+              <aside className={styles.toc} aria-label="หัวข้อเนื้อหา">
+                <strong>หัวข้อเนื้อหา</strong>
                 <div className={styles.tocList}>
                   {tocGroups.map((group) => (
                     <div className={styles.tocGroup} key={group.primary.id}>
@@ -158,7 +156,7 @@ export default function Website43Article({ article, relatedArticles = [] }: { ar
             )}
             {headings.length > 0 && (
               <details className={styles.tocMobile}>
-                <summary>สารบัญบทความ</summary>
+                <summary>หัวข้อเนื้อหา</summary>
                 <div className={styles.tocMobileList}>
                   {tocGroups.map((group) => (
                     <div className={styles.tocGroup} key={group.primary.id}>
@@ -200,14 +198,6 @@ export default function Website43Article({ article, relatedArticles = [] }: { ar
           </section>
         )}
 
-        <section className={`${styles.sectionDeep} ${styles.sectionTopLarge} ${styles.sectionBottomLarge}`}>
-          <div className={styles.inner}>
-            <h2 className={styles.h2}>อยากจัดลำดับแผนให้เหมาะกับชีวิตคุณ?</h2>
-            <p className={styles.lead} style={{ color: '#faf9f9' }}>เตรียมข้อมูลรายได้ รายจ่าย หนี้ และเป้าหมาย แล้วคุยกันแบบเห็นภาพรวม</p>
-            <a className={styles.primaryButton} style={{ width: 200, marginTop: 20 }} href="https://lin.ee/tqLCs4f" target="_blank" rel="noopener noreferrer" data-analytics-surface="blog" data-analytics-location="blog_article">คุยกับ Pun ทาง LINE</a>
-          </div>
-        </section>
-
         <section className={styles.section}>
           <div className={styles.inner}>
             <div className={styles.authorCard}>
@@ -220,6 +210,14 @@ export default function Website43Article({ article, relatedArticles = [] }: { ar
               <Link className={styles.authorLink} href={`${BASE}#about-ccpun`}>รู้จัก CCPun เพิ่มเติม →</Link>
             </div>
             <p className={styles.articleMeta} style={{ marginTop: 16 }}>บทความนี้มีวัตถุประสงค์เพื่อให้ความรู้ทั่วไป ไม่ใช่คำแนะนำทางการเงิน การลงทุน ภาษี หรือประกันภัยเฉพาะบุคคล</p>
+          </div>
+        </section>
+
+        <section className={`${styles.sectionDeep} ${styles.sectionTopLarge} ${styles.sectionBottomLarge}`}>
+          <div className={styles.inner}>
+            <h2 className={styles.h2}>อยากจัดลำดับแผนให้เหมาะกับชีวิตคุณ?</h2>
+            <p className={styles.lead} style={{ color: '#faf9f9' }}>เตรียมข้อมูลรายได้ รายจ่าย หนี้ และเป้าหมาย แล้วคุยกันแบบเห็นภาพรวม</p>
+            <a className={styles.primaryButton} style={{ width: 200, marginTop: 20 }} href="https://lin.ee/tqLCs4f" target="_blank" rel="noopener noreferrer" data-analytics-surface="blog" data-analytics-location="blog_article">คุยกับ Pun ทาง LINE</a>
           </div>
         </section>
 
