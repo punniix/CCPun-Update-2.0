@@ -93,6 +93,14 @@ function renderBody(items: ArticleBlock[], headingIds: Map<number, string>) {
 }
 
 export default function Website43Article({ article, relatedArticles = [] }: { article: Article; relatedArticles?: Article[] }) {
+  const author = {
+    name: article.author?.profileName ?? 'ชนาธิป ชิตประเสริฐ',
+    role: article.author?.profileRole ?? 'ที่ปรึกษาการเงินส่วนบุคคล',
+    bio: article.author?.profileBio ?? 'ผู้แนะนำการลงทุนและตัวแทนประกันชีวิต เน้นอธิบายจากเป้าหมายและสถานการณ์จริง เพื่อช่วยให้เห็นภาพรวมก่อนตัดสินใจ',
+    profileCtaLabel: article.author?.profileCtaLabel ?? 'รู้จัก CCPun เพิ่มเติม',
+    profileCtaUrl: article.author?.profileCtaUrl ?? `${BASE}#about-ccpun`,
+    avatar: article.author?.profileAvatar ?? { src: '/assets/pun.jpg', alt: 'ชนาธิป ชิตประเสริฐ', width: 96, height: 96 },
+  };
   const semanticTopic = getArticleSemanticTopic({
     articleSlug: article.slug,
     semanticTopic: article.semanticTopic,
@@ -201,13 +209,13 @@ export default function Website43Article({ article, relatedArticles = [] }: { ar
         <section className={styles.section}>
           <div className={styles.inner}>
             <div className={styles.authorCard}>
-              <Image className={styles.authorAvatar} src="/assets/pun.jpg" alt="ชนาธิป ชิตประเสริฐ" width={96} height={96} sizes="(max-width: 639px) 72px, 96px" />
+              <Image className={styles.authorAvatar} src={author.avatar.src} alt={author.avatar.alt} width={author.avatar.width} height={author.avatar.height} sizes="(max-width: 639px) 72px, 96px" />
               <div className={styles.authorIdentity}>
-                <strong className={styles.authorName}>ชนาธิป ชิตประเสริฐ</strong>
-                <span className={styles.authorRole}>ที่ปรึกษาการเงินส่วนบุคคล</span>
+                <strong className={styles.authorName}>{author.name}</strong>
+                <span className={styles.authorRole}>{author.role}</span>
               </div>
-              <p className={styles.authorBio}>ผู้แนะนำการลงทุนและตัวแทนประกันชีวิต เน้นอธิบายจากเป้าหมายและสถานการณ์จริง เพื่อช่วยให้เห็นภาพรวมก่อนตัดสินใจ</p>
-              <Link className={styles.authorLink} href={`${BASE}#about-ccpun`}>รู้จัก CCPun เพิ่มเติม →</Link>
+              <p className={styles.authorBio}>{author.bio}</p>
+              <Link className={styles.authorLink} href={author.profileCtaUrl}>{author.profileCtaLabel} →</Link>
             </div>
           </div>
         </section>

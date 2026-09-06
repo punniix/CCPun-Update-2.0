@@ -49,6 +49,21 @@ export type ArticleReview = {
   complianceReviewedAt?: string;
 };
 
+export type ArticleAuthorProfile = {
+  name: string;
+  profileName?: string;
+  profileRole?: string;
+  profileBio?: string;
+  profileCtaLabel?: string;
+  profileCtaUrl?: string;
+  profileAvatar?: {
+    src: string;
+    alt: string;
+    width: number;
+    height: number;
+  };
+};
+
 export type ArticleGeo = {
   summary?: string;
   keyEntities?: string[];
@@ -65,6 +80,7 @@ export type Article = {
   tags?: string[];
   semanticTopic?: string;
   authorName: string;
+  author?: ArticleAuthorProfile;
   status: ArticleStatus;
   publishedAt?: string;
   updatedAt: string;
