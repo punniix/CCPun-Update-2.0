@@ -566,12 +566,12 @@
   .homeHeroBottomGradient { display: block; position: absolute; z-index: 2; left: 0; right: 0; top: 505px; height: 235px; background: linear-gradient(180deg,rgba(4,5,4,.1) 0%,rgba(4,5,4,.34) 22%,rgba(4,5,4,.58) 52%,rgba(4,5,4,.7) 78%,rgba(4,5,4,.74) 100%); }
   .homeHeroCopy { top: 104px; left: 24px; width: min(342px, calc(100% - 48px)); }
   .homeHeroCopy .eyebrow { line-height: 20px; }
-  .homeHeroTitle { width: min(326px, 100%); margin-top: 16px; font-size: 30px; line-height: 39px; }
-  .homeHeroBody { position: absolute; top: 479px; width: 100%; margin: 0; font-size: 14px; line-height: 1.5; }
-  .heroActions { position: absolute; top: 535px; left: 0; margin: 0; }
+  .homeHeroTitle { width: 100%; margin-top: 16px; font-size: 30px; line-height: 39px; }
+  .homeHeroBody { width: 100%; margin: 326px 0 0; overflow-wrap: normal; word-break: normal; line-break: auto; font-size: 14px; line-height: 1.5; }
+  .heroActions { margin-top: 8px; }
   .heroActions .primaryButton { width: 164px; }
   .heroActions .outlineButton { width: 104px; }
-  .heroProof { position: absolute; top: 599px; left: 0; width: 100%; margin: 0; font-size: 12px; }
+  .heroProof { width: 100%; margin-top: 12px; font-size: 12px; }
   .threeCols { grid-template-columns: 1fr; gap: 12px; margin-top: 16px; }
   .editorialCard { min-height: 0; padding: 12px 0; }
   .editorialCardIcon { margin-bottom: 8px; }

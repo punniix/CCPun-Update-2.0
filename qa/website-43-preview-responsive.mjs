@@ -164,6 +164,7 @@ async function inspect(client, routeKey, viewport) {
         stage: sr && {w:sr.width,h:sr.height},
         portrait: pr && {top:pr.top-(sr?.top||0),w:pr.width,h:pr.height},
         heroHeight:heroRect?.height||0,
+        heroBodyHasHardBreak: Boolean(body?.querySelector('br')),
         heroContent: { eyebrow:detail(title?.previousElementSibling), title:detail(title), body:detail(body), actions:detail(actions), proof:detail(proof), buttons },
         heroFitsViewport: [title?.previousElementSibling,title,body,actions,proof].every((node) => { const rect=node?.getBoundingClientRect(); return rect && rect.left >= 0 && rect.right <= innerWidth && rect.bottom <= (heroRect?.bottom ?? 0); }),
         trustStripGone,
@@ -236,8 +237,9 @@ async function inspect(client, routeKey, viewport) {
     const targetHero = viewport.width <= 639 ? 740 : viewport.width < 1024 ? 820 : 800;
     if ([390,820,1440].includes(viewport.width)) expect('Home hero height matches Figma target', Math.abs(home.heroHeight-targetHero)<1.5, `${home.heroHeight} vs ${targetHero}`);
     expect('Home hero content stays inside its frame', home.heroFitsViewport, JSON.stringify(home.heroContent));
+    if (viewport.width < 640) expect('Mobile hero text uses Thai browser line breaking and clears its buttons', !home.heroBodyHasHardBreak && home.heroContent.body && home.heroContent.actions && home.heroContent.body.y + home.heroContent.body.h + 8 <= home.heroContent.actions.y, JSON.stringify(home.heroContent));
     const targets = {
-      390: { eyebrow:[24,104,undefined,14], title:[24,140,326,30,39], body:[24,583,342,14], actions:[24,639], proof:[24,703,undefined,12], buttons:[[164,48],[104,48]] },
+      390: { eyebrow:[24,104,undefined,14], title:[24,140,342,30,39], body:[24,583,342,14], actions:[24,633], proof:[24,693,undefined,12], buttons:[[164,48],[104,48]] },
       820: { eyebrow:[40,390,undefined,14], title:[40,426,490,38,48], body:[40,594,440,16], actions:[40,663], proof:[40,731,undefined,12], buttons:[[176,48],[116,48]] },
       1440: { eyebrow:[80,196,undefined,15], title:[80,240,760,44,60], body:[80,440,610,18], actions:[80,512], proof:[80,584,undefined,14], buttons:[[220,52],[160,52]] },
     }[viewport.width];

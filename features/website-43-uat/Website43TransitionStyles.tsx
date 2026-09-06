@@ -275,7 +275,7 @@ export function Website43TransitionStyles() {
     width: calc(100% - var(--w43-hero-gutter) - var(--w43-hero-gutter));
   }
   .${styles.homeHeroTitle} {
-    width: calc(100% - 16px);
+    width: 100%;
   }
   .${styles.threeCols} {
     width: var(--w43-mobile-reading-width);
