@@ -148,8 +148,8 @@
   background: var(--w43-bg);
 }
 .sectionDeep { background: var(--w43-deep); }
-.sectionTopLarge { padding-top: 80px; }
-.sectionBottomLarge { padding-bottom: 80px; }
+.sectionTopLarge { padding-top: 56px; }
+.sectionBottomLarge { padding-bottom: 56px; }
 .trustSection { padding-top: 56px; padding-bottom: 56px; }
 .inner { width: min(1280px, 100%); margin: 0 auto; }
 .narrow { width: min(1152px, 100%); margin: 0 auto; }
