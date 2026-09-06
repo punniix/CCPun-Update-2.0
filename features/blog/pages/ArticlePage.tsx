@@ -18,6 +18,7 @@ export async function generateMetadata({ params }: { params: Promise<{ category:
   if (!article || (!includeDrafts && article.status !== "published")) {
     return {
       title: "ไม่พบหน้า | CCPun",
+      alternates: { canonical: null },
       robots: { index: false, follow: true },
     };
   }

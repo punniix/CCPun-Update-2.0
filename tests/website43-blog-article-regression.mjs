@@ -94,6 +94,8 @@ await assert.rejects(articleRoute.default({ params: Promise.resolve({ category: 
 const draftMetadata = await articleRoute.generateMetadata({ params: Promise.resolve({ category: 'life-insurance', slug: 'draft-only' }) });
 assert.equal(draftMetadata.robots.index, false);
 assert.equal(draftMetadata.title, 'ไม่พบหน้า | CCPun');
+assert.equal(draftMetadata.alternates.canonical, null);
+assert.equal((await category.generateMetadata({ params: Promise.resolve({ category: 'missing-category' }) })).alternates.canonical, null);
 await articleRoute.generateMetadata({ params: Promise.resolve({ category: 'life-insurance', slug: article.slug }) });
 assert.ok(calls.length > 0 && calls.every((call) => call.includeDrafts === false), 'stale draft cookie cannot cross public Production read gate');
 const shared = readFileSync(new URL('../components/layout/website-43/Website43Shared.tsx', import.meta.url), 'utf8');
